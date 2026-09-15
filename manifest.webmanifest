@@ -1,0 +1,14 @@
+{
+  "name": "明记家乡小食店 · ERP",
+  "short_name": "明记家乡小食店",
+  "description": "Meng Kee 多分店进销存 ERP",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#12203A",
+  "theme_color": "#12203A",
+  "icons": [
+    {"src": "icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any maskable"},
+    {"src": "icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable"}
+  ]
+}
