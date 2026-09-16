@@ -575,11 +575,11 @@ const ROLES={
     can:["attend","leave","payroll"],
     allBranch:false, hrScope:"self", salaryView:"self", approveLeave:false}, // 只有人事自助：打卡、请假、查看自己薪资/Payslip
   ckmgr:{name:"中央经理 Central Manager",en:"Central Manager",
-    can:["dash","inv","proc","ck","stock","waste","opex","report","ap"],
-    allBranch:false, hrScope:"branch", salaryView:"self", approveLeave:true, ckOnly:true}, // 中央厨房专属：权限同店长，锁定中央厨房
+    can:["dash","inv","proc","ck","stock","waste","opex","report","ap","hr","attend","schedule","leave","payroll"],
+    allBranch:false, hrScope:"self", salaryView:"self", approveLeave:true, ckOnly:true}, // 中央厨房专属：权限同店长 + 自己的档案/考勤/请假/薪资(只看自己)；不能看薪资发放Payroll
   ckstaff:{name:"中央员工 Central Staff",en:"Central Staff",
-    can:["dash","inv","ck","transfer","stock"],
-    allBranch:false, hrScope:"self", salaryView:"self", approveLeave:false, ckOnly:true}, // 中央厨房专属：权限同厨师长，锁定中央厨房
+    can:["dash","inv","ck","transfer","stock","hr","attend","schedule","leave","payroll"],
+    allBranch:false, hrScope:"self", salaryView:"self", approveLeave:false, ckOnly:true}, // 中央厨房专属：权限同厨师长 + 自己的档案/考勤/请假/薪资(只看自己)；不能看薪资发放Payroll
 };
 // 可编辑权限的角色（老板/人事经理、区域副经理）
 function canEditPerms(){return ROLES[curRole] && ROLES[curRole].canEditPerms===true;}
@@ -617,7 +617,7 @@ function statusOf(d){if(d<=14)return{t:"健康",e:"Fresh",c:"p-g"};if(d<=30)retu
 function stTxt(s){return LANG==="zh"?s.t:s.e;}
 
 /* ================= 数据种子 ================= */
-const BUILD="0916mk8";  // 版本标记：页面右上/网格提示可见，用来确认已载入最新版
+const BUILD="0916mk9";  // 版本标记：页面右上/网格提示可见，用来确认已载入最新版
 const SEED_VERSION="bh-master-2026-09-1";  // 版本变更→下次载入自动重置为最新主数据（仅本店云端）
 function seed(outletId){
   const isCK = outletId==="ck";
