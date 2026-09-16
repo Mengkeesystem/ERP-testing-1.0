@@ -574,6 +574,12 @@ const ROLES={
   staff:{name:"员工 Staff",en:"Staff",
     can:["attend","leave","payroll"],
     allBranch:false, hrScope:"self", salaryView:"self", approveLeave:false}, // 只有人事自助：打卡、请假、查看自己薪资/Payslip
+  ckmgr:{name:"中央经理 Central Manager",en:"Central Manager",
+    can:["dash","inv","proc","ck","stock","waste","opex","report","ap"],
+    allBranch:false, hrScope:"branch", salaryView:"self", approveLeave:true, ckOnly:true}, // 中央厨房专属：权限同店长，锁定中央厨房
+  ckstaff:{name:"中央员工 Central Staff",en:"Central Staff",
+    can:["dash","inv","ck","transfer","stock"],
+    allBranch:false, hrScope:"self", salaryView:"self", approveLeave:false, ckOnly:true}, // 中央厨房专属：权限同厨师长，锁定中央厨房
 };
 // 可编辑权限的角色（老板/人事经理、区域副经理）
 function canEditPerms(){return ROLES[curRole] && ROLES[curRole].canEditPerms===true;}
@@ -611,7 +617,7 @@ function statusOf(d){if(d<=14)return{t:"健康",e:"Fresh",c:"p-g"};if(d<=30)retu
 function stTxt(s){return LANG==="zh"?s.t:s.e;}
 
 /* ================= 数据种子 ================= */
-const BUILD="0916mk7";  // 版本标记：页面右上/网格提示可见，用来确认已载入最新版
+const BUILD="0916mk8";  // 版本标记：页面右上/网格提示可见，用来确认已载入最新版
 const SEED_VERSION="bh-master-2026-09-1";  // 版本变更→下次载入自动重置为最新主数据（仅本店云端）
 function seed(outletId){
   const isCK = outletId==="ck";
@@ -961,14 +967,20 @@ function renderTop(){
   if(typeof updateBell==='function')updateBell();
   const ck=OUTLETS.find(o=>o.ck);const branches=OUTLETS.filter(o=>!o.ck);
   const outletSel=document.getElementById('outletSel');
-  const allBranch=ROLES[curRole].allBranch || isAdminUser(); // 管理员预览时仍可切换分店
-  const canCk=can('ck'); // 只有能访问中央厨房的角色(仅老板)显示 CK 门店——预览身份也遵循此规则
-  if(!canCk&&curOutlet===ck.id){curOutlet=(curUser&&curUser.outlet)||branches[0].id;} // 无权时不停留在中央厨房
-  if(allBranch){ // 全分店角色：(中央厨房) + 总和 + 各分店
+  const allBranchRole=ROLES[curRole].allBranch;      // 严格：仅 老板/区域副经理 有「全部分店(总和)」
+  const canAll=allBranchRole;                         // 全部分店(总和) 只给 allBranch 角色——预览身份也不给
+  const canBrowse=allBranchRole||isAdminUser();       // 管理员预览可浏览各分店(但不含总和/中央厨房)
+  const canCk=can('ck');                              // 中央厨房：仅 老板 + 中央经理/中央员工——预览身份也遵循
+  if(ROLES[curRole].ckOnly)curOutlet='ck';            // 中央厨房专属角色锁定 ck
+  if(!canCk&&curOutlet===ck.id){curOutlet=(curUser&&curUser.outlet)||branches[0].id;}   // 无权时不停留在中央厨房
+  if(!canAll&&curOutlet===ALL_ID){curOutlet=(curUser&&curUser.outlet)||branches[0].id;}  // 无权时不停留在总和
+  if(ROLES[curRole].ckOnly){ // 中央厨房专属：只显示中央厨房，锁定
+    outletSel.innerHTML=`<option value="${ck.id}" selected>🏭 ${nm(ck)}</option>`;outletSel.disabled=true;
+  }else if(canBrowse){ // 全分店角色 / 管理员预览：(中央厨房) + (总和) + 各分店
     outletSel.disabled=false;
     outletSel.innerHTML=
       (canCk?`<option value="${ck.id}" ${ck.id===curOutlet?'selected':''}>🏭 ${nm(ck)}</option>`:'')+
-      `<option value="${ALL_ID}" ${curOutlet===ALL_ID?'selected':''}>📊 ${LANG==="zh"?"全部分店（总和）":"All Branches (Total)"}</option>`+
+      (canAll?`<option value="${ALL_ID}" ${curOutlet===ALL_ID?'selected':''}>📊 ${LANG==="zh"?"全部分店（总和）":"All Branches (Total)"}</option>`:'')+
       branches.map(o=>`<option value="${o.id}" ${o.id===curOutlet?'selected':''}>${nm(o)}</option>`).join('');
   }else if(curUser){ // 真实登录的本店角色：锁定白名单分配的分店
     const ho=OUTLETS.find(o=>o.id===curOutlet)||branches[0];
@@ -2996,9 +3008,11 @@ function exportCSV(){
    ================================================================ */
 let selSupplier=null;                          // 供应商钻取页共用：当前选中供应商
 let ledgerMonth='all';                         // 账册月份筛选（YYYY-MM 或 all）
-let wasteMonth='', grnMonth='';                // 报废损耗 / 退货补货 的当前月份
+let wasteMonth='', grnMonth='', offerMonth='', transferMonth='';  // 各作业当前月份
 function setWasteMonth(m){wasteMonth=m;render();window.scrollTo(0,0);}
 function setGrnMonth(m){grnMonth=m;render();window.scrollTo(0,0);}
+function setOfferMonth(m){offerMonth=m;render();window.scrollTo(0,0);}
+function setTransferMonth(m){transferMonth=m;render();window.scrollTo(0,0);}
 function logMonths(recs){const s=new Set((recs||[]).map(r=>(r.date||'').slice(0,7)).filter(Boolean));s.add(TODAY.slice(0,7));return [...s].sort().reverse();}
 function logMonthTabs(months,cur,setter){return `<div class="seg" style="flex-wrap:wrap;margin-bottom:8px;">${months.map(m=>`<button class="${m===cur?'active':''}" onclick="${setter}('${m}')">${monthLabel(m)}</button>`).join('')}</div>`;}
 let gridCurMonth='';                            // 当前网格实际渲染的月份（合计计算以此为准，避免 ledgerMonth='all' 导致合计归零）
@@ -3339,13 +3353,16 @@ async function delLedger(mod,gi){if(!confirm(LANG==="zh"?"删除此单据？":"D
 /* ================= 跨店调拨（物品 + 人力）================= */
 function pgTransfer(){
   const x=d();const writable=subCanW('transfer');
-  const items=x.transfers||[];const loans=x.staffLoans||[];
+  const allItems=x.transfers||[];const loans=x.staffLoans||[];
+  const months=logMonths(allItems);const cur=(transferMonth&&months.includes(transferMonth))?transferMonth:months[0];
+  const items=allItems.filter(r=>(r.date||'').slice(0,7)===cur).sort((a,b)=>(b.date||'').localeCompare(a.date||''));
   const back=`<button class="btn ghost sm" onclick="nav('proc')">← ${LANG==="zh"?"进销存作业":"Operations"}</button>`;
   return `<div class="fb"><h2 class="h" style="margin:0;">🔁 ${LANG==="zh"?"跨店调拨":"Inter-Branch Transfer"} <span class="tag">${nm(outletObj())}</span></h2>${back}</div>
-  <div class="hint">${LANG==="zh"?"记录物品被借走/直接调拨（标注归还或直接Transfer），以及人力资源借调其他店面。":"Track item transfers (return or direct) and staff loans between branches."}</div>
+  <div class="hint">${LANG==="zh"?"按月分开。记录物品被借走/直接调拨（标注归还或直接Transfer），以及人力资源借调其他店面。":"By month. Item transfers (return/direct) and staff loans."}</div>
+  ${logMonthTabs(months,cur,'setTransferMonth')}
   <div class="fb"><h2 class="h" style="margin:0;">📦 ${LANG==="zh"?"物品调拨":"Item Transfer"}</h2>${writable?`<button class="btn gold sm" onclick="formTransferItem()">+ ${LANG==="zh"?"物品":"Item"}</button>`:''}</div>
   <div class="card tbl"><table><thead><tr><th>${LANG==="zh"?"日期":"Date"}</th><th>${LANG==="zh"?"品名":"Item"}</th><th>Code</th><th>${LANG==="zh"?"数量":"Qty"}</th><th>${LANG==="zh"?"去向":"To"}</th><th>${LANG==="zh"?"方式":"Mode"}</th><th>${LANG==="zh"?"金额":"Amt"}</th><th>${LANG==="zh"?"备注":"Note"}</th>${writable?'<th></th>':''}</tr></thead><tbody>
-  ${items.map((r,i)=>`<tr><td class="mini">${r.date.slice(5)}</td><td>${r.item}</td><td class="mini">${r.code||'—'}</td><td>${num(r.qty)} ${r.unit||''}</td><td>${r.to}</td><td><span class="pill ${modePill(r.mode)}">${modeTxt(r.mode)}</span></td><td>${money(r.amt)}</td><td class="mini">${r.note||''}</td>${writable?`<td style="white-space:nowrap;"><button class="ib" onclick="formTransferItem(${i})">✏️</button> <button class="ib" onclick="delTransfer(${i})">🗑️</button></td>`:''}</tr>`).join('')||`<tr><td colspan="9" class="empty">${LANG==="zh"?"暂无调拨":"None"}</td></tr>`}
+  ${items.map(r=>{const gi=allItems.indexOf(r);return `<tr><td class="mini">${(r.date||'').slice(5)}</td><td>${r.item}</td><td class="mini">${r.code||'—'}</td><td>${num(r.qty)} ${r.unit||''}</td><td>${r.to}</td><td><span class="pill ${modePill(r.mode)}">${modeTxt(r.mode)}</span></td><td>${money(r.amt)}</td><td class="mini">${r.note||''}</td>${writable?`<td style="white-space:nowrap;"><button class="ib" onclick="formTransferItem(${gi})">✏️</button> <button class="ib" onclick="delTransfer(${gi})">🗑️</button></td>`:''}</tr>`;}).join('')||`<tr><td colspan="9" class="empty">${LANG==="zh"?"本月暂无调拨":"None"}</td></tr>`}
   </tbody></table></div>
   <div class="fb" style="margin-top:16px;"><h2 class="h" style="margin:0;">🧑‍🍳 ${LANG==="zh"?"人力资源借调":"Staff Loan"}</h2>${writable?`<button class="btn gold sm" onclick="formStaffLoan()">+ ${LANG==="zh"?"借调":"Loan"}</button>`:''}</div>
   <div class="card tbl"><table><thead><tr><th>${LANG==="zh"?"日期":"Date"}</th><th>${LANG==="zh"?"员工":"Staff"}</th><th>${LANG==="zh"?"职位":"Role"}</th><th>${LANG==="zh"?"支援店面":"To Branch"}</th><th>${LANG==="zh"?"方式":"Mode"}</th><th>${LANG==="zh"?"备注":"Note"}</th>${writable?'<th></th>':''}</tr></thead><tbody>
@@ -3356,7 +3373,7 @@ function formTransferItem(editIdx){
   const r=(editIdx!=null)?(d().transfers||[])[editIdx]:null;const isEdit=!!r;
   const toOpts=outletNames().map(n=>`<option ${r&&r.to===n?'selected':''}>${n}</option>`).join('');
   openForm(`<h3>📦 ${isEdit?(LANG==="zh"?"编辑物品调拨":"Edit Transfer"):(LANG==="zh"?"物品调拨":"Item Transfer")} <span class="x" onclick="closeM()">×</span></h3>
-    <div class="fg2"><div class="fr"><label>${LANG==="zh"?"日期":"Date"}</label><input id="t_date" type="date" value="${r?r.date:TODAY}"></div>
+    <div class="fg2"><div class="fr"><label>${LANG==="zh"?"日期":"Date"}</label><input id="t_date" type="date" value="${r?r.date:((transferMonth&&transferMonth!==TODAY.slice(0,7))?transferMonth+'-01':TODAY)}"></div>
       <div class="fr"><label>${LANG==="zh"?"品名":"Item"}</label><select id="t_item" onchange="tItemAuto()">${itemSelOpts(r?r.item:'')}</select></div></div>
     <div class="fg3"><div class="fr"><label>Code</label><input id="t_code" placeholder="TOF-01" value="${r?(r.code||''):''}"></div>
       <div class="fr"><label>${LANG==="zh"?"数量":"Qty"}</label><input id="t_qty" type="number" step="0.01" value="${r?r.qty:''}"></div>
@@ -3436,12 +3453,16 @@ async function delWaste2(gi){if(!confirm(LANG==="zh"?"删除此报废？":"Delet
 
 /* ================= 招待 / 赠送（独立）================= */
 function pgOffer(){
-  const x=d();const writable=subCanW('offer');const rs=(x.offers||[]).slice().sort((a,b)=>b.date.localeCompare(a.date));
+  const x=d();const writable=subCanW('offer');
+  const all=(x.offers||[]).slice();
+  const months=logMonths(all);const cur=(offerMonth&&months.includes(offerMonth))?offerMonth:months[0];
+  const rs=all.filter(r=>(r.date||'').slice(0,7)===cur).sort((a,b)=>(b.date||'').localeCompare(a.date||''));
   const tot=rs.reduce((s,r)=>s+(+r.total||0),0);
   return `<div class="fb"><h2 class="h" style="margin:0;">🎁 ${LANG==="zh"?"招待 / 赠送":"Offers / ENT"} <span class="tag">${nm(outletObj())}</span></h2><button class="btn ghost sm" onclick="nav('proc')">← ${LANG==="zh"?"进销存作业":"Operations"}</button></div>
-  <div class="hint">${LANG==="zh"?"记录 日期 · 收据号码 · 类别(ENT/Offer) · 品项 · 当事人 · 金额(含SST6%) · 原因（跟随明记 ENT/Offer 表）。":"Date · Receipt · Type · Item · P.I.C · Amount · Reason."}</div>
+  <div class="hint">${LANG==="zh"?"按月分开。日期 · 收据号码 · 类别(ENT/Offer) · 品项 · 当事人 · 金额(含SST6%) · 原因（跟随明记 ENT/Offer 表）。":"By month. Date · Receipt · Type · Item · P.I.C · Amount · Reason."}</div>
   ${writable?`<button class="btn brand sm" style="margin-bottom:8px;" onclick="formOffer()">+ ${LANG==="zh"?"新增招待":"Add"}</button>`:''}
-  <div class="grid g2" style="margin-bottom:10px;"><div class="kpi"><div class="k">${LANG==="zh"?"招待笔数":"Records"}</div><div class="v sm">${rs.length}</div></div><div class="kpi"><div class="k">${LANG==="zh"?"招待总额":"Total"}</div><div class="v sm warnc">${money(tot)}</div></div></div>
+  ${logMonthTabs(months,cur,'setOfferMonth')}
+  <div class="grid g2" style="margin-bottom:10px;"><div class="kpi"><div class="k">${LANG==="zh"?"本月招待笔数":"Records"}</div><div class="v sm">${rs.length}</div></div><div class="kpi"><div class="k">${LANG==="zh"?"本月招待总额":"Total"}</div><div class="v sm warnc">${money(tot)}</div></div></div>
   <div class="card tbl"><table><thead><tr><th>${LANG==="zh"?"日期":"Date"}</th><th>${LANG==="zh"?"收据号":"Receipt"}</th><th>${LANG==="zh"?"类别":"Type"}</th><th>${LANG==="zh"?"品项":"Item"}</th><th>${LANG==="zh"?"当事人":"P.I.C"}</th><th>${LANG==="zh"?"金额":"Amount"}</th><th>${LANG==="zh"?"原因":"Reason"}</th>${writable?'<th></th>':''}</tr></thead><tbody>
   ${rs.map(r=>{const gi=x.offers.indexOf(r);return `<tr><td class="mini">${r.date}</td><td class="mini">${r.receipt||'—'}</td><td><span class="pill ${r.type==='ENT'?'p-a':'p-b'}">${r.type}</span></td><td><b>${r.item}</b></td><td>${r.person||'—'}</td><td>${money(r.total)}</td><td class="mini">${r.reason||r.note||''}</td>${writable?`<td style="white-space:nowrap;"><button class="ib" onclick="formOffer(${gi})">✏️</button> <button class="ib" onclick="delOffer(${gi})">🗑️</button></td>`:''}</tr>`;}).join('')||`<tr><td colspan="8" class="empty">${LANG==="zh"?"暂无招待":"None"}</td></tr>`}
   </tbody><tfoot><tr style="background:#FAFBFC;font-weight:800;"><td colspan="5">${LANG==="zh"?"合计":"Total"}</td><td class="warnc">${money(tot)}</td><td colspan="${writable?2:1}"></td></tr></tfoot></table></div>`;
@@ -3451,7 +3472,7 @@ function formOffer(editIdx){
   const menu=(typeof ENT_MENU!=='undefined'&&ENT_MENU.length)?ENT_MENU:(typeof MENU_ITEMS!=='undefined'?MENU_ITEMS:[]);
   const reasons=["客户招待 Client ENT","员工餐 Staff Meal","试菜 Tasting","补偿客诉 Complaint","坏单/退菜 Void","老板招待 Owner ENT","其他 Other"];
   openForm(`<h3>🎁 ${isEdit?(LANG==="zh"?"编辑招待/赠送":"Edit Offer"):(LANG==="zh"?"新增招待/赠送":"New Offer")} <span class="x" onclick="closeM()">×</span></h3>
-    <div class="fg2"><div class="fr"><label>${LANG==="zh"?"日期 Date":"Date"}</label><input id="o_date" type="date" value="${r?r.date:TODAY}"></div>
+    <div class="fg2"><div class="fr"><label>${LANG==="zh"?"日期 Date":"Date"}</label><input id="o_date" type="date" value="${r?r.date:((offerMonth&&offerMonth!==TODAY.slice(0,7))?offerMonth+'-01':TODAY)}"></div>
       <div class="fr"><label>${LANG==="zh"?"收据号码 Receipt No.":"Receipt No."}</label><input id="o_receipt" value="${r?(r.receipt||''):''}" placeholder="R-..."></div></div>
     <div class="fr"><label>${LANG==="zh"?"类别 Type":"Type"}</label><select id="o_type"><option value="ENT" ${r&&r.type==='ENT'?'selected':''}>ENT ${LANG==="zh"?"招待":""}</option><option value="Offer" ${r&&r.type==='Offer'?'selected':''}>Offer ${LANG==="zh"?"赠送":""}</option></select></div>
     <div class="fr"><label>${LANG==="zh"?"品项 Item（选菜单或输入）":"Item"}</label><input id="o_item" list="entMenuList" placeholder="${LANG==="zh"?"点开选菜单，或直接输入":"pick or type"}" value="${r?(r.item||''):''}"><datalist id="entMenuList">${menu.map(m=>`<option value="${(m+'').replace(/"/g,'&quot;')}"></option>`).join('')}</datalist></div>
@@ -3841,7 +3862,7 @@ async function afterAuth(user){
   }
   curUser={email:(wu.email||user.email),name:wu.name||user.email,role:ROLES[wu.role]?wu.role:'staff',outlet:wu.outlet||'b1'};
   curRole=curUser.role;
-  curOutlet=ROLES[curRole].allBranch?(curOutlet||'b1'):(curUser.outlet||'b1'); // 非全分店角色锁定本店
+  curOutlet=ROLES[curRole].ckOnly?'ck':(ROLES[curRole].allBranch?(curOutlet||'b1'):(curUser.outlet||'b1')); // 中央厨房专属锁定 ck；非全分店角色锁定本店
   await loadDB();await loadRolePerms();
   document.querySelector('.top').style.display='';
   const sb=document.getElementById('sidebar');if(sb)sb.style.display='';
