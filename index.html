@@ -301,17 +301,17 @@
 
 const OUTLETS=[
   {id:"ck",name:"中央厨房",en:"Central Kitchen",ck:true,lat:3.0738,lng:101.5183},
-  {id:"b1",name:"分店 1",en:"Branch 1",lat:3.0821,lng:101.5312},
-  {id:"b2",name:"分店 2",en:"Branch 2",lat:3.1073,lng:101.6067},
-  {id:"b3",name:"分店 3",en:"Branch 3",lat:3.1390,lng:101.6869},
-  {id:"b4",name:"分店 4",en:"Branch 4",lat:3.0490,lng:101.5851},
-  {id:"b5",name:"分店 5",en:"Branch 5",lat:3.1569,lng:101.7123},
-  {id:"b6",name:"分店 6",en:"Branch 6",lat:3.0333,lng:101.4500},
-  {id:"b7",name:"分店 7",en:"Branch 7",lat:3.2000,lng:101.6500},
-  {id:"b8",name:"分店 8",en:"Branch 8",lat:3.0800,lng:101.6100},
-  {id:"b9",name:"分店 9",en:"Branch 9",lat:2.9900,lng:101.6200},
-  {id:"b10",name:"分店 10",en:"Branch 10",lat:3.1100,lng:101.5500},
-  {id:"b11",name:"分店 11",en:"Branch 11",lat:3.1700,lng:101.6000},
+  {id:"b1",name:"OKR店",en:"OKR",lat:3.0821,lng:101.5312},
+  {id:"b2",name:"PAPA店",en:"PAPA",lat:3.1073,lng:101.6067},
+  {id:"b3",name:"PJ店",en:"PJ",lat:3.1390,lng:101.6869},
+  {id:"b4",name:"Cheras店",en:"Cheras",lat:3.0490,lng:101.5851},
+  {id:"b5",name:"Kajang店",en:"Kajang",lat:3.1569,lng:101.7123},
+  {id:"b6",name:"Puchong店",en:"Puchong",lat:3.0333,lng:101.4500},
+  {id:"b7",name:"Subang店",en:"Subang",lat:3.2000,lng:101.6500},
+  {id:"b8",name:"Klang店",en:"Klang",lat:3.0800,lng:101.6100},
+  {id:"b9",name:"Bukit Rimau店",en:"Bukit Rimau",lat:2.9900,lng:101.6200},
+  {id:"b10",name:"Setia Alam店",en:"Setia Alam",lat:3.1100,lng:101.5500},
+  {id:"b11",name:"Seremban 2店",en:"Seremban 2",lat:3.1700,lng:101.6000},
 ];
 /* ===== 从营运档案提取的供应商→品项目录 + ENT菜单（可在库存/供应商里再增删）===== */
 const SUPPLIER_CATALOG={"(菜)SUNNY KHOR FOOD TRADING SB":["Sawi 菜心","Sayur Raja 帝王苗","Kang Kung 翁菜","Daun Bawang 青葱","Daun Ketumbar 元茜","Romain 油麦胆","Salad 生菜","Cili Merah 红辣椒","Cili Hijau 青辣椒","Halia Tua 老姜","Limau Nipis 酸柑","Tomato 番茄","Timun 黄瓜","Lobak Putih 白萝卜","Daun Keledek 番薯苗","Daun Kari 咖喱叶","Daun Selasih 九层塔","Daun Pandan 斑斓叶","Daun Asam 亚三叶","Arrow Root 粉葛","Watercress 西洋菜","Ubi Kentang 马铃薯","Taugeh 芽菜","Tau Foo Jepun 日本豆腐","Tau Foo Kotak 盒豆腐","Tau Foo Goreng 豆腐卜","Kobis Bulat 包菜","Kacang Panjang 豆角","Kacang Bendi 羊角豆","Terong Panjang 茄子(长)","Peria 苦瓜","Petai 臭豆(180g)","Carrot 金笋（红萝卜）","Serai 香茅","Cili Api Merah 小红辣椒","Nai Pai 乃白菜","Telur （B） 鸡蛋","Sayur Dragon 青龙菜","Timun Tua 老黄瓜","酸菜","水瓜 Labu Air","QING LONG 青龙菜","Tien Chi 田七","Labu Air 葫芦（水瓜）"],"(中央)TCY OKR SB":["Peanut 花生","保鲜膜 Cling Wrap","Cooking Rice Wine 兴兴发花雕酒","Beancurd Preserved 大石腐乳(南乳）","Santan (Kara)椰浆","Chili Bean Sauce 辣豆瓣酱","Desaus Chili Sauce 辣椒酱","Ajinamoto Monosodium 味精","Salt （Green） 双燕幼盐","Tapioca Starch (ABC) 木薯淀粉","White Pepper Powder 鹰牌白胡椒粉","Red Dates 红枣","Wolfberry(s) 枸杞（包）","Common Yam Slice 淮山（1）","Polygonatum Odoratum 玉竹","Udang Kering 虾米仔","Mergui Dried Fish 丹佬咸鱼（盒）","Ikan Masin Minyak 油浸马鲛咸鱼","Century Egg 皮蛋","Salted Egg 咸蛋","Jasmine Siam Special 5 Rice (Green) 白米","FIsh Mince 鱼胶","Taiwanese Chicken 三杯鸡","Lobak 肉卷","Minced Pork冬菜猪肉","Curry Pork Ribs 咖喱排骨","Black Bean Pork Ribs 豉汁排骨","Chicke Marinade 炸鸡粉","Pork Marinade炸肉粉","Duck Marinade 腌鸭粉","Concentrated Soup 鲜汤","Fish Sauce 鱼汁","Duck Sauce 酸梅鸭酱","Taiwanese Sauce 三杯鸡酱","Stewed Sauce","Belacan Sauce 马来栈酱","Nyonya Sauce 娘惹酱","Curry Sauce 咖喱酱","Kam Heong Sauce 金香酱","Sweet & Sour Sauce 咕佬肉酱","Black Bean Sauce 面豉豆豉酱","Spicy Bean Sauce 辣酱蒸酱","Sayur Masin Hancur 菜脯（咸）","Sayur Manis Hancur 菜脯（甜）","麦芽糖 Maltose","Dry Chili 辣椒干","Onion 大葱","Shallot 葱头仔","Garlic 蒜米","Winfuel Thermogel 胶状燃料","Coarse Grain Sugar 粗白砂糖","Baba's Turmeric Powder 峇峇黄姜粉","Black Bean Sauce 面鼓豆鼓酱","Delivery Charges 运输费","Tian Jin Preserved Vege 天津冬菜","Baba's Chili Powder 峇峇辣椒粉","Dried Shredded Squid 特选吊片丝"],"(鸡)GRAB FRESH TRADING SB":["(三杯鸡) Taiwan Chicken鸡二度 Chicken Whole Leg","菜园鸡 (Steamed Herb Chicken)Cone Fed Chicken","老鸡 Old Chicken","(南乳炸鸡) Fried Chicken白鸡 Normal Chicken","鸡翅膀 Chicken Wing","琵琶鸭 PiPa Duck","Daily Total Amount （RM)"],"(猪)GRAND HARVEST FROZEN SB":["猪手/猪脚 Pork Leg","无皮五花肉 Pork Belly (No Skin）","后腿肉 （咕佬肉）Pork Whole Leg","肉碎 Minced Pork","Daily Total Amount （RM)"],"(松)LC FROZEN SB":["松鱼头 Big Head Carp","红非洲 Red Tilapia","白须公 Baung （Catfish）","大头虾 Scampi U5","老虎虾 Tiger Prawn","Daily Total Amount （RM)"],"(马友啦啦苏东)":["马友鱼 Threadfin（Mayou）@ 28/Kg","啦啦 Asari Lala @ 5 / Pkt","苏东 4/6 Sotong（No Skin）@ 27 / Pkt","Daily Total Amount （RM)"],"(啤酒) MHML TRADING SB":["黑狗 Guinness（640ml x 12 / ctn）","老虎 Tiger （640ml x 12 / ctn）","哈尔滨 Harbin","Daily Total Amount （RM)"],"(杯装凉水)SAN XIN":["竹蔗马蹄 Sugarcane","洋参菊花 Chrysanthemum","爱玉冰 Aiyu","百香果爱玉冰 Passion Aiyu","Daily Total Amount （RM)"],"(龙虎斑) DRAGON TASTE SEAFOOD WHOL":["龙虎斑头 Dragon / Tiger Grouper Head","龙虎斑鱼(整条) Dragon / Tiger Grouper","Asari Claim (金香啦啦)","IKAN KEMBONG杂鱼(员工餐）","Daily Total Amount （RM)"],"(食油鸭沙白)":["食油 Cooking Oil @ 17Kg /Btl","鸭 Duck @ 2.1Kg Per Unit","沙白 Lala","Daily Total Amount （RM)"],"(凉水汽水冰块)":["北紫草 Leong Shui （35pkt/ bdl）","100 Plus","Coca Cola","Ice Cube","Daily Total Amount （RM)"],"(茶）Tea":["香片 Jasmine Tea","普洱 Pu ’Er","铁观音 Tie Guan Yin","茶王 Tea King","菊花 Chrysanthemum","Daily Total Amount （RM)"],"(酱油）LAI YUAN SAUCE":["黄盖酱油（蒸鱼） Yellow Soy (4Kg)","青盖酱油（普通酱油）Green Soy(6Kg)","蚝油 Oyster Sauce （5.8Kg)","黑酱油 Black Sauce A1","Daily Total Amount （RM)"],"(洗洁精纸巾煤气) Detergent & Tissue& G":["洗碗水 Dishwash","漂白水 Bleach","洗手液 Handwash","抹地水 Floor Cleaner","抹桌水 Table Cleaner","Daily Total Amount （RM)"],"(包装) Packaging":["NLT - 12 x 13 GG EPI Degradable Singlet Bag (180pkt)","NLT - 15 x 16 GG EPI Degradable Singlet Bag (120pkt)","E & C - 40GG - 17 x 20A Singlet Bag (100pkt)","18 x 22 (Y）Plastic (80pkt)","KL - HD 6 x 9 1Kg (30pkt) 凉水打包袋（中）","HM 3 x 5 300g KM 酱料打包袋 （小）","HD 8 x 12 Plastic Bag 打包袋（大）","20 x 20 700g KM （Plastic Sheet） 打包用塑料纸","NLT - PP Lunch Box (100pcs) 饭打包盒","5.0mm Chopstick (Take Away) 打包用筷子","E & C - 70 x 70' Table Cloth (Red) 一次性桌布","Chinese Spoon (Take Away ) 打包用汤匙","Straw 吸管","FT - FC 1000ML Rectanglular Container (50PCS) 一块钱打包盒","NLT -FCC 3000 Round Container & Lid (90pcs) 三块钱打包盒","GAS","Mayonnaise"]};
@@ -560,13 +560,16 @@ const ROLES={
     can:["dash","sales","inv","proc","transfer","ck","stock","waste","ent","bom","ap","opex","report","hr","attend","schedule","leave","payroll","settings"],
     allBranch:true, hrScope:"all", salaryView:"full", approveLeave:true, canEditPerms:true}, // 全权：含财务、人力财务(个人明细)、所有分店、系统设置
   area:{name:"区域副经理 Area A.M.",en:"Area Assistant Manager",
-    can:["dash","sales","inv","proc","transfer","ck","stock","waste","ent","bom","ap","opex","report","hr","attend","schedule","leave","payroll","settings"],
-    allBranch:true, hrScope:"all", salaryView:"total", approveLeave:true, canEditPerms:true}, // 全权：人力财务只看总数(不看个人薪水)
+    can:["dash","sales","inv","proc","transfer","stock","waste","ent","bom","ap","opex","report","hr","attend","schedule","leave","payroll","settings"],
+    allBranch:true, hrScope:"all", salaryView:"total", approveLeave:true, canEditPerms:true}, // 全分店(不含中央厨房)；人力财务只看总数(不看个人薪水)
+  outletmgr:{name:"店面经理 Outlet P.I.C",en:"Outlet P.I.C",
+    can:["dash","inv","proc","stock","waste","ent","bom","opex","report","ap","hr","attend","schedule","leave","payroll"],
+    allBranch:false, hrScope:"branch", salaryView:"full", salaryLock:true, approveLeave:true}, // 本店负责人：可看本店员工薪水(锁死只读)；不含中央厨房、不跨店
   manager:{name:"店长 Manager",en:"Manager",
     can:["dash","inv","proc","stock","waste","opex","report","ap"],
     allBranch:false, hrScope:"branch", salaryView:"self", approveLeave:true}, // 本店采购/盘点/损耗/OpEx录入 + 本店报表
   headchef:{name:"厨师长 Head Chef",en:"Head Chef",
-    can:["dash","inv","ck","transfer","stock"],
+    can:["dash","inv","transfer","stock"],
     allBranch:false, hrScope:"self", salaryView:"self", approveLeave:false}, // 生产工单/成品入库/配送调拨
   staff:{name:"员工 Staff",en:"Staff",
     can:["attend","leave","payroll"],
@@ -608,7 +611,7 @@ function statusOf(d){if(d<=14)return{t:"健康",e:"Fresh",c:"p-g"};if(d<=30)retu
 function stTxt(s){return LANG==="zh"?s.t:s.e;}
 
 /* ================= 数据种子 ================= */
-const BUILD="0916mk5";  // 版本标记：页面右上/网格提示可见，用来确认已载入最新版
+const BUILD="0916mk6";  // 版本标记：页面右上/网格提示可见，用来确认已载入最新版
 const SEED_VERSION="bh-master-2026-09-1";  // 版本变更→下次载入自动重置为最新主数据（仅本店云端）
 function seed(outletId){
   const isCK = outletId==="ck";
@@ -664,7 +667,7 @@ function seed(outletId){
   ];
   /* ===== 采购进货明细（按供应商）===== */
   const purchases=[];
-  /* ===== 验收 / 退货/补货（按供应商，含处理方式）===== */
+  /* ===== 退货 / 补货（按供应商，含处理方式）===== */
   const grn=[];
   /* ===== 跨店调拨（物品 + 人力）===== */
   const transfers=[];
@@ -943,7 +946,7 @@ function can(p){return ROLES[curRole].can.includes(p);}
 function hasAnyOp(){return ['proc','transfer','waste','ent','stock'].some(p=>can(p));}
 function pageAllowed(p){if(p==='proc')return hasAnyOp();if(p==='monthly')return can('report');if(p==='opexm')return can('opex');if(p==='payrun')return can('payroll')&&canSeeSalary();if(p==='orderinv')return ['owner','area','manager','headchef'].includes(curRole);if(typeof PROC_SUB!=='undefined'&&PROC_SUB[p])return can(PROC_SUB[p]);return can(p);}
 function firstAllowedPage(){const order=['dash','attend','leave','payroll','hr','schedule','sales','inv','proc','ck','stock','opex','ap','bom','report','settings'];for(const p of order)if(pageAllowed(p))return p;return 'dash';}
-function canW(p){return can(p)&&!isAgg();} // 汇总视图为只读
+function canW(p){if(isAgg())return false;if((p==='payroll'||p==='payrun')&&ROLES[curRole].salaryLock)return false;return can(p);} // 汇总视图只读；店面经理薪资只读(锁死)
 function renderTop(){
   document.getElementById('appTitle').textContent=t('appTitle');
   {const bb=document.getElementById('buildBadge');if(bb)bb.textContent='v'+BUILD;}
@@ -959,10 +962,12 @@ function renderTop(){
   const ck=OUTLETS.find(o=>o.ck);const branches=OUTLETS.filter(o=>!o.ck);
   const outletSel=document.getElementById('outletSel');
   const allBranch=ROLES[curRole].allBranch || isAdminUser(); // 管理员预览时仍可切换分店
-  if(allBranch){ // 全分店角色：中央厨房 + 总和 + 各分店
+  const canCk=can('ck'); // 只有能访问中央厨房的角色(仅老板)显示 CK 门店——预览身份也遵循此规则
+  if(!canCk&&curOutlet===ck.id){curOutlet=(curUser&&curUser.outlet)||branches[0].id;} // 无权时不停留在中央厨房
+  if(allBranch){ // 全分店角色：(中央厨房) + 总和 + 各分店
     outletSel.disabled=false;
     outletSel.innerHTML=
-      `<option value="${ck.id}" ${ck.id===curOutlet?'selected':''}>🏭 ${nm(ck)}</option>`+
+      (canCk?`<option value="${ck.id}" ${ck.id===curOutlet?'selected':''}>🏭 ${nm(ck)}</option>`:'')+
       `<option value="${ALL_ID}" ${curOutlet===ALL_ID?'selected':''}>📊 ${LANG==="zh"?"全部分店（总和）":"All Branches (Total)"}</option>`+
       branches.map(o=>`<option value="${o.id}" ${o.id===curOutlet?'selected':''}>${nm(o)}</option>`).join('');
   }else if(curUser){ // 真实登录的本店角色：锁定白名单分配的分店
@@ -1213,7 +1218,7 @@ function pgProc(){
   if(can('proc')){
     cards.push(["ordersheet","🛒",LANG==="zh"?"订货单":"Order Sheet",LANG==="zh"?"按供应商下单 · 通知老板/副经理":"By supplier · notify boss",var_amber()]);
     cards.push(["purchase","📥",LANG==="zh"?"进货单":"Goods-In",LANG==="zh"?"按供应商 · 每年月日进货记录":"By supplier · dated records",var_green()]);
-    cards.push(["grn","📋",LANG==="zh"?"验收 / 退货/补货":"GRN / Returns",LANG==="zh"?"按供应商 · 含补货/免费/取消":"By supplier · settlement",var_blue()]);
+    cards.push(["grn","📋",LANG==="zh"?"退货 / 补货":"GRN / Returns",LANG==="zh"?"按供应商 · 含补货/免费/取消":"By supplier · settlement",var_blue()]);
   }
   if(can('transfer'))cards.push(["transfer","🔁",LANG==="zh"?"跨店调拨":"Transfer",LANG==="zh"?"物品调拨 + 人力借调":"Items + staff loans",var_navy()]);
   if(can('waste'))cards.push(["waste2","🗑",LANG==="zh"?"报废损耗":"Wastage",LANG==="zh"?"成本×数量 · 原因备注":"Cost × qty · reason",var_red()]);
@@ -2495,7 +2500,7 @@ function pgStock(){
 
 /* ---- 权限编辑器（仅 老板/人事经理、区域副经理 可用）---- */
 const PERM_MODULES=[
-  ["dash","利润大盘","Dashboard"],["sales","销售POS","Sales"],["proc","采购/验收","Purchase/GRN"],["transfer","跨店调拨","Transfer"],
+  ["dash","利润大盘","Dashboard"],["sales","销售POS","Sales"],["proc","采购/退货补货","Purchase/Returns"],["transfer","跨店调拨","Transfer"],
   ["waste","报废损耗","Wastage"],["ent","招待赠送","Offers"],["ck","中央厨房","Central Kitchen"],["inv","库存","Inventory"],
   ["bom","配方成本","Recipe"],["stock","盘点/月末","Stock/Month-End"],["ap","应付账款","Payables"],["opex","运营开销","OpEx"],
   ["report","报表","Reports"],["hr","员工档案","Staff"],["attend","打卡考勤","Attendance"],["schedule","排班","Schedule"],
@@ -2696,7 +2701,7 @@ function openM(type,editId){
       <div class="fr"><label>${LANG==="zh"?"日期":"Date"}</label><input id="p_date" type="date" value="${TODAY}"></div></div>
       <div class="hint">${LANG==="zh"?"保存后：库存增加、加权平均更新单价、生成应付账款(按供应商账期)。":"Updates stock, weighted cost, creates payable."}</div>
       <button class="btn block" style="background:var(--green)" onclick="savePO()">${LANG==="zh"?"保存进货":"Save"}</button>`,
-    grn:`<h3>📋 ${LANG==="zh"?"验收 / 退货/补货 GRN":"GRN / Credit Note"} <span class="x" onclick="closeM()">×</span></h3>
+    grn:`<h3>📋 ${LANG==="zh"?"退货 / 补货 GRN":"GRN / Credit Note"} <span class="x" onclick="closeM()">×</span></h3>
       <div class="hint">${LANG==="zh"?"实收少货或破损时登记，自动修正入库量并调整应付账款。":"Short/damaged receipt adjusts stock & payable."}</div>
       <div class="fr"><label>${LANG==="zh"?"品项":"Item"}</label><select id="g_item">${itemOpts()}</select></div>
       <div class="fg2"><div class="fr"><label>${LANG==="zh"?"少收/破损数量":"Shortage Qty"}</label><input id="g_qty" type="number"></div>
@@ -3114,7 +3119,7 @@ function itemSummary(recs){
 /* ================= 供应商钻取账册（采购 / 验收退货 / 月末算货 共用）================= */
 function ledgerCfg(mod){return ({
   purchase:{arr:'purchases',icon:"📥",title:LANG==="zh"?"进货单":"Goods-In",hasSettle:false,byMonth:false,form:'formLedger'},
-  grn:{arr:'grn',icon:"📋",title:LANG==="zh"?"验收 / 退货/补货":"GRN / Returns",hasSettle:true,byMonth:false,form:'formLedger'},
+  grn:{arr:'grn',icon:"📋",title:LANG==="zh"?"退货 / 补货":"Returns / Restock",hasSettle:true,byMonth:false,form:'formGRN'},
   monthend:{arr:'monthEnd',icon:"📋",title:LANG==="zh"?"月末盘点":"Month-End Count",hasSettle:false,byMonth:true,form:'formLedger'},
 })[mod];}
 
@@ -3194,8 +3199,8 @@ function gridTable(mod,sup,month){
   const grand=cat.reduce((s,c)=>s+rAmt(c),0);
   const inv=dt=>gridInv(mod,sup,dt);
   const S=gEsc(sup);
-  const controls=w?`<div style="display:flex;gap:6px;margin:8px 0;flex-wrap:wrap;"><button class="btn gold sm" onclick="addGridItem('${S}')">+ ${zh?"品项":"Item"}</button><span class="mini" style="align-self:center;color:var(--muted);">${zh?"↑↓排序 · ⧉复制 · 🗑删除":"↑↓ reorder · ⧉ copy · 🗑 delete"}</span></div>`:'';
-  const rowCtl=(c,arrows)=>w?`<div class="growctl"><span class="ib gdrag" draggable="true" title="${zh?'按住拖动排序（可拉到最上/最下）':'Drag to reorder'}" ondragstart="gridDragStart(event,'${c.cid}')" ondragover="gridDragOver(event)" ondragleave="gridDragLeave(event)" ondrop="gridDrop(event,'${mod}','${S}','${c.cid}')" ondragend="gridDragEnd(event)">☰</span><span class="ib" title="${zh?(arrows==='lr'?'左移':'上移'):''}" onclick="moveGridItem('${mod}','${S}','${c.cid}',-1)">${arrows==='lr'?'←':'↑'}</span><span class="ib" title="${zh?(arrows==='lr'?'右移':'下移'):''}" onclick="moveGridItem('${mod}','${S}','${c.cid}',1)">${arrows==='lr'?'→':'↓'}</span><span class="ib" title="${zh?'复制此品项':'Duplicate'}" onclick="dupGridItem('${mod}','${S}','${c.cid}')">⧉</span><span class="ib gidel" title="${zh?'删除品项':'Delete'}" onclick="delGridItem('${mod}','${S}','${c.cid}','${month}')">🗑️</span></div>`:'';
+  const controls=w?`<div style="display:flex;gap:6px;margin:8px 0;flex-wrap:wrap;"><button class="btn gold sm" onclick="addGridItem('${S}')">+ ${zh?"品项":"Item"}</button><span class="mini" style="align-self:center;color:var(--muted);">${zh?"☰拖动排序 · ⧉复制 · 🗑删除":"☰ drag reorder · ⧉ copy · 🗑 delete"}</span></div>`:'';
+  const rowCtl=(c,arrows)=>w?`<div class="growctl"><span class="ib gdrag" draggable="true" title="${zh?'按住拖动排序（可拉到最上/最下）':'Drag to reorder'}" ondragstart="gridDragStart(event,'${c.cid}')" ondragover="gridDragOver(event)" ondragleave="gridDragLeave(event)" ondrop="gridDrop(event,'${mod}','${S}','${c.cid}')" ondragend="gridDragEnd(event)">☰</span><span class="ib" title="${zh?'复制此品项':'Duplicate'}" onclick="dupGridItem('${mod}','${S}','${c.cid}')">⧉</span><span class="ib gidel" title="${zh?'删除品项':'Delete'}" onclick="delGridItem('${mod}','${S}','${c.cid}','${month}')">🗑️</span></div>`:'';
   if(cat.length>10){
     // 行=品项，列=日期（整月每天）；品名/单位/规格/单价 冻结在左边
     const head=`<th class="gcode">Code</th><th class="gname">${zh?"品名":"Item"}</th><th class="gunit">${zh?"单位":"Unit"}</th><th class="gpack">${zh?"规格/送货":"Pack"}</th><th class="gprice">${zh?"单价":"Price"}</th>`+dates.map(dt=>`<th class="gcell">${w?`<input placeholder="Invoice No." value="${inv(dt)}" onchange="setGridInv('${mod}','${S}','${dt}',this.value)">`:`<span class="mini">${inv(dt)||'—'}</span>`}<div class="mini" style="margin-top:2px;">${dt.slice(5)}</div></th>`).join('')+`<th>${zh?"合计量":"Total Qty"}</th><th>${zh?"合计RM":"Total RM"}</th>`;
@@ -3257,7 +3262,38 @@ function gridSummaryHTML(mod,sup,month){
 }
 
 /* ---- 采购/验收/月末 共用表单（支持新增与编辑）---- */
+/* 退货/补货：像「新增报废」那样的表单 —— 选供应商 → 该供应商品项 → 选 退货/补货 */
+function formGRN(editIdx){
+  const eh=s=>(s==null?'':String(s)).replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;');
+  const r=(editIdx!=null)?(d().grn||[])[editIdx]:null;const isEdit=!!r;const zh=LANG==="zh";
+  const sup=selSupplier||(r&&r.supplier)||'';
+  const cat=sup?ensureGridCat(sup):[];
+  const supOpts=supplierList().map(v=>`<option value="${eh(v.name)}" ${v.name===sup?'selected':''}>${eh(v.name)}</option>`).join('');
+  const itemOpts=cat.map(c=>`<option value="${eh(c.name)}" data-code="${eh(c.code||'')}" data-price="${+c.price||0}" data-uom="${eh(c.uom||'')}" ${r&&r.item===c.name?'selected':''}>${eh((c.code?c.code+' · ':'')+c.name)}</option>`).join('')||`<option value="">${zh?'（该供应商暂无品项）':'(no items)'}</option>`;
+  openForm(`<h3>🔁 ${isEdit?(zh?'编辑退货/补货':'Edit'):(zh?'新增退货/补货':'New Return/Restock')} <span class="x" onclick="closeM()">×</span></h3>
+    <div class="fg2"><div class="fr"><label>${zh?'日期 Date':'Date'}</label><input id="gr_date" type="date" value="${r?r.date:TODAY}"></div>
+      <div class="fr"><label>${zh?'供应商 Supplier':'Supplier'}</label><select id="gr_sup" onchange="grSupChange()">${supOpts}</select></div></div>
+    <div class="fr"><label>${zh?'品项 Item':'Item'}</label><select id="gr_item" onchange="grItemAuto()">${itemOpts}</select></div>
+    <div class="fg3"><div class="fr"><label>Code</label><input id="gr_code" value="${r?eh(r.code):''}"></div>
+      <div class="fr"><label>${zh?'数量 Qty':'Qty'}</label><input id="gr_qty" type="number" step="0.01" value="${r?r.qty:''}"></div>
+      <div class="fr"><label>${zh?'单价RM':'Unit RM'}</label><input id="gr_price" type="number" step="0.01" value="${r?(r.unitPrice||r.price||''):''}"></div></div>
+    <div class="fr"><label>${zh?'处理 Settle':'Settle'}</label><select id="gr_settle"><option value="退货" ${!r||r.settle==='退货'?'selected':''}>${zh?'退货 Return':'Return'}</option><option value="补货" ${r&&r.settle==='补货'?'selected':''}>${zh?'补货 Restock':'Restock'}</option></select></div>
+    <div class="fr"><label>${zh?'原因/备注 Note':'Note'}</label><input id="gr_note" value="${r?eh(r.note):''}"></div>
+    <button class="btn block brand" onclick="saveGRN2(${isEdit?editIdx:'null'})">${zh?'保存':'Save'}</button>`);
+}
+function grSupChange(){const sup=document.getElementById('gr_sup').value;const cat=ensureGridCat(sup);const sel=document.getElementById('gr_item');sel.innerHTML=cat.map(c=>`<option value="${(c.name||'').replace(/"/g,'&quot;')}" data-code="${(c.code||'').replace(/"/g,'&quot;')}" data-price="${+c.price||0}">${((c.code?c.code+' · ':'')+c.name).replace(/</g,'&lt;')}</option>`).join('')||'<option value="">—</option>';grItemAuto();}
+function grItemAuto(){const s=document.getElementById('gr_item');const o=s&&s.selectedOptions[0];if(!o)return;const cd=document.getElementById('gr_code');if(cd)cd.value=o.dataset.code||'';const pr=document.getElementById('gr_price');if(pr&&!pr.value&&o.dataset.price&&+o.dataset.price)pr.value=o.dataset.price;}
+async function saveGRN2(editIdx){const g=id=>document.getElementById(id);
+  const qty=+g('gr_qty').value||0,price=+g('gr_price').value||0;
+  const rec={date:g('gr_date').value||TODAY,supplier:g('gr_sup').value.trim(),item:g('gr_item').value,code:g('gr_code').value.trim(),qty,weight:0,unitPrice:price,price:+(qty*price).toFixed(2),settle:g('gr_settle').value,note:g('gr_note').value.trim()};
+  if(!rec.item)return alert(LANG==="zh"?"请选择品项":"Pick an item");
+  if(!d().grn)d().grn=[];
+  if(editIdx!=null&&d().grn[editIdx]){d().grn[editIdx]=rec;auditLog("编辑退货/补货",rec.supplier+" "+rec.item,"",rec.settle);}
+  else{d().grn.unshift(rec);auditLog("退货/补货",rec.supplier+" "+rec.item+" "+rec.settle,"",money(rec.price));}
+  await save();closeM();render();
+}
 function formLedger(mod,editIdx){
+  if(mod==='grn')return formGRN(editIdx);
   const cfg=ledgerCfg(mod);
   const isEdit=(editIdx!=null);const r=isEdit?(d()[cfg.arr]||[])[editIdx]:null;
   const settleOpt=(v)=>`<option value="补货" ${r&&r.settle==='补货'?'selected':''}>${LANG==="zh"?"补货":"Restock"}</option><option value="不收费" ${r&&r.settle==='不收费'?'selected':''}>${LANG==="zh"?"不收取费用":"No Charge"}</option><option value="取消订单" ${r&&r.settle==='取消订单'?'selected':''}>${LANG==="zh"?"取消订单":"Cancel Order"}</option>`;
