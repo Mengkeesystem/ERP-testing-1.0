@@ -611,7 +611,7 @@ function statusOf(d){if(d<=14)return{t:"健康",e:"Fresh",c:"p-g"};if(d<=30)retu
 function stTxt(s){return LANG==="zh"?s.t:s.e;}
 
 /* ================= 数据种子 ================= */
-const BUILD="0916mk6";  // 版本标记：页面右上/网格提示可见，用来确认已载入最新版
+const BUILD="0916mk7";  // 版本标记：页面右上/网格提示可见，用来确认已载入最新版
 const SEED_VERSION="bh-master-2026-09-1";  // 版本变更→下次载入自动重置为最新主数据（仅本店云端）
 function seed(outletId){
   const isCK = outletId==="ck";
@@ -2996,6 +2996,11 @@ function exportCSV(){
    ================================================================ */
 let selSupplier=null;                          // 供应商钻取页共用：当前选中供应商
 let ledgerMonth='all';                         // 账册月份筛选（YYYY-MM 或 all）
+let wasteMonth='', grnMonth='';                // 报废损耗 / 退货补货 的当前月份
+function setWasteMonth(m){wasteMonth=m;render();window.scrollTo(0,0);}
+function setGrnMonth(m){grnMonth=m;render();window.scrollTo(0,0);}
+function logMonths(recs){const s=new Set((recs||[]).map(r=>(r.date||'').slice(0,7)).filter(Boolean));s.add(TODAY.slice(0,7));return [...s].sort().reverse();}
+function logMonthTabs(months,cur,setter){return `<div class="seg" style="flex-wrap:wrap;margin-bottom:8px;">${months.map(m=>`<button class="${m===cur?'active':''}" onclick="${setter}('${m}')">${monthLabel(m)}</button>`).join('')}</div>`;}
 let gridCurMonth='';                            // 当前网格实际渲染的月份（合计计算以此为准，避免 ledgerMonth='all' 导致合计归零）
 function setLedgerMonth(v){ledgerMonth=v;render();window.scrollTo(0,0);}
 function monthLabel(ymk){if(ymk==='all')return LANG==="zh"?"全部月份":"All months";const[y,m]=ymk.split('-');return LANG==="zh"?(y+"年"+(+m)+"月"):(ymk);}
@@ -3266,12 +3271,13 @@ function gridSummaryHTML(mod,sup,month){
 function formGRN(editIdx){
   const eh=s=>(s==null?'':String(s)).replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;');
   const r=(editIdx!=null)?(d().grn||[])[editIdx]:null;const isEdit=!!r;const zh=LANG==="zh";
-  const sup=selSupplier||(r&&r.supplier)||'';
+  const sup=(r&&r.supplier)||selSupplier||(supplierList()[0]&&supplierList()[0].name)||'';
+  const defDate=r?r.date:((grnMonth&&grnMonth!==TODAY.slice(0,7))?grnMonth+'-01':TODAY);
   const cat=sup?ensureGridCat(sup):[];
   const supOpts=supplierList().map(v=>`<option value="${eh(v.name)}" ${v.name===sup?'selected':''}>${eh(v.name)}</option>`).join('');
   const itemOpts=cat.map(c=>`<option value="${eh(c.name)}" data-code="${eh(c.code||'')}" data-price="${+c.price||0}" data-uom="${eh(c.uom||'')}" ${r&&r.item===c.name?'selected':''}>${eh((c.code?c.code+' · ':'')+c.name)}</option>`).join('')||`<option value="">${zh?'（该供应商暂无品项）':'(no items)'}</option>`;
   openForm(`<h3>🔁 ${isEdit?(zh?'编辑退货/补货':'Edit'):(zh?'新增退货/补货':'New Return/Restock')} <span class="x" onclick="closeM()">×</span></h3>
-    <div class="fg2"><div class="fr"><label>${zh?'日期 Date':'Date'}</label><input id="gr_date" type="date" value="${r?r.date:TODAY}"></div>
+    <div class="fg2"><div class="fr"><label>${zh?'日期 Date':'Date'}</label><input id="gr_date" type="date" value="${defDate}"></div>
       <div class="fr"><label>${zh?'供应商 Supplier':'Supplier'}</label><select id="gr_sup" onchange="grSupChange()">${supOpts}</select></div></div>
     <div class="fr"><label>${zh?'品项 Item':'Item'}</label><select id="gr_item" onchange="grItemAuto()">${itemOpts}</select></div>
     <div class="fg3"><div class="fr"><label>Code</label><input id="gr_code" value="${r?eh(r.code):''}"></div>
@@ -3391,12 +3397,16 @@ async function delStaffLoan(i){if(!confirm(LANG==="zh"?"删除此借调？":"Del
 
 /* ================= 报废损耗（独立）================= */
 function pgWaste2(){
-  const x=d();const writable=subCanW('waste2');const rs=(x.wasteLog||[]).slice().sort((a,b)=>b.date.localeCompare(a.date));
+  const x=d();const writable=subCanW('waste2');
+  const all=(x.wasteLog||[]).slice();
+  const months=logMonths(all);const cur=(wasteMonth&&months.includes(wasteMonth))?wasteMonth:months[0];
+  const rs=all.filter(r=>(r.date||'').slice(0,7)===cur).sort((a,b)=>(b.date||'').localeCompare(a.date||''));
   const tot=rs.reduce((s,r)=>s+(+r.cost||0)*(+r.qty||0),0);
   return `<div class="fb"><h2 class="h" style="margin:0;">🗑 ${LANG==="zh"?"报废损耗":"Wastage"} <span class="tag">${nm(outletObj())}</span></h2><button class="btn ghost sm" onclick="nav('proc')">← ${LANG==="zh"?"进销存作业":"Operations"}</button></div>
-  <div class="hint">${LANG==="zh"?"记录年月日、物品、成本价、数量、总额、原因与备注。总额=成本价×数量。":"Date, item, cost, qty, total, reason & note."}</div>
+  <div class="hint">${LANG==="zh"?"按月分开。记录 日期·物品·成本价·数量·总额·原因·备注。总额=成本价×数量。":"By month. Date, item, cost, qty, total, reason & note."}</div>
   ${writable?`<button class="btn brand sm" style="margin-bottom:8px;" onclick="formWaste2()">+ ${LANG==="zh"?"新增报废":"Add"}</button>`:''}
-  <div class="grid g2" style="margin-bottom:10px;"><div class="kpi"><div class="k">${LANG==="zh"?"报废笔数":"Records"}</div><div class="v sm">${rs.length}</div></div><div class="kpi"><div class="k">${LANG==="zh"?"损耗总额":"Total Loss"}</div><div class="v sm neg">${money(tot)}</div></div></div>
+  ${logMonthTabs(months,cur,'setWasteMonth')}
+  <div class="grid g2" style="margin-bottom:10px;"><div class="kpi"><div class="k">${LANG==="zh"?"本月报废笔数":"Records"}</div><div class="v sm">${rs.length}</div></div><div class="kpi"><div class="k">${LANG==="zh"?"本月损耗总额":"Total Loss"}</div><div class="v sm neg">${money(tot)}</div></div></div>
   <div class="card tbl"><table><thead><tr><th>${LANG==="zh"?"日期":"Date"}</th><th>${LANG==="zh"?"物品名称":"Item"}</th><th>Code</th><th>${LANG==="zh"?"成本价":"Cost"}</th><th>${LANG==="zh"?"数量":"Qty"}</th><th>Total</th><th>${LANG==="zh"?"原因":"Reason"}</th><th>${LANG==="zh"?"备注":"Note"}</th>${writable?'<th></th>':''}</tr></thead><tbody>
   ${rs.map(r=>{const gi=x.wasteLog.indexOf(r);const line=(+r.cost||0)*(+r.qty||0);return `<tr><td class="mini">${r.date}</td><td><b>${r.item}</b></td><td class="mini">${r.code||'—'}</td><td>${money(r.cost)}</td><td>${num(r.qty,2)}</td><td class="neg">${money(line)}</td><td>${r.reason||'—'}</td><td class="mini">${r.note||''}</td>${writable?`<td style="white-space:nowrap;"><button class="ib" onclick="formWaste2(${gi})">✏️</button> <button class="ib" onclick="delWaste2(${gi})">🗑️</button></td>`:''}</tr>`;}).join('')||`<tr><td colspan="9" class="empty">${LANG==="zh"?"暂无报废":"None"}</td></tr>`}
   </tbody><tfoot><tr style="background:#FAFBFC;font-weight:800;"><td colspan="5">${LANG==="zh"?"合计":"Total"}</td><td class="neg">${money(tot)}</td><td colspan="${writable?3:2}"></td></tr></tfoot></table></div>`;
@@ -3406,7 +3416,7 @@ function formWaste2(editIdx){
   const reasons=((typeof WASTE_REASONS!=='undefined'&&WASTE_REASONS.length)?WASTE_REASONS:[]).concat(["过期变质 Spoilage","打翻/损坏 Damaged","烹调失误 Cooking error","其他 Other"]);
   const reasonOpts=reasons.map(x=>`<option ${r&&r.reason===x?'selected':''}>${x}</option>`).join('');
   openForm(`<h3>🗑 ${isEdit?(LANG==="zh"?"编辑报废":"Edit Wastage"):(LANG==="zh"?"新增报废":"New Wastage")} <span class="x" onclick="closeM()">×</span></h3>
-    <div class="fg2"><div class="fr"><label>${LANG==="zh"?"日期":"Date"}</label><input id="w_date" type="date" value="${r?r.date:TODAY}"></div>
+    <div class="fg2"><div class="fr"><label>${LANG==="zh"?"日期":"Date"}</label><input id="w_date" type="date" value="${r?r.date:((wasteMonth&&wasteMonth!==TODAY.slice(0,7))?wasteMonth+'-01':TODAY)}"></div>
       <div class="fr"><label>${LANG==="zh"?"物品名称 / 菜品(可输入)":"Item / Dish"}</label><input id="w_item" list="wItemList" onchange="wItemAuto()" value="${r?(r.item||''):''}" placeholder="${LANG==="zh"?"选或直接输入":"pick or type"}"><datalist id="wItemList">${wasteItemOpts()}</datalist></div></div>
     <div class="fg3"><div class="fr"><label>Code</label><input id="w_code" value="${r?(r.code||''):''}"></div>
       <div class="fr"><label>${LANG==="zh"?"成本价RM":"Cost"}</label><input id="w_cost" type="number" step="0.01" value="${r?r.cost:''}"></div>
@@ -3460,7 +3470,22 @@ async function delOffer(gi){if(!confirm(LANG==="zh"?"删除此招待？":"Delete
 
 /* 路由封装：三个供应商账册 */
 function pgPurchase(){return pgLedger('purchase');}
-function pgGRN(){return pgLedger('grn');}
+async function delGRN(i){if(!confirm(LANG==="zh"?"删除此记录？":"Delete?"))return;if(d().grn&&d().grn[i]){d().grn.splice(i,1);auditLog("删除退货/补货","","","");await save();render();}}
+function pgGRN(){
+  const x=d();const writable=subCanW('grn');
+  const all=(x.grn||[]).slice();
+  const months=logMonths(all);const cur=(grnMonth&&months.includes(grnMonth))?grnMonth:months[0];
+  const rs=all.filter(r=>(r.date||'').slice(0,7)===cur).sort((a,b)=>(b.date||'').localeCompare(a.date||''));
+  const tot=rs.reduce((s,r)=>s+(+r.price||0),0);const nRet=rs.filter(r=>r.settle!=='补货').length,nRes=rs.filter(r=>r.settle==='补货').length;
+  return `<div class="fb"><h2 class="h" style="margin:0;">🔁 ${LANG==="zh"?"退货 / 补货":"Returns / Restock"} <span class="tag">${nm(outletObj())}</span></h2><button class="btn ghost sm" onclick="nav('proc')">← ${LANG==="zh"?"进销存作业":"Operations"}</button></div>
+  <div class="hint">${LANG==="zh"?"按月分开。点『+ 新增』→ 选供应商 → 选该供应商的品项 → 选 退货/补货。":"By month. Add → pick supplier → item → Return/Restock."}</div>
+  ${writable?`<button class="btn brand sm" style="margin-bottom:8px;" onclick="formGRN()">+ ${LANG==="zh"?"新增退货/补货":"Add"}</button>`:''}
+  ${logMonthTabs(months,cur,'setGrnMonth')}
+  <div class="grid g2" style="margin-bottom:10px;"><div class="kpi"><div class="k">${LANG==="zh"?"本月笔数":"Records"}</div><div class="v sm">${rs.length} <span class="mini">(${LANG==="zh"?"退":"Ret"} ${nRet} · ${LANG==="zh"?"补":"Res"} ${nRes})</span></div></div><div class="kpi"><div class="k">${LANG==="zh"?"本月金额":"Amount"}</div><div class="v sm">${money(tot)}</div></div></div>
+  <div class="card tbl"><table><thead><tr><th>${LANG==="zh"?"日期":"Date"}</th><th>${LANG==="zh"?"供应商":"Supplier"}</th><th>${LANG==="zh"?"品项":"Item"}</th><th>Code</th><th>${LANG==="zh"?"数量":"Qty"}</th><th>${LANG==="zh"?"单价":"Unit"}</th><th>${LANG==="zh"?"金额":"Amount"}</th><th>${LANG==="zh"?"处理":"Settle"}</th><th>${LANG==="zh"?"备注":"Note"}</th>${writable?'<th></th>':''}</tr></thead><tbody>
+  ${rs.map(r=>{const gi=x.grn.indexOf(r);const res=r.settle==='补货';return `<tr><td class="mini">${r.date}</td><td class="mini">${r.supplier||'—'}</td><td><b>${r.item}</b></td><td class="mini">${r.code||'—'}</td><td>${num(r.qty,2)}</td><td>${money(r.unitPrice||0)}</td><td>${money(r.price)}</td><td><span class="pill ${res?'p-g':'p-r'}">${res?(LANG==="zh"?"补货":"Restock"):(LANG==="zh"?"退货":"Return")}</span></td><td class="mini">${r.note||''}</td>${writable?`<td style="white-space:nowrap;"><button class="ib" onclick="formGRN(${gi})">✏️</button> <button class="ib" onclick="delGRN(${gi})">🗑️</button></td>`:''}</tr>`;}).join('')||`<tr><td colspan="10" class="empty">${LANG==="zh"?"本月暂无记录":"None"}</td></tr>`}
+  </tbody><tfoot><tr style="background:#FAFBFC;font-weight:800;"><td colspan="6">${LANG==="zh"?"合计":"Total"}</td><td>${money(tot)}</td><td colspan="${writable?3:2}"></td></tr></tfoot></table></div>`;
+}
 function pgMonthEnd(){return pgLedger('monthend');}
 
 /* ================= 薪资发放 Payroll Run + Payslip（马来西亚法定：EPF/SOCSO/EIS/SL24J/PCB）=================
