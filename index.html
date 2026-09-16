@@ -608,7 +608,7 @@ function statusOf(d){if(d<=14)return{t:"健康",e:"Fresh",c:"p-g"};if(d<=30)retu
 function stTxt(s){return LANG==="zh"?s.t:s.e;}
 
 /* ================= 数据种子 ================= */
-const BUILD="0916mk4";  // 版本标记：页面右上/网格提示可见，用来确认已载入最新版
+const BUILD="0916mk5";  // 版本标记：页面右上/网格提示可见，用来确认已载入最新版
 const SEED_VERSION="bh-master-2026-09-1";  // 版本变更→下次载入自动重置为最新主数据（仅本店云端）
 function seed(outletId){
   const isCK = outletId==="ck";
@@ -758,13 +758,35 @@ function ensureDishCosts(b){
   b.dishCosts=b.recipes.map((r,i)=>({id:i+1,code:String(r.name||'').split(' ')[0],cn:r.name,en:"",price:r.price||0,ing:[]}));
   return true;
 }
+/* 非破坏性：把 OKR_明记进货记录的供应商+品项(含CODE/单位) 补进本店（只加缺的，不动已有数据）
+   —— 修复「云端旧数据里没有 OKR 供应商，导致订货单/进货单/AP 看不到供应商」 */
+function ensureCatalogSeed(data,oid){
+  if(typeof SUPPLIER_CATALOG==='undefined'||!data)return false;
+  data.vendors=data.vendors||[]; data.items=data.items||[]; let ch=false;
+  // 中央厨房(ck)含图片订货表：为空则用 ORDER_SEED(TCY 品项)铺好，你再上传照片
+  if(oid==='ck'&&typeof window!=='undefined'&&window.ORDER_SEED){
+    const ol=data.orderList;const empty=!ol||(!(ol.A&&ol.A.length)&&!(ol.B&&ol.B.length)&&!(ol.C&&ol.C.length));
+    if(empty){data.orderList=JSON.parse(JSON.stringify(window.ORDER_SEED));ch=true;}
+  }
+  let vmax=Math.max(0,...data.vendors.map(v=>+v.id||0));
+  let imax=Math.max(0,...data.items.map(i=>+i.id||0));
+  const catn=s=>{const m=/^[（(]([^）)]+)[）)]/.exec(s);return m?m[1]:'杂货';};
+  Object.keys(SUPPLIER_CATALOG).forEach(sup=>{
+    if(!data.vendors.some(v=>v.name===sup)){data.vendors.push({id:++vmax,name:sup,terms:30});ch=true;}
+    const meta=(typeof SUPPLIER_META!=='undefined'&&SUPPLIER_META[sup])||{};
+    (SUPPLIER_CATALOG[sup]||[]).forEach(nm=>{
+      if(!data.items.some(i=>i.name===nm)){const md=meta[nm]||{};data.items.push({id:++imax,name:nm,unit:md.uom||'unit',buyUnit:md.uom||'unit',conv:1,qty:0,cost:0,cat:catn(sup),supplier:sup,par:0,yield:100,batches:[],code:md.code||''});ch=true;}
+    });
+  });
+  return ch;
+}
 async function loadDB(){
   try{if(typeof loadOrders==='function')await loadOrders();}catch(e){}
   for(const o of OUTLETS){
     let data=null;
     try{const r=await Store.get('erpv2:'+o.id);data=r?JSON.parse(r.value):null;}catch(e){data=null;}
-    if(!data || data._sv!==SEED_VERSION){ data=seed(o.id); DB[o.id]=data; syncMenuPrices(data); ensureDishCosts(data); try{await save(o.id);}catch(e){} }
-    else { DB[o.id]=data; let ch=syncMenuPrices(data); if(ensureDishCosts(data))ch=true; if(ch){try{await save(o.id);}catch(e){}} }
+    if(!data || data._sv!==SEED_VERSION){ data=seed(o.id); DB[o.id]=data; syncMenuPrices(data); ensureDishCosts(data); ensureCatalogSeed(data,o.id); try{await save(o.id);}catch(e){} }
+    else { DB[o.id]=data; let ch=syncMenuPrices(data); if(ensureDishCosts(data))ch=true; if(ensureCatalogSeed(data,o.id))ch=true; if(ch){try{await save(o.id);}catch(e){}} }
   }
 }
 async function save(oid){try{await Store.set('erpv2:'+(oid||curOutlet),JSON.stringify(DB[oid||curOutlet]));}catch(e){}}
