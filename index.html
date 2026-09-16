@@ -617,7 +617,7 @@ function statusOf(d){if(d<=14)return{t:"健康",e:"Fresh",c:"p-g"};if(d<=30)retu
 function stTxt(s){return LANG==="zh"?s.t:s.e;}
 
 /* ================= 数据种子 ================= */
-const BUILD="0916mk9";  // 版本标记：页面右上/网格提示可见，用来确认已载入最新版
+const BUILD="0916mk10";  // 版本标记：页面右上/网格提示可见，用来确认已载入最新版
 const SEED_VERSION="bh-master-2026-09-1";  // 版本变更→下次载入自动重置为最新主数据（仅本店云端）
 function seed(outletId){
   const isCK = outletId==="ck";
@@ -687,7 +687,7 @@ function seed(outletId){
   const dishCosts=recipes.map((r,i)=>({id:i+1,code:String(r.name).split(' ')[0],cn:r.name,en:"",price:r.price||0,ing:[]})); // 菜单同步：月度核算/录入销量用
   const monthlySales={}; // 按月销量：{ "2026-09": [{dishId, qty}] }（POS/手动）
   const monthClose={};   // 月度锁定档案：{ "2026-09": {locked,date,avgPrices,dishCost} }
-  return {_sv:SEED_VERSION,items,recipes,subRecipes,moves,vendors,payables,stocktakes,opex,staff,attendance,schedule,leaves,sales,fin,audit,purchases,grn,transfers,staffLoans,wasteLog,offers,monthEnd,dishCosts,monthlySales,monthClose,opexByMonth:{},costConfig:{mode:"rate",rate:35,openStock:0,closeStock:0,purOverride:null}};
+  return {_sv:SEED_VERSION,items,recipes,subRecipes,moves,vendors,payables,stocktakes,opex,staff,attendance,schedule,leaves,sales,fin,audit,purchases,grn,transfers,staffLoans,wasteLog,offers,monthEnd,dishCosts,monthlySales,monthClose,opexByMonth:{},costConfig:{mode:"period",rate:35,openStock:0,closeStock:0,purOverride:null,_defV:2}};
 }
 
 /* ================= 数据持久化：Supabase 云端 ⇄ 本地存储 自动切换 =================
@@ -772,6 +772,9 @@ function ensureDishCosts(b){
 function ensureCatalogSeed(data,oid){
   if(typeof SUPPLIER_CATALOG==='undefined'||!data)return false;
   data.vendors=data.vendors||[]; data.items=data.items||[]; let ch=false;
+  // 成本核算默认改为 ②成本算货(period)——一次性迁移(仅换默认，之后尊重用户选择)
+  if(!data.costConfig){data.costConfig={mode:"period",rate:35,openStock:0,closeStock:0,purOverride:null,_defV:2};ch=true;}
+  else if(data.costConfig._defV!==2){data.costConfig.mode="period";data.costConfig._defV=2;ch=true;}
   // 中央厨房(ck)含图片订货表：为空则用 ORDER_SEED(TCY 品项)铺好，你再上传照片
   if(oid==='ck'&&typeof window!=='undefined'&&window.ORDER_SEED){
     const ol=data.orderList;const empty=!ol||(!(ol.A&&ol.A.length)&&!(ol.B&&ol.B.length)&&!(ol.C&&ol.C.length));
@@ -1093,8 +1096,12 @@ function pgDash(){
   ${(function(){const cfg=costCfg();const zh=LANG==="zh";const autoPur=monthPurchases();
     const seg=`<div class="seg" style="margin-bottom:8px;flex-wrap:wrap;">
       <button class="${cfg.mode==='rate'?'active':''}" onclick="setCostMode('rate')">${zh?"① 成本率(快)":"Rate"}</button>
-      <button class="${cfg.mode==='period'?'active':''}" onclick="setCostMode('period')">${zh?"② 进销存实耗(准)":"Period"}</button>
+      <button class="${cfg.mode==='period'?'active':''}" onclick="setCostMode('period')">${zh?"② 成本算货(准)":"Stock"}</button>
       <button class="${cfg.mode==='bom'?'active':''}" onclick="setCostMode('bom')">${zh?"③ 配方(单品)":"BOM"}</button></div>`;
+    const legend=zh?`<div class="mini" style="margin:-2px 0 10px;line-height:1.7;color:var(--ink2);">
+      <b>①成本率</b>：最快、最粗。凭经验填一个成本率(如35%)，系统用「营业额×成本率」估食材成本。适合每天随手看大概。<br>
+      <b>②成本算货</b> ⭐：最准。<b>月初库存 + 本月进货 − 月末库存 = 真实食材成本</b>。月底盘点后填一填就出真账，最适合老板看月度盈亏。<br>
+      <b>③配方</b>：最细。逐道菜按「配方×卖出数量」算成本，能看单品毛利，但要先给菜品建好配方(BOM)。</div>`:'';
     let body='';
     if(cfg.mode==='rate'){
       body=`<div class="fr" style="margin:0;max-width:260px;"><label>${zh?"食材成本率 Food Cost %":"Food Cost %"}</label>
@@ -1111,7 +1118,7 @@ function pgDash(){
       body=`<div class="mini">${zh?"用每道菜的配方(BOM)×销量算成本。需先在「配方成本」给菜品建配方；适合招牌单点/煮炒菜看单品毛利。Buffet 类不建议用此法。":"COGS = Σ recipe cost × qty. Build BOM first."}</div>`;
     }
     return `<h2 class="h">🧮 ${zh?"成本核算方式":"Costing Method"}</h2>
-      <div class="card" style="padding:13px;margin-bottom:12px;">${seg}${body}</div>`;
+      <div class="card" style="padding:13px;margin-bottom:12px;">${seg}${legend}${body}</div>`;
   })()}
   ${(function(){const mp=monthlyPnL(costMonth);if(!(mp.rev||mp.cogs))return '';const cpc=mp.foodPct<28?'#0891B2':(mp.foodPct<=35?'var(--green)':'var(--red)');return `
   <h2 class="h">📅 ${LANG==="zh"?"月度核算":"Monthly Costing"} <span class="tag">${monthLabel2(costMonth)}${monthLocked(costMonth)?' 🔒':''}</span></h2>
