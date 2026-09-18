@@ -69,6 +69,17 @@ create policy "erp_users select self or admin"
 --   b) 用注册时夹带的邀请码(存在 Supabase 签发、无法伪造的 JWT 里)对应到的职位
 --      自己把自己加进白名单；职位跟邀请码对不上就插不进去。
 --   c) 老板/区域副经理可以任意新增(手动在管理面板加人)。
+-- 判断「白名单表是不是真的完全空的」，专门给下面的老板引导用。
+-- 一定要用 security definer 绕开 RLS 去查——否则从一个还没在白名单里
+-- 的新用户角度看，RLS 本身就会把别人的资料全部隐藏掉，导致他看到的
+-- 永远是「空的」，谁都能借着这条规则把自己插成 owner。
+create or replace function public.erp_users_is_empty()
+returns boolean
+language sql security definer set search_path = public stable
+as $$
+  select not exists(select 1 from public.erp_users);
+$$;
+
 create policy "erp_users insert self via invite or admin"
   on public.erp_users for insert
   to authenticated
@@ -77,7 +88,7 @@ create policy "erp_users insert self via invite or admin"
     or (
       email = my_email()
       and (
-        (role = 'owner' and not exists(select 1 from public.erp_users))
+        (role = 'owner' and public.erp_users_is_empty())
         or role = public.invite_role(auth.jwt()->'user_metadata'->>'invite_code')
       )
     )

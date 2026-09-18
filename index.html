@@ -627,7 +627,7 @@ function statusOf(d){if(d<=14)return{t:"健康",e:"Fresh",c:"p-g"};if(d<=30)retu
 function stTxt(s){return LANG==="zh"?s.t:s.e;}
 
 /* ================= 数据种子 ================= */
-const BUILD="0918mk13";  // 版本标记：页面右上/网格提示可见，用来确认已载入最新版
+const BUILD="0918mk14";  // 版本标记：页面右上/网格提示可见，用来确认已载入最新版
 const SEED_VERSION="bh-master-2026-09-1";  // 版本变更→下次载入自动重置为最新主数据（仅本店云端）
 function seed(outletId){
   const isCK = outletId==="ck";
@@ -3849,20 +3849,21 @@ async function afterAuth(user){
     try{await _sb.auth.signOut();}catch(e){}return;
   }
   let wu=findUser(user.email);
-  // 引导：白名单为空时，首位登录者自动成为老板
-  if(!wu && USERS.length===0){
-    try{const {error}=await _sb.from('erp_users').upsert({email:(user.email||'').toLowerCase(),name:(user.email||'').split('@')[0],role:'owner',outlet:'b1',active:true},{onConflict:'email'});
-      if(error)throw error;await loadUsers();wu=findUser(user.email);
-    }catch(e){showAuthLogin(LANG==="zh"?"无法初始化白名单，请确认已运行 erp_users 建表脚本。":"Failed to bootstrap whitelist.");try{await _sb.auth.signOut();}catch(_){}return;}
-  }
-  // 白名单不为空但本人未在册 → 用注册时填的邀请码自动分配职位加入白名单
+  // 本人未在册：先试邀请码分配职位；没有邀请码/邀请码失败，才试「首位注册者自动成为老板」
+  // （白名单是不是真的空的，交给数据库那边的 RLS 规则去判断，这里本地看到的 USERS 列表
+  // 因为权限隔离，看不到别人的资料，不能用来判断"是不是空的"）
   if(!wu){
     const inviteCode=(user.user_metadata&&user.user_metadata.invite_code||'').toLowerCase();
     const role=INVITE_CODES[inviteCode];
     if(role){
       try{const {error}=await _sb.from('erp_users').upsert({email:(user.email||'').toLowerCase(),name:(user.email||'').split('@')[0],role,outlet:(ROLES[role]&&ROLES[role].ckOnly)?'ck':'b1',active:true},{onConflict:'email'});
         if(error)throw error;await loadUsers();wu=findUser(user.email);
-      }catch(e){showAuthLogin(LANG==="zh"?"邀请码有效，但无法加入白名单，请联系管理员。":"Invite code valid but failed to join whitelist. Contact admin.");try{await _sb.auth.signOut();}catch(_){}return;}
+      }catch(e){/* 邀请码本身没问题，但写入失败(可能是权限/网络) → 往下走，交给最后的白名单检查统一报错 */}
+    }
+    if(!wu){
+      try{const {error}=await _sb.from('erp_users').upsert({email:(user.email||'').toLowerCase(),name:(user.email||'').split('@')[0],role:'owner',outlet:'b1',active:true},{onConflict:'email'});
+        if(error)throw error;await loadUsers();wu=findUser(user.email);
+      }catch(e){/* 白名单其实不是空的(数据库会拒绝) → 忽略，走到下面统一报错 */}
     }
   }
   if(!wu||wu.active===false){
