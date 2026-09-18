@@ -1,0 +1,130 @@
+-- ============================================================
+-- 明记餐饮 ERP · 权限加固补丁（正式上线前必跑）
+-- 用法：Supabase 控制台 → SQL Editor → New query → 粘贴全部 → Run
+-- 可重复运行，不会重复建表/重复出错。
+--
+-- 解决的问题：
+-- 之前的规则是「只要是登录过的账号，不管有没有在白名单里、
+-- 是什么职位，都能直接读写所有数据」——邀请码/白名单其实只在
+-- 网页前端检查，绕过网页直接呼叫 Supabase API 就能绕过。
+-- 这份补丁把权限判断搬到数据库这一层，就算绕过网页也挡得住。
+-- ============================================================
+
+-- ========== 第 1 部分：邀请码 → 职位 的对照表（跟 index.html 的 INVITE_CODES 一致）==========
+-- 之后在 index.html 改邀请码，记得同步把下面这个函数也改一次。
+create or replace function public.invite_role(code text)
+returns text
+language sql
+immutable
+as $$
+  select case lower(coalesce(code,''))
+    when 'tcymgmt888' then 'area'       -- 区域副经理
+    when 'mkpic888'   then 'outletmgr'  -- 店面经理
+    when 'mkmgr888'   then 'manager'    -- 经理/店长
+    when 'chef888'    then 'headchef'   -- 厨师长
+    when 'mkstaff888' then 'staff'      -- 员工
+    when 'tcymgr888'  then 'ckmgr'      -- 中央经理
+    when 'tcystaff888' then 'ckstaff'   -- 中央员工
+    else null
+  end;
+$$;
+
+-- ========== 第 2 部分：判断「当前登录的人是谁 / 是不是白名单里的管理员」==========
+-- security definer：以建表者(postgres)的身份运行，能绕开下面 erp_users 自己的
+-- RLS 规则去查表，避免「查权限」跟「权限规则」互相卡死(无限递归)。
+create or replace function public.my_email()
+returns text
+language sql stable
+as $$ select lower(coalesce(auth.jwt()->>'email','')) $$;
+
+create or replace function public.is_whitelisted()
+returns boolean
+language sql security definer set search_path = public stable
+as $$
+  select exists(select 1 from public.erp_users where email = public.my_email() and active = true);
+$$;
+
+create or replace function public.is_admin()
+returns boolean
+language sql security definer set search_path = public stable
+as $$
+  select exists(
+    select 1 from public.erp_users
+    where email = public.my_email() and active = true and role in ('owner','area')
+  );
+$$;
+
+-- ========== 第 3 部分：erp_users 白名单表 —— 重新收紧 ==========
+drop policy if exists "erp_users authed read" on public.erp_users;
+drop policy if exists "erp_users authed write" on public.erp_users;
+
+-- 读：自己一定能读到自己那一行(登录要用)；老板/区域副经理能读全部(管理面板要用)。
+create policy "erp_users select self or admin"
+  on public.erp_users for select
+  to authenticated
+  using (is_admin() or email = my_email());
+
+-- 新增：只允许两种情况——
+--   a) 白名单整表还是空的 → 第一位注册的人自动变老板(仅限一次)
+--   b) 用注册时夹带的邀请码(存在 Supabase 签发、无法伪造的 JWT 里)对应到的职位
+--      自己把自己加进白名单；职位跟邀请码对不上就插不进去。
+--   c) 老板/区域副经理可以任意新增(手动在管理面板加人)。
+create policy "erp_users insert self via invite or admin"
+  on public.erp_users for insert
+  to authenticated
+  with check (
+    is_admin()
+    or (
+      email = my_email()
+      and (
+        (role = 'owner' and not exists(select 1 from public.erp_users))
+        or role = public.invite_role(auth.jwt()->'user_metadata'->>'invite_code')
+      )
+    )
+  );
+
+-- 改/删：只有老板/区域副经理能改别人的职位、分店、启用状态。
+create policy "erp_users update admin only"
+  on public.erp_users for update
+  to authenticated
+  using (is_admin())
+  with check (is_admin());
+
+create policy "erp_users delete admin only"
+  on public.erp_users for delete
+  to authenticated
+  using (is_admin());
+
+-- ========== 第 4 部分：erp_store 业务数据 —— 白名单以外的人一律不能碰 ==========
+drop policy if exists "erp_store authed full access" on public.erp_store;
+drop policy if exists "erp_store authed access" on public.erp_store;
+
+create policy "erp_store whitelisted only"
+  on public.erp_store for all
+  to authenticated
+  using (is_whitelisted())
+  with check (is_whitelisted());
+
+-- ========== 第 5 部分：推送订阅表 —— 同样收紧 ==========
+drop policy if exists "erp_push_subs authed" on public.erp_push_subs;
+create policy "erp_push_subs whitelisted only"
+  on public.erp_push_subs for all
+  to authenticated
+  using (is_whitelisted())
+  with check (is_whitelisted());
+
+-- ========== 第 6 部分：付款收据储存桶 receipts —— 同样收紧 ==========
+-- 只在你已经跑过 STORAGE_SETUP_MENGKEE.md 建了 receipts 桶时才需要这段。
+drop policy if exists "receipts authed all" on storage.objects;
+create policy "receipts whitelisted only"
+  on storage.objects for all
+  to authenticated
+  using (bucket_id = 'receipts' and public.is_whitelisted())
+  with check (bucket_id = 'receipts' and public.is_whitelisted());
+
+-- ============================================================
+-- 跑完这份之后，务必再去 Supabase 后台做这一步（SQL 做不到，要手动点）：
+-- Authentication → Providers → Email → 把「Confirm email」打开(启用)。
+-- 这样注册时会先发确认邮件，没验证邮箱前进不了系统，
+-- 避免有人用假邮箱/别人的邮箱狂开账号硬闯白名单流程。
+-- ============================================================

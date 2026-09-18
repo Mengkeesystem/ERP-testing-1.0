@@ -32,9 +32,10 @@ create table if not exists public.erp_users (
 );
 alter table public.erp_users enable row level security;
 
--- 已登录用户可读写白名单（应用层已限制只有 老板/区域副经理 能看到管理面板）。
--- 想更严格时：把写入策略换成「仅 owner/area 可改」——可另外加一个基于 email→role 的
--- SQL 函数做判断，需要的话让我帮你加。
+-- ⚠️ 下面这两条只是「能跑起来」的最低配置，真正要用于正式营运前，
+-- 务必接着跑一次同目录下的 security-hardening.sql ——那份才是把权限
+-- 收紧到「只有白名单里的人能读写、只有老板/区域副经理能管人」的正式版本。
+-- 这里先给宽松版本是方便你第一次建表、第一次注册老板账号时不被卡住。
 drop policy if exists "erp_users authed read" on public.erp_users;
 drop policy if exists "erp_users authed write" on public.erp_users;
 create policy "erp_users authed read"
@@ -47,8 +48,8 @@ create policy "erp_users authed write"
 -- ============================================================
 -- 首次使用：
 -- 1) 上面跑完后，去 Authentication → Providers → Email 确认已开启；
---    并在 Authentication → Providers → Email 里把「Confirm email」关掉，
---    这样员工注册后可立即登录（不用等确认邮件）。
+--    并把「Confirm email」打开（启用）——注册要先验证邮箱才能登录，
+--    避免有人用假邮箱乱注册。正式上线前这项务必是打开的。
 -- 2) 打开网站 → 用你的邮箱点「注册账号」。因为白名单此刻为空，
 --    第一位注册者会被自动设为『老板』。之后就能在
 --    设置 → 白名单/用户管理 里添加其他员工并分配岗位/分店。
@@ -56,4 +57,6 @@ create policy "erp_users authed write"
 -- insert into public.erp_users (email,name,role,outlet,active)
 --   values ('you@example.com','老板','owner','b1',true)
 --   on conflict (email) do update set role=excluded.role, active=true;
+-- 3) 老板账号建好、能正常登录之后，务必跑 security-hardening.sql 收紧权限，
+--    再让其他员工用真实资料注册。
 -- ============================================================
