@@ -598,6 +598,16 @@ const TODAY=new Date().toLocaleDateString('en-CA');  // 真实当天日期（YYY
 let curOutlet="b1", curRole="owner", LANG="zh", moveFilter="all", curPage="dash";
 let curUser=null;   // 真实登录用户 {email,name,role,outlet}；演示模式为 null
 let USERS=[];       // 白名单/用户目录缓存（erp_users）
+// 注册邀请码 → 角色（不分大小写）；首位注册者自动为老板，不需要邀请码
+const INVITE_CODES={
+  tcymgmt888:"area",     // 区域副经理
+  mkpic888:"outletmgr",  // 店面经理
+  mkmgr888:"manager",    // 经理/店长
+  chef888:"headchef",    // 厨师长
+  mkstaff888:"staff",    // 员工
+  tcymgr888:"ckmgr",     // 中央经理
+  tcystaff888:"ckstaff", // 中央员工
+};
 
 /* ---------- i18n ---------- */
 const T={
@@ -617,7 +627,7 @@ function statusOf(d){if(d<=14)return{t:"健康",e:"Fresh",c:"p-g"};if(d<=30)retu
 function stTxt(s){return LANG==="zh"?s.t:s.e;}
 
 /* ================= 数据种子 ================= */
-const BUILD="0918mk11";  // 版本标记：页面右上/网格提示可见，用来确认已载入最新版
+const BUILD="0918mk12";  // 版本标记：页面右上/网格提示可见，用来确认已载入最新版
 const SEED_VERSION="bh-master-2026-09-1";  // 版本变更→下次载入自动重置为最新主数据（仅本店云端）
 function seed(outletId){
   const isCK = outletId==="ck";
@@ -3785,7 +3795,7 @@ function showAuthLogin(msg){
     ${msg?`<div class="al al-r" style="text-align:left;">${msg}</div>`:''}
     <div class="fr" style="text-align:left;margin-bottom:8px;"><label>${LANG==="zh"?"邮箱":"Email"}</label><input id="au_email" type="email" placeholder="you@example.com" autocomplete="username"></div>
     <div class="fr" style="text-align:left;"><label>${LANG==="zh"?"密码":"Password"}</label><input id="au_pw" type="password" placeholder="••••••" autocomplete="current-password" onkeydown="if(event.key==='Enter')doAuthLogin()"></div>
-    <div class="fr" style="text-align:left;margin-bottom:8px;"> <label>邀请码 / 口令 (店长或店员)</label> <input id="au_code" type="text" placeholder="店长填 MJMGR888 / 店员填 MJSTAFF123 (仅首次注册)" autocomplete="off"> </div>
+    <div class="fr" style="text-align:left;margin-bottom:8px;"> <label>邀请码 / 口令 (仅首次注册需要)</label> <input id="au_code" type="text" placeholder="按职位填写邀请码，向管理员索取" autocomplete="off"> </div>
     <button class="btn block brand" style="margin-top:6px;" onclick="doAuthLogin()">🔓 ${LANG==="zh"?"登录":"Sign In"}</button>
     <button class="btn block ghost" style="margin-top:8px;" onclick="doAuthSignup()">🆕 ${LANG==="zh"?"首次使用？注册账号":"First time? Sign Up"}</button>
     <div id="au_msg" class="mini" style="margin-top:10px;min-height:16px;"></div>
@@ -3802,52 +3812,34 @@ async function doAuthLogin(){
   }catch(e){if(m)m.innerHTML='❌ '+(e.message||e);}
 }
 async function doAuthSignup(){
-  const email=fv('au_email'),pw=fv('au_pw');const m=document.getElementById('au_msg');
-  if(!email||!pw){if(m)m.innerHTML='⚠️ '+(LANG==="zh"?"请输入邮箱和密码（至少6位）":"Enter email & password (≥6)");return;}
+  const email=fv('au_email');
+  const pw=fv('au_pw');
+  const code=(document.getElementById('au_code')?.value||'').trim(); // 获取邀请码
+  const m=document.getElementById('au_msg');
+
+  if(!email||!pw){
+    if(m)m.innerHTML='⚠️ '+(LANG==="zh"?"请输入邮箱和密码（至少6位）":"Enter email & password (≥6)");
+    return;
+  }
+  // 有填邀请码才检查：必须是列表内的有效邀请码（首位老板注册可不填）
+  if(code && !INVITE_CODES[code.toLowerCase()]){
+    if(m)m.innerHTML='⚠️ '+(LANG==="zh"?"邀请码不正确，请向管理员确认。":"Invalid invite code — check with your admin.");
+    return;
+  }
+
   if(m)m.textContent=LANG==="zh"?"注册中…":"Signing up…";
-  try{const {data,error}=await _sb.auth.signUp({email,password:pw,options:{emailRedirectTo:(location.origin+location.pathname)}});
+  try{
+    const {data,error}=await _sb.auth.signUp({
+      email,password:pw,
+      options:{
+        emailRedirectTo:(location.origin+location.pathname),
+        data:{invite_code:code.toLowerCase()} // 将邀请码打包传给注册后处理逻辑（afterAuth）
+      }
+    });
     if(error){if(m)m.innerHTML='❌ '+error.message;return;}
     if(data.session&&data.user){await afterAuth(data.user);}
     else{if(m)m.innerHTML='✅ '+(LANG==="zh"?"注册成功。若开启了邮箱确认，请查收邮件确认后再登录。":"Signed up. Confirm email if required, then sign in.");}
   }catch(e){if(m)m.innerHTML='❌ '+(e.message||e);}
-}async function doAuthSignup(){
-  const email = fv('au_email');
-  const pw = fv('au_pw');
-  const code = (document.getElementById('au_code')?.value || '').trim(); // 获取邀请码
-  const m = document.getElementById('au_msg');
-
-  if(!email || !pw){
-    if(m) m.innerHTML = '▲ 请输入邮箱和密码（至少6位）';
-    return;
-  }
-
-  if(m) m.textContent = '注册中...';
-
-  try {
-    const { data, error } = await _sb.auth.signUp({
-      email,
-      password: pw,
-      options: {
-        emailRedirectTo: (location.origin+location.pathname),
-        data: {
-          invite_code: code // 将邀请码打包传给 Supabase 触发器
-        }
-      }
-    });
-
-    if(error){
-      if(m) m.innerHTML = '✕ ' + error.message;
-      return;
-    }
-
-    if(data.session && data.user){
-      await afterAuth(data.user);
-    } else {
-      if(m) m.innerHTML = '✓ 注册成功。若开启了邮箱确认，请查收邮件确认后再登录。';
-    }
-  } catch(e) {
-    if(m) m.innerHTML = '✕ ' + (e.message || e);
-  }
 }
 async function afterAuth(user){
   // 已通过 Supabase 验证 → 白名单检查
@@ -3862,6 +3854,16 @@ async function afterAuth(user){
     try{const {error}=await _sb.from('erp_users').upsert({email:(user.email||'').toLowerCase(),name:(user.email||'').split('@')[0],role:'owner',outlet:'b1',active:true},{onConflict:'email'});
       if(error)throw error;await loadUsers();wu=findUser(user.email);
     }catch(e){showAuthLogin(LANG==="zh"?"无法初始化白名单，请确认已运行 erp_users 建表脚本。":"Failed to bootstrap whitelist.");try{await _sb.auth.signOut();}catch(_){}return;}
+  }
+  // 白名单不为空但本人未在册 → 用注册时填的邀请码自动分配职位加入白名单
+  if(!wu){
+    const inviteCode=(user.user_metadata&&user.user_metadata.invite_code||'').toLowerCase();
+    const role=INVITE_CODES[inviteCode];
+    if(role){
+      try{const {error}=await _sb.from('erp_users').upsert({email:(user.email||'').toLowerCase(),name:(user.email||'').split('@')[0],role,outlet:(ROLES[role]&&ROLES[role].ckOnly)?'ck':'b1',active:true},{onConflict:'email'});
+        if(error)throw error;await loadUsers();wu=findUser(user.email);
+      }catch(e){showAuthLogin(LANG==="zh"?"邀请码有效，但无法加入白名单，请联系管理员。":"Invite code valid but failed to join whitelist. Contact admin.");try{await _sb.auth.signOut();}catch(_){}return;}
+    }
   }
   if(!wu||wu.active===false){
     showAuthLogin((LANG==="zh"?`账号 ${user.email} 不在白名单或已停用，请联系管理员。`:`${user.email} is not whitelisted or is disabled. Contact your admin.`));
