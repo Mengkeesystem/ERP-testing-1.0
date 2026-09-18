@@ -106,21 +106,34 @@ create policy "erp_store whitelisted only"
   with check (is_whitelisted());
 
 -- ========== 第 5 部分：推送订阅表 —— 同样收紧 ==========
-drop policy if exists "erp_push_subs authed" on public.erp_push_subs;
-create policy "erp_push_subs whitelisted only"
-  on public.erp_push_subs for all
-  to authenticated
-  using (is_whitelisted())
-  with check (is_whitelisted());
+-- 用 DO 块包一层：如果你还没跑过 push-schema.sql 建这张表，就自动跳过，不会报错。
+do $$
+begin
+  if to_regclass('public.erp_push_subs') is not null then
+    execute 'drop policy if exists "erp_push_subs authed" on public.erp_push_subs';
+    execute 'drop policy if exists "erp_push_subs whitelisted only" on public.erp_push_subs';
+    execute $p$create policy "erp_push_subs whitelisted only"
+      on public.erp_push_subs for all
+      to authenticated
+      using (is_whitelisted())
+      with check (is_whitelisted())$p$;
+  end if;
+end $$;
 
 -- ========== 第 6 部分：付款收据储存桶 receipts —— 同样收紧 ==========
--- 只在你已经跑过 STORAGE_SETUP_MENGKEE.md 建了 receipts 桶时才需要这段。
-drop policy if exists "receipts authed all" on storage.objects;
-create policy "receipts whitelisted only"
-  on storage.objects for all
-  to authenticated
-  using (bucket_id = 'receipts' and public.is_whitelisted())
-  with check (bucket_id = 'receipts' and public.is_whitelisted());
+-- 同样：如果你还没跑过 STORAGE_SETUP_MENGKEE.md 建 receipts 桶，就自动跳过。
+do $$
+begin
+  if exists(select 1 from storage.buckets where id = 'receipts') then
+    execute 'drop policy if exists "receipts authed all" on storage.objects';
+    execute 'drop policy if exists "receipts whitelisted only" on storage.objects';
+    execute $p$create policy "receipts whitelisted only"
+      on storage.objects for all
+      to authenticated
+      using (bucket_id = 'receipts' and public.is_whitelisted())
+      with check (bucket_id = 'receipts' and public.is_whitelisted())$p$;
+  end if;
+end $$;
 
 -- ============================================================
 -- 跑完这份之后，务必再去 Supabase 后台做这一步（SQL 做不到，要手动点）：
