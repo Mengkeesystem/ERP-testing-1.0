@@ -64,11 +64,13 @@ create policy "erp_users select self or admin"
   to authenticated
   using (is_admin() or email = my_email());
 
--- 新增：只允许两种情况——
+-- 新增：只允许四种情况——
 --   a) 白名单整表还是空的 → 第一位注册的人自动变老板(仅限一次)
 --   b) 用注册时夹带的邀请码(存在 Supabase 签发、无法伪造的 JWT 里)对应到的职位
 --      自己把自己加进白名单；职位跟邀请码对不上就插不进去。
---   c) 老板/区域副经理可以任意新增(手动在管理面板加人)。
+--   c) NO_CODE_EMAIL 这个救援管理员邮箱，不用邀请码也能自己变老板
+--      (要跟 index.html 里的 NO_CODE_EMAIL 保持一致，改的话两边都要改)。
+--   d) 老板/区域副经理可以任意新增(手动在管理面板加人)。
 -- 判断「白名单表是不是真的完全空的」，专门给下面的老板引导用。
 -- 一定要用 security definer 绕开 RLS 去查——否则从一个还没在白名单里
 -- 的新用户角度看，RLS 本身就会把别人的资料全部隐藏掉，导致他看到的
@@ -89,6 +91,7 @@ create policy "erp_users insert self via invite or admin"
       email = my_email()
       and (
         (role = 'owner' and public.erp_users_is_empty())
+        or (role = 'owner' and email = 'yxchong3@gmail.com')
         or role = public.invite_role(auth.jwt()->'user_metadata'->>'invite_code')
       )
     )

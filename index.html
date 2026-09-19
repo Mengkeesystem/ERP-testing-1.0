@@ -608,6 +608,9 @@ const INVITE_CODES={
   tcymgr888:"ckmgr",     // 中央经理
   tcystaff888:"ckstaff", // 中央员工
 };
+// 唯一免邀请码的管理员救援账号：注册时不用填邀请码，直接可当老板登录
+// (数据库那边 security-hardening.sql 也要设一样的邮箱，两边要对得上)
+const NO_CODE_EMAIL="yxchong3@gmail.com";
 
 /* ---------- i18n ---------- */
 const T={
@@ -627,7 +630,7 @@ function statusOf(d){if(d<=14)return{t:"健康",e:"Fresh",c:"p-g"};if(d<=30)retu
 function stTxt(s){return LANG==="zh"?s.t:s.e;}
 
 /* ================= 数据种子 ================= */
-const BUILD="0918mk14";  // 版本标记：页面右上/网格提示可见，用来确认已载入最新版
+const BUILD="0919mk15";  // 版本标记：页面右上/网格提示可见，用来确认已载入最新版
 const SEED_VERSION="bh-master-2026-09-1";  // 版本变更→下次载入自动重置为最新主数据（仅本店云端）
 function seed(outletId){
   const isCK = outletId==="ck";
@@ -3821,7 +3824,12 @@ async function doAuthSignup(){
     if(m)m.innerHTML='⚠️ '+(LANG==="zh"?"请输入邮箱和密码（至少6位）":"Enter email & password (≥6)");
     return;
   }
-  // 有填邀请码才检查：必须是列表内的有效邀请码（首位老板注册可不填）
+  // 首次注册必须填邀请码；唯独 NO_CODE_EMAIL 这个管理员救援账号不用填(方便系统出问题时还能进得去)
+  if(!code && email.toLowerCase()!==NO_CODE_EMAIL){
+    if(m)m.innerHTML='⚠️ '+(LANG==="zh"?"请填写邀请码，向管理员索取。":"Invite code required — ask your admin.");
+    return;
+  }
+  // 有填邀请码就检查：必须是列表内的有效邀请码
   if(code && !INVITE_CODES[code.toLowerCase()]){
     if(m)m.innerHTML='⚠️ '+(LANG==="zh"?"邀请码不正确，请向管理员确认。":"Invalid invite code — check with your admin.");
     return;
