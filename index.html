@@ -50,6 +50,11 @@
   .gtbl .growctl .gdrag:active{cursor:grabbing;}
   .gtbl .growctl .gdrag.gdragover{background:#FDECC8;border-color:#C9A227;box-shadow:0 0 0 2px #C9A227 inset;}
   .gtbl .gcell{min-width:74px;}
+  /* 进货单专用：每格自己填数量/当天价钱(/重量)，不再共用一整月的单价 */
+  .gtbl .gcell.gcellp{min-width:78px;padding:2px;}
+  .gtbl .gcellp .gcw{display:flex;flex-direction:column;gap:2px;}
+  .gtbl .gcellp input{padding:3px 3px;font-size:11px;border:1px solid #d7dce3;border-radius:3px;margin:0;}
+  .gtbl .gcellp .gcamt{font-size:11px;font-weight:700;color:#12203A;padding:1px 0;}
   .ptbl td,.ptbl th{border-right:1px solid #ddd;border-bottom:1px solid #ddd;padding:4px 6px;}
   .ptbl td.pstick,.ptbl th.pstick{position:sticky;left:0;z-index:2;background:#F3F6FB;box-shadow:1px 0 0 #ccc;}
   .ptbl thead th.pstick{z-index:4;background:#E8EDF3;}
@@ -316,6 +321,10 @@ const OUTLETS=[
 /* ===== 从营运档案提取的供应商→品项目录 + ENT菜单（可在库存/供应商里再增删）===== */
 const SUPPLIER_CATALOG={"(菜)SUNNY KHOR FOOD TRADING SB":["Sawi 菜心","Sayur Raja 帝王苗","Kang Kung 翁菜","Daun Bawang 青葱","Daun Ketumbar 元茜","Romain 油麦胆","Salad 生菜","Cili Merah 红辣椒","Cili Hijau 青辣椒","Halia Tua 老姜","Limau Nipis 酸柑","Tomato 番茄","Timun 黄瓜","Lobak Putih 白萝卜","Daun Keledek 番薯苗","Daun Kari 咖喱叶","Daun Selasih 九层塔","Daun Pandan 斑斓叶","Daun Asam 亚三叶","Arrow Root 粉葛","Watercress 西洋菜","Ubi Kentang 马铃薯","Taugeh 芽菜","Tau Foo Jepun 日本豆腐","Tau Foo Kotak 盒豆腐","Tau Foo Goreng 豆腐卜","Kobis Bulat 包菜","Kacang Panjang 豆角","Kacang Bendi 羊角豆","Terong Panjang 茄子(长)","Peria 苦瓜","Petai 臭豆(180g)","Carrot 金笋（红萝卜）","Serai 香茅","Cili Api Merah 小红辣椒","Nai Pai 乃白菜","Telur （B） 鸡蛋","Sayur Dragon 青龙菜","Timun Tua 老黄瓜","酸菜","水瓜 Labu Air","QING LONG 青龙菜","Tien Chi 田七","Labu Air 葫芦（水瓜）"],"(中央)TCY OKR SB":["Peanut 花生","保鲜膜 Cling Wrap","Cooking Rice Wine 兴兴发花雕酒","Beancurd Preserved 大石腐乳(南乳）","Santan (Kara)椰浆","Chili Bean Sauce 辣豆瓣酱","Desaus Chili Sauce 辣椒酱","Ajinamoto Monosodium 味精","Salt （Green） 双燕幼盐","Tapioca Starch (ABC) 木薯淀粉","White Pepper Powder 鹰牌白胡椒粉","Red Dates 红枣","Wolfberry(s) 枸杞（包）","Common Yam Slice 淮山（1）","Polygonatum Odoratum 玉竹","Udang Kering 虾米仔","Mergui Dried Fish 丹佬咸鱼（盒）","Ikan Masin Minyak 油浸马鲛咸鱼","Century Egg 皮蛋","Salted Egg 咸蛋","Jasmine Siam Special 5 Rice (Green) 白米","FIsh Mince 鱼胶","Taiwanese Chicken 三杯鸡","Lobak 肉卷","Minced Pork冬菜猪肉","Curry Pork Ribs 咖喱排骨","Black Bean Pork Ribs 豉汁排骨","Chicke Marinade 炸鸡粉","Pork Marinade炸肉粉","Duck Marinade 腌鸭粉","Concentrated Soup 鲜汤","Fish Sauce 鱼汁","Duck Sauce 酸梅鸭酱","Taiwanese Sauce 三杯鸡酱","Stewed Sauce","Belacan Sauce 马来栈酱","Nyonya Sauce 娘惹酱","Curry Sauce 咖喱酱","Kam Heong Sauce 金香酱","Sweet & Sour Sauce 咕佬肉酱","Black Bean Sauce 面豉豆豉酱","Spicy Bean Sauce 辣酱蒸酱","Sayur Masin Hancur 菜脯（咸）","Sayur Manis Hancur 菜脯（甜）","麦芽糖 Maltose","Dry Chili 辣椒干","Onion 大葱","Shallot 葱头仔","Garlic 蒜米","Winfuel Thermogel 胶状燃料","Coarse Grain Sugar 粗白砂糖","Baba's Turmeric Powder 峇峇黄姜粉","Black Bean Sauce 面鼓豆鼓酱","Delivery Charges 运输费","Tian Jin Preserved Vege 天津冬菜","Baba's Chili Powder 峇峇辣椒粉","Dried Shredded Squid 特选吊片丝"],"(鸡)GRAB FRESH TRADING SB":["(三杯鸡) Taiwan Chicken鸡二度 Chicken Whole Leg","菜园鸡 (Steamed Herb Chicken)Cone Fed Chicken","老鸡 Old Chicken","(南乳炸鸡) Fried Chicken白鸡 Normal Chicken","鸡翅膀 Chicken Wing","琵琶鸭 PiPa Duck","Daily Total Amount （RM)"],"(猪)GRAND HARVEST FROZEN SB":["猪手/猪脚 Pork Leg","无皮五花肉 Pork Belly (No Skin）","后腿肉 （咕佬肉）Pork Whole Leg","肉碎 Minced Pork","Daily Total Amount （RM)"],"(松)LC FROZEN SB":["松鱼头 Big Head Carp","红非洲 Red Tilapia","白须公 Baung （Catfish）","大头虾 Scampi U5","老虎虾 Tiger Prawn","Daily Total Amount （RM)"],"(马友啦啦苏东)":["马友鱼 Threadfin（Mayou）@ 28/Kg","啦啦 Asari Lala @ 5 / Pkt","苏东 4/6 Sotong（No Skin）@ 27 / Pkt","Daily Total Amount （RM)"],"(啤酒) MHML TRADING SB":["黑狗 Guinness（640ml x 12 / ctn）","老虎 Tiger （640ml x 12 / ctn）","哈尔滨 Harbin","Daily Total Amount （RM)"],"(杯装凉水)SAN XIN":["竹蔗马蹄 Sugarcane","洋参菊花 Chrysanthemum","爱玉冰 Aiyu","百香果爱玉冰 Passion Aiyu","Daily Total Amount （RM)"],"(龙虎斑) DRAGON TASTE SEAFOOD WHOL":["龙虎斑头 Dragon / Tiger Grouper Head","龙虎斑鱼(整条) Dragon / Tiger Grouper","Asari Claim (金香啦啦)","IKAN KEMBONG杂鱼(员工餐）","Daily Total Amount （RM)"],"(食油鸭沙白)":["食油 Cooking Oil @ 17Kg /Btl","鸭 Duck @ 2.1Kg Per Unit","沙白 Lala","Daily Total Amount （RM)"],"(凉水汽水冰块)":["北紫草 Leong Shui （35pkt/ bdl）","100 Plus","Coca Cola","Ice Cube","Daily Total Amount （RM)"],"(茶）Tea":["香片 Jasmine Tea","普洱 Pu ’Er","铁观音 Tie Guan Yin","茶王 Tea King","菊花 Chrysanthemum","Daily Total Amount （RM)"],"(酱油）LAI YUAN SAUCE":["黄盖酱油（蒸鱼） Yellow Soy (4Kg)","青盖酱油（普通酱油）Green Soy(6Kg)","蚝油 Oyster Sauce （5.8Kg)","黑酱油 Black Sauce A1","Daily Total Amount （RM)"],"(洗洁精纸巾煤气) Detergent & Tissue& G":["洗碗水 Dishwash","漂白水 Bleach","洗手液 Handwash","抹地水 Floor Cleaner","抹桌水 Table Cleaner","Daily Total Amount （RM)"],"(包装) Packaging":["NLT - 12 x 13 GG EPI Degradable Singlet Bag (180pkt)","NLT - 15 x 16 GG EPI Degradable Singlet Bag (120pkt)","E & C - 40GG - 17 x 20A Singlet Bag (100pkt)","18 x 22 (Y）Plastic (80pkt)","KL - HD 6 x 9 1Kg (30pkt) 凉水打包袋（中）","HM 3 x 5 300g KM 酱料打包袋 （小）","HD 8 x 12 Plastic Bag 打包袋（大）","20 x 20 700g KM （Plastic Sheet） 打包用塑料纸","NLT - PP Lunch Box (100pcs) 饭打包盒","5.0mm Chopstick (Take Away) 打包用筷子","E & C - 70 x 70' Table Cloth (Red) 一次性桌布","Chinese Spoon (Take Away ) 打包用汤匙","Straw 吸管","FT - FC 1000ML Rectanglular Container (50PCS) 一块钱打包盒","NLT -FCC 3000 Round Container & Lid (90pcs) 三块钱打包盒","GAS","Mayonnaise"]};
 const SUPPLIER_META={"(菜)SUNNY KHOR FOOD TRADING SB":{"Sawi 菜心":{"uom":"KG"},"Sayur Raja 帝王苗":{"uom":"KG"},"Kang Kung 翁菜":{"uom":"KG"},"Daun Bawang 青葱":{"uom":"KG"},"Daun Ketumbar 元茜":{"uom":"KG"},"Romain 油麦胆":{"uom":"KG"},"Salad 生菜":{"uom":"KG"},"Cili Merah 红辣椒":{"uom":"KG"},"Cili Hijau 青辣椒":{"uom":"KG"},"Halia Tua 老姜":{"uom":"KG"},"Limau Nipis 酸柑":{"uom":"KG"},"Tomato 番茄":{"uom":"KG"},"Timun 黄瓜":{"uom":"KG"},"Lobak Putih 白萝卜":{"uom":"KG"},"Daun Keledek 番薯苗":{"uom":"KG"},"Daun Kari 咖喱叶":{"uom":"KG"},"Daun Selasih 九层塔":{"uom":"KG"},"Daun Pandan 斑斓叶":{"uom":"KG"},"Daun Asam 亚三叶":{"uom":"KG"},"Arrow Root 粉葛":{"uom":"KG"},"Watercress 西洋菜":{"uom":"KG"},"Ubi Kentang 马铃薯":{"uom":"KG"},"Taugeh 芽菜":{"uom":"KG"},"Tau Foo Jepun 日本豆腐":{"uom":"KG"},"Tau Foo Kotak 盒豆腐":{"uom":"KG"},"Tau Foo Goreng 豆腐卜":{"uom":"KG"},"Kobis Bulat 包菜":{"uom":"KG"},"Kacang Panjang 豆角":{"uom":"KG"},"Kacang Bendi 羊角豆":{"uom":"KG"},"Terong Panjang 茄子(长)":{"uom":"KG"},"Peria 苦瓜":{"uom":"PKT"},"Petai 臭豆(180g)":{"uom":"PKT"},"Carrot 金笋（红萝卜）":{"uom":"KG"},"Serai 香茅":{"uom":"KG"},"Cili Api Merah 小红辣椒":{"uom":"KG"},"Nai Pai 乃白菜":{"uom":"PKT"},"Telur （B） 鸡蛋":{"uom":"KG"},"Sayur Dragon 青龙菜":{"uom":"PKT"},"Timun Tua 老黄瓜":{"uom":"KG"},"酸菜":{"uom":"KG"},"水瓜 Labu Air":{"uom":"KG"},"QING LONG 青龙菜":{"uom":"KG"},"Tien Chi 田七":{"uom":"KG"},"Labu Air 葫芦（水瓜）":{"uom":"KG"}},"(中央)TCY OKR SB":{"Peanut 花生":{"code":"DRYC - P003","uom":"KG"},"保鲜膜 Cling Wrap":{"code":"WRAP - 18","uom":"Roll"},"Cooking Rice Wine 兴兴发花雕酒":{"code":"SOS - W001","uom":"640ml x 12 btl"},"Beancurd Preserved 大石腐乳(南乳）":{"code":"SOS - T005","uom":"2.5KG x 6btl"},"Santan (Kara)椰浆":{"code":"SOS - S003","uom":"1L"},"Chili Bean Sauce 辣豆瓣酱":{"code":"SOS - B001","uom":"1Kg"},"Desaus Chili Sauce 辣椒酱":{"code":"SOS - D001","uom":"1Kg x 12Pkt"},"Ajinamoto Monosodium 味精":{"code":"DRYS - A001","uom":"1Kg x 20Pkt"},"Salt （Green） 双燕幼盐":{"code":"DRYS - S001","uom":"450G x 12 Pkt x 5"},"Tapioca Starch (ABC) 木薯淀粉":{"code":"DRYS - S004","uom":"1Kg x 10Pkt"},"White Pepper Powder 鹰牌白胡椒粉":{"code":"DRYS - W001","uom":"500g x 30Pkt"},"Red Dates 红枣":{"code":"DRYC - R001","uom":"1Kg x 10Pkt"},"Wolfberry(s) 枸杞（包）":{"code":"DRYC - W002","uom":"500G x40 Pkt"},"Common Yam Slice 淮山（1）":{"code":"DRYC - Y001","uom":"3 Kg x 8 Pkt"},"Polygonatum Odoratum 玉竹":{"code":"DRYC- P002","uom":"1Kg x 10Pkt"},"Udang Kering 虾米仔":{"code":"DRYS - D001","uom":"10Kg"},"Mergui Dried Fish 丹佬咸鱼（盒）":{"code":"DRYC - F001","uom":"454G"},"Ikan Masin Minyak 油浸马鲛咸鱼":{"code":"DRYS - F003","uom":"600g x 12Btl"},"Century Egg 皮蛋":{"code":"EGG - 003","uom":"60'S"},"Salted Egg 咸蛋":{"code":"EGG - 001","uom":"60'S"},"Jasmine Siam Special 5 Rice (Green) 白米":{"code":"RICE - 001","uom":"10Kg"},"FIsh Mince 鱼胶":{"code":"FOD - F001","uom":"1Kg"},"Taiwanese Chicken 三杯鸡":{"code":"FOD - C001","uom":"1Kg"},"Lobak 肉卷":{"code":"FOD - P004","uom":"5 Pcs"},"Minced Pork冬菜猪肉":{"code":"FOD - P003","uom":"1Kg Pkt"},"Curry Pork Ribs 咖喱排骨":{"code":"FOD - P002","uom":"1Kg"},"Black Bean Pork Ribs 豉汁排骨":{"code":"FOD - P001","uom":"2Kg"},"Chicke Marinade 炸鸡粉":{"code":"MAR - 001","uom":"PKT"},"Pork Marinade炸肉粉":{"code":"MAR - 002","uom":"PKT"},"Duck Marinade 腌鸭粉":{"code":"MAR - 003","uom":"PKT"},"Concentrated Soup 鲜汤":{"code":"SAU - C001","uom":"PKT"},"Fish Sauce 鱼汁":{"code":"SAU - F001","uom":"Pkt"},"Duck Sauce 酸梅鸭酱":{"code":"SAU - D001","uom":"Brl"},"Taiwanese Sauce 三杯鸡酱":{"code":"SAU - T001P","uom":"1Kg"},"Stewed Sauce":{"code":"SAU - S001","uom":"Pkt"},"Belacan Sauce 马来栈酱":{"code":"SAU - B002P","uom":"1Kg"},"Nyonya Sauce 娘惹酱":{"code":"SAU - N001P","uom":"1Kg"},"Curry Sauce 咖喱酱":{"code":"SAU - C002P","uom":"1Kg"},"Kam Heong Sauce 金香酱":{"code":"SAU - K001P","uom":"1Kg"},"Sweet & Sour Sauce 咕佬肉酱":{"code":"SAU - S002P","uom":"1Kg"},"Black Bean Sauce 面豉豆豉酱":{"code":"SAU - S002P","uom":"1Kg"},"Spicy Bean Sauce 辣酱蒸酱":{"code":"SAU - S003P","uom":"1Kg"},"Sayur Masin Hancur 菜脯（咸）":{"code":"DRYS - V002","uom":"3Kg"},"Sayur Manis Hancur 菜脯（甜）":{"code":"DRYS - V003","uom":"3Kg"},"麦芽糖 Maltose":{"code":"DRYS - M001","uom":"350g x 24"},"Dry Chili 辣椒干":{"code":"DRYC - C001 -1","uom":"1 Kg"},"Onion 大葱":{"code":"DRYC - O001","uom":"9Kg+-"},"Shallot 葱头仔":{"code":"DRYC - S001","uom":"4Kg"},"Garlic 蒜米":{"code":"DRYC - G001","uom":"8Kg"},"Winfuel Thermogel 胶状燃料":{"code":"GEL - 002","uom":"1L"},"Coarse Grain Sugar 粗白砂糖":{"code":"DRYS - S002","uom":"1Kg"},"Baba's Turmeric Powder 峇峇黄姜粉":{"code":"CURRY - 002","uom":"250g"},"Black Bean Sauce 面鼓豆鼓酱":{"code":"DRYS - S002","uom":"1Kg"},"Delivery Charges 运输费":{"code":"DEL - 025","uom":"Trip"},"Tian Jin Preserved Vege 天津冬菜":{"code":"DRYYC - V001","uom":"500g x 30Pkt"},"Baba's Chili Powder 峇峇辣椒粉":{"code":"CURRY - 003","uom":"250g"},"Dried Shredded Squid 特选吊片丝":{"code":"DRYC - D003","uom":"1Kg x 10"}},"(鸡)GRAB FRESH TRADING SB":{"(三杯鸡) Taiwan Chicken鸡二度 Chicken Whole Leg":{"uom":"KG"},"菜园鸡 (Steamed Herb Chicken)Cone Fed Chicken":{"uom":"KG"},"老鸡 Old Chicken":{"uom":"KG"},"(南乳炸鸡) Fried Chicken白鸡 Normal Chicken":{"uom":"KG"},"鸡翅膀 Chicken Wing":{"uom":"KG"},"琵琶鸭 PiPa Duck":{"uom":"KG"}},"(猪)GRAND HARVEST FROZEN SB":{"猪手/猪脚 Pork Leg":{"uom":"KG"},"无皮五花肉 Pork Belly (No Skin）":{"uom":"KG"},"后腿肉 （咕佬肉）Pork Whole Leg":{"uom":"KG"},"肉碎 Minced Pork":{"uom":"KG"}},"(松)LC FROZEN SB":{"松鱼头 Big Head Carp":{"uom":"KG"},"红非洲 Red Tilapia":{"uom":"KG"},"白须公 Baung （Catfish）":{"uom":"KG"},"大头虾 Scampi U5":{"uom":"KG"},"老虎虾 Tiger Prawn":{"uom":"KG"}},"(马友啦啦苏东)":{"马友鱼 Threadfin（Mayou）@ 28/Kg":{"uom":"KG"},"啦啦 Asari Lala @ 5 / Pkt":{"uom":"KG"},"苏东 4/6 Sotong（No Skin）@ 27 / Pkt":{"uom":"KG"}},"(啤酒) MHML TRADING SB":{"黑狗 Guinness（640ml x 12 / ctn）":{"uom":"KG"},"老虎 Tiger （640ml x 12 / ctn）":{"uom":"KG"},"哈尔滨 Harbin":{"uom":"KG"}},"(杯装凉水)SAN XIN":{"竹蔗马蹄 Sugarcane":{"uom":"KG"},"洋参菊花 Chrysanthemum":{"uom":"KG"},"爱玉冰 Aiyu":{"uom":"KG"},"百香果爱玉冰 Passion Aiyu":{"uom":"KG"}},"(龙虎斑) DRAGON TASTE SEAFOOD WHOL":{"龙虎斑头 Dragon / Tiger Grouper Head":{"uom":"KG"},"龙虎斑鱼(整条) Dragon / Tiger Grouper":{"uom":"KG"},"Asari Claim (金香啦啦)":{"uom":"KG"},"IKAN KEMBONG杂鱼(员工餐）":{"uom":"KG"}},"(食油鸭沙白)":{"食油 Cooking Oil @ 17Kg /Btl":{"uom":"KG"},"鸭 Duck @ 2.1Kg Per Unit":{"uom":"KG"},"沙白 Lala":{"uom":"KG"}},"(凉水汽水冰块)":{"北紫草 Leong Shui （35pkt/ bdl）":{"uom":"KG"},"100 Plus":{"uom":"KG"},"Coca Cola":{"uom":"KG"},"Ice Cube":{"uom":"KG"}},"(茶）Tea":{"香片 Jasmine Tea":{"uom":"KG"},"普洱 Pu ’Er":{"uom":"KG"},"铁观音 Tie Guan Yin":{"uom":"KG"},"茶王 Tea King":{"uom":"KG"},"菊花 Chrysanthemum":{"uom":"KG"}},"(酱油）LAI YUAN SAUCE":{"黄盖酱油（蒸鱼） Yellow Soy (4Kg)":{"uom":"KG"},"青盖酱油（普通酱油）Green Soy(6Kg)":{"uom":"KG"},"蚝油 Oyster Sauce （5.8Kg)":{"uom":"KG"},"黑酱油 Black Sauce A1":{"uom":"KG"}},"(洗洁精纸巾煤气) Detergent & Tissue& G":{"洗碗水 Dishwash":{"uom":"KG"},"漂白水 Bleach":{"uom":"KG"},"洗手液 Handwash":{"uom":"KG"},"抹地水 Floor Cleaner":{"uom":"KG"},"抹桌水 Table Cleaner":{"uom":"KG"}}};
+// 进货单：这三家供应商每格多一个「重量」输入（其余供应商是 数量/当天价钱/总数 三格）
+const FISH_SUPPLIERS=["(松)LC FROZEN SB","(马友啦啦苏东)","(龙虎斑) DRAGON TASTE SEAFOOD WHOL"];
+// 中央厨房的进货走「订货单→Invoice」那一套，不并入按供应商/按日自动生成的应付账款
+const CK_SUPPLIER_NAME="(中央)TCY OKR SB";
 const ENT_MENU=["A001 招牌蒸鱼头 Signature","A002 酱蒸鱼头（辣椒）Spicy Paste Bean","A003 清蒸鱼头 Steamed with Ginger Silk","A004 炒松鱼头 Stir-Fried","A005 娘惹蒸鱼头 Steamed Nyonya Style","A006 豆豉面豉蒸（咸）鱼头Steamed with Black Bean Taucu","A007 油浸鱼头 Deep-Fried","A008 招牌蒸金凤鱼Signature","A009 酱蒸金凤鱼（辣椒）Steamed with Spicy Paste Bean","A010 清蒸金凤鱼 Steamed with Ginger Silk","A011 炒金凤鱼 Stir-Fried","A012 油浸金凤鱼 Deep-Fried","A013 娘惹蒸金凤鱼 Steamed with Nyonya Style","A014 娘惹炸金凤鱼 Deep-Fried with Nyonya Style","A015 咖喱金凤鱼 Curry Red Tilapia","A016 豆豉面豉蒸（咸）金凤鱼Steamed with Black Bean Taucu","A018 咖喱石斑鱼头 Grouper (Curry)","A019 马友鱼 Threadfin (Signature/Steamed/Nyonya Fried/Deep-Fried)","A020 红尾斑/红尾白须公 Catfish (Signature/Steamed)","A021 招牌蒸啦啦 Signature Lala","A022 金香啦啦 Kam Heong Lala","A023 招牌三鲜煲 Mixed Seafood Curry","A024 娘惹蒸苏东 Nyonya Style Squid","A025 招牌蒸苏东 Signature Squid","A026 炸苏东 Deep-Fried Squid","A027 椒盐苏东 Salt & Pepper Squid","A028 咸蛋苏东 Salted Egg Yolk Fried Squid","A029 招牌蒸大头虾 Signature King Prawn","A030 干煎大头虾 Pan-Fried King Prawn (min. 2只)","A031 招牌蒸老虎虾 Signature Tiger Prawn","A032 干煎老虎虾 Pan-Fried Tiger Prawn","A033 咸蛋炒老虎虾 Salted Egg Yolk Tiger Prawn","A034 卤猪脚 Signature Stewed Pork","A035 五香肉卷 Lo Bak","A036 南乳炸肉 Deep-Fried Marinated Pork","A037 咕噜肉 Sweet and Sour Pork","A038 冬菜蒸猪肉 Dong Choi Steam Meat Patty","A039 咖喱排骨 Curry Pork Ribs","A040 豉汁排骨 Black Bean Paste Pork Ribs","A041 咸鱼花腩煲 Claypot Pork Belly with Salted Fish","A042 琵琶鸭 Pipa Duck","A043 南乳炸鸡 Deep-Fried Marinated Chicken","A044 三杯鸡 Taiwan Style Chicken","A045 飞鸡翼 Chicken Wing with Sauce (min. 4只)","A046 纪子当归菜园鸡 Signature Herb Chicken","A047 田七 Tien Chi","A048 油麦 Yau Mak","A049 蕹菜 Kang Kung","A050 番薯叶 Sweet Potato Leaf","A051 帝王苗 Dai Wong Miu","A052 乃白 Nai Bak","A053 芽菜 Bean Sprout","A054 青龙菜 Qing Long","A055 四大天王 Spicy Mixed Vegetable","A056 青龙菜炒芽菜 Stir-Fried Bean Sprout with Qing Long","A057 招牌豆腐 Signature Fried Beancurd","A058 葱油豆腐 Scallion Steamed Beancurd","A059 铁板豆腐 Sizzling Beancurd","A060 荷包蛋 Poached Egg","A061 蒸蛋 Omelette","A062 大葱蛋 Onion Omelette","A063 苦瓜蛋 Bitter Gourd Omelette","A064 三皇蛋 Three Flavours Steam Egg","A065 蒸水蛋 Steamed Egg","A066 菜圃蒸蛋 Chai Po Omelette","A067 虾仁煎蛋 Shrimp Omelette","A067s 老黄瓜炖瘦肉 Chinese Melon Soup","A068 西洋菜汤炖瘦肉 Watercress Soup","A069 花生粉葛汤 Peanuts & Arrowroot Soup","B008 凉水（热/冷）Homemade (Hot/Cold)","B009 竹蔗马蹄 Sugarcane","B010 洋参菊花 Chrysanthemum","B011 金玉米 Ai Yu","B012 100号 100 Plus","B013 可乐 Coca Cola","B014 啤酒 Tiger","B015 黑啤酒 Guinness","B001 香片 Heong Pin","B002 普洱 Pou Lei","B003 铁观音 Tit Koon Yam","B004 菊普 Guk Pou","B005 寿玉 Sau Mei","B006 菊花 Chrysanthemum","Z01 卤猪脚饭 Signature Stewed Pork Rice","Z02 咕佬肉饭 Sweet and Sour Pork Rice","Z03 咖喱排骨饭 Curry Pork Rib Rice","Z04 豉汁排骨饭Black Bean Paste Pork Rib Rice","Z05 炒饭 Fried Rice","Z06 虾仁炒饭 Shrimp Fried Rice","Z07 叁巴炒饭 Sambal Fried Rice","Z08 海鲜炒饭 Seafood Fried Rice","Z09 咸鱼炒饭 Salted Fish Fried Rice","Z11 冬菜蒸猪肉饭 Dong Choi Steam Meat Patty Rice","Z13 肉碎豆腐饭 Beancurd w Minced Pork Rice","C01 咖喱杂菜 Curry Mix Vegetabales","其他 Others"];
 const WASTE_ITEMS=["Singature Fishead 松鱼头","Red Tilapia 金凤鱼","Ma you 马友鱼","Catfish 白须公","Grouper Head 石斑鱼头","Old Chicken 鸡肉","Taiwan Chicken 鸡二度","Fried Chicken 鸡二度","Chciken Wing 鸡翅膀","Babi 猪肉","Kaki Babi 猪手","Deep Fried Pork 去皮花肉","Sweet and Sour pork 后腿肉（咕噜肉）","Minced meat 肉碎","Black Bean Pork Ribs 豆豉排骨","Curry Pork Ribs 咖喱排骨","Lobak 五香肉卷","Tian Qi 田七","You Mak 油麦","Kang Kung 蕹菜","Sweet Potato leaf 番薯苗","Di Wong Miu 帝王苗","Nai Bak 乃白","Tau gek 芽菜","Qing Long 青龙菜","Bitter Gourd 苦瓜","Spicy Mixed Vege （Lady finger 羊角豆）","Spicy Mixed Vege （Petai 臭豆）","Curry vege (Cabbage 包菜)","Spicy Mixed Vege （Long Bean 豆角）","Spicy Mixed Vege （Egg plant 矮瓜）","Egg 鸡蛋","Sizzling Tofu 铁板豆腐","Signature Tofu 招牌豆腐","Scallion Steamed Tofu 葱油豆腐","Sotong 苏东","Udang 虾","King Prawn 大头虾","Tiger Prawn老虎虾","Signature LaLa 啦啦（沙白）","Kam Heong LaLa 啦啦（花甲）","PIPA Duck 琵琶鸭（5-7&假日）","Steamed Herb Chicken 菜园鸡","Chinese Melon Soup老黄瓜汤","Watercress Soup 西洋菜汤","Peanut & Arrowroot Soup 花生粉葛汤","未列入上表的品项 Items not listed above"];
 const WASTE_REASONS=["Hư hỏng 变质 Spoilage","错单 Wrong order","顾客退回 Customer return"];
@@ -639,7 +648,7 @@ function statusOf(d){if(d<=14)return{t:"健康",e:"Fresh",c:"p-g"};if(d<=30)retu
 function stTxt(s){return LANG==="zh"?s.t:s.e;}
 
 /* ================= 数据种子 ================= */
-const BUILD="0919mk19";  // 版本标记：页面右上/网格提示可见，用来确认已载入最新版
+const BUILD="0919mk20";  // 版本标记：页面右上/网格提示可见，用来确认已载入最新版
 const SEED_VERSION="bh-master-2026-09-1";  // 版本变更→下次载入自动重置为最新主数据（仅本店云端）
 function seed(outletId){
   const isCK = outletId==="ck";
@@ -1285,14 +1294,27 @@ function setMF(f){moveFilter=f;render();}
 let apSel=null;
 function setApSel(s){apSel=s;render();window.scrollTo(0,0);}
 function backAp(){apSel=null;render();window.scrollTo(0,0);}
-function apSupOf(o){return o.supplier||'(中央)TCY OKR SB';}
+function apSupOf(o){return o.supplier||CK_SUPPLIER_NAME;}
 function apOrders(){return (typeof ORDERS!=='undefined'?ORDERS:[]).filter(o=>o&&o.status==='confirmed'&&o.outlet===curOutlet);}
+/* 进货单(按供应商/按日 key in 的每一笔)自动出现在应付账款；中央厨房不算在内，
+   中央厨房走「订货单→Invoice」那一套(apOrders 已经处理)。 */
+function apGridGroups(){
+  const rows=(d().purchases||[]).filter(r=>r.supplier&&r.supplier!==CK_SUPPLIER_NAME&&(+r.qty||0)>0);
+  const map={};
+  rows.forEach(r=>{const k=r.supplier+'|'+r.date;(map[k]=map[k]||{supplier:r.supplier,date:r.date,rows:[]}).rows.push(r);});
+  return Object.values(map).map(g=>({
+    id:'grid|'+g.supplier+'|'+g.date, isGrid:true, supplier:g.supplier, date:g.date,
+    invoiceNo:gridInv('purchase',g.supplier,g.date),
+    items:g.rows.map(r=>({name:r.item,q:r.qty,price:r.unitPrice,amt:+r.price||0})),
+    ta:g.rows.reduce((s,r)=>s+(+r.price||0),0),
+  }));
+}
 function apPaidMap(){d().apPaid=d().apPaid||{};return d().apPaid;}
 function apIsPaid(sup){const m=apPaidMap()[sup];return !!(m&&m.paid);}
 function apCanWrite(){return canW('ap');}
 function apCanUnpay(){return ['owner','area','hrmgr','outletmgr','manager','headchef'].includes(curRole)&&!isAgg();}
 function apItems(o){return [...(o.lines||[]).map(l=>({name:(l.d||'').replace(/\n/g,' / '),q:l.q,price:l.price})),...(o.uniform||[]).map(u=>({name:(LANG==="zh"?'制服 Size ':'Uniform Size ')+u.size,q:u.q,price:u.price}))];}
-function apSupReconciled(sup){const ords=apOrders().filter(o=>apSupOf(o)===sup);return ords.length>0&&ords.every(o=>o.reconciled);}
+function apSupReconciled(sup){const ords=apOrders().filter(o=>apSupOf(o)===sup);return ords.every(o=>o.reconciled);} // 只看订货单/Invoice 那一批；进货单不用逐项核对，本身就是已入库的实际记录
 async function apUnpay(sup){
   if(!apCanUnpay()){alert(LANG==="zh"?"无权限改回『未付款』。":"No permission to revert.");return;}
   if(!confirm(LANG==="zh"?("改回『未付款』？— "+sup):"Mark as UNPAID?"))return;
@@ -1363,30 +1385,32 @@ async function setApRec(id,i,v){const o=orderById(id);if(!o)return;o.reconcile=o
 async function apConfirmCorrect(id){const o=orderById(id);if(!o)return;if(!confirm(LANG==="zh"?"确认此单已和实体 Invoice 核对无误？":"Confirm this order is correct?"))return;o.reconciled=true;o.reconciledBy=curUser?curUser.name:ROLES[curRole].name;o.reconciledAt=Date.now();await saveOrders();render();}
 async function apReReconcile(id){const o=orderById(id);if(!o)return;if(!['owner','area','hrmgr','outletmgr','manager','headchef'].includes(curRole)){alert(LANG==="zh"?"无权限重新核对。":"No permission to re-open.");return;}if(!confirm(LANG==="zh"?"重新核对？会清除所有 ✔/✗，需要重新逐项核对。":"Re-open? All ✔/✗ will be cleared."))return;o.reconciled=false;o.reconcile={};await saveOrders();render();}
 /* 付款金额比对：现金少付/多付提示 */
-function apSupTotal(sup){return apOrders().filter(o=>apSupOf(o)===sup).reduce((a,o)=>a+orderTotals(o).ta,0);}
+function apSupTotal(sup){const ordTot=apOrders().filter(o=>apSupOf(o)===sup).reduce((a,o)=>a+orderTotals(o).ta,0);const gridTot=apGridGroups().filter(g=>g.supplier===sup).reduce((a,g)=>a+g.ta,0);return ordTot+gridTot;}
 function apPaidAmt(sup){const m=apPaidMap()[sup];if(!m||!m.paid)return 0;return (m.amount!=null&&m.amount!=='')?(+m.amount||0):apSupTotal(sup);}
 function apShort(sup){const m=apPaidMap()[sup];if(!m||!m.paid||m.amount==null||m.amount==='')return 0;return +(apSupTotal(sup)-(+m.amount||0)).toFixed(2);}
 function pgAp(){
   const zh=LANG==="zh";const w=apCanWrite();
   if(isAgg())return `<div class="fb"><h2 class="h" style="margin:0;">💳 ${zh?"应付账款":"Payables"}</h2></div><div class="hint">${zh?"请在右上角切换到某一分店查看该店的应付账款。":"Switch to a branch."}</div>`;
-  const all=apOrders();
-  // 分组：供应商 → 该店已确认的 Invoice 列表
+  const all=apOrders();const gridAll=apGridGroups();
+  // 分组：供应商 → 该店已确认的 Invoice 列表(订货单/中央厨房) + 进货单按日笔数(一般供应商)
   const groups={};all.forEach(o=>{const s=apSupOf(o);(groups[s]=groups[s]||[]).push(o);});
+  gridAll.forEach(g=>{if(!groups[g.supplier])groups[g.supplier]=[];});
   const sups=Object.keys(groups).sort();
   // —— 供应商列表 ——
   if(!apSel){
-    let owed=0,unpaidN=0,paidTot=0,paidN=0,shortN=0,shortTot=0;sups.forEach(s=>{const tot=groups[s].reduce((a,o)=>a+orderTotals(o).ta,0);if(apIsPaid(s)){paidN++;paidTot+=apPaidAmt(s);const sh=apShort(s);if(sh>0.005){shortN++;shortTot+=sh;}}else{unpaidN++;owed+=tot;}});
-    const cards=sups.map(s=>{const ords=groups[s];const tot=ords.reduce((a,o)=>a+orderTotals(o).ta,0);const sh=apShort(s);const invNos=ords.map(o=>o.invoiceNo).filter(Boolean).join('、');
+    let owed=0,unpaidN=0,paidTot=0,paidN=0,shortN=0,shortTot=0;sups.forEach(s=>{const tot=apSupTotal(s);if(apIsPaid(s)){paidN++;paidTot+=apPaidAmt(s);const sh=apShort(s);if(sh>0.005){shortN++;shortTot+=sh;}}else{unpaidN++;owed+=tot;}});
+    const cards=sups.map(s=>{const ords=groups[s];const gcnt=gridAll.filter(g=>g.supplier===s).length;const tot=apSupTotal(s);const sh=apShort(s);const invNos=ords.map(o=>o.invoiceNo).filter(Boolean).join('、');
+      const cntLabel=[ords.length?(ords.length+' '+(zh?'张 Invoice':'invoices')):'',gcnt?(gcnt+' '+(zh?'天进货':'days goods-in')):''].filter(Boolean).join(' + ');
       return `<div class="card" style="padding:13px;margin-bottom:9px;${sh>0.005?'border:2px solid #d92d20;background:#fef2f2;':(sh<-0.005?'border:2px solid #0891b2;background:#ecfeff;':'')}">
         <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap;">
           <div><div style="font-weight:800;font-size:15px;">🏢 ${oEsc(s)}</div>
-          <div class="mini">${ords.length} ${zh?"张 Invoice":"invoices"} · ${zh?"应付":"Due"} ${money(tot)}</div>
+          <div class="mini">${cntLabel} · ${zh?"应付":"Due"} ${money(tot)}</div>
           ${sh>0.005?`<div class="mini" style="color:#d92d20;font-weight:800;">⚠️ ${zh?"少付":"Short"} RM${num(sh,2)}（${zh?"实付":"paid"} ${money(apPaidAmt(s))}）· ${oEsc(invNos)}</div>`:(sh<-0.005?`<div class="mini" style="color:#0891b2;font-weight:800;">💧 ${zh?"多付":"Over"} RM${num(-sh,2)}（${zh?"实付":"paid"} ${money(apPaidAmt(s))}）· ${oEsc(invNos)}</div>`:'')}</div>
           <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;justify-content:flex-end;">
             <button class="btn ghost sm" onclick="setApSel('${s.replace(/'/g,"\\'")}')">📋 ${zh?"订单状态":"Status"}</button>
             ${apPaidBtn(s)}
           </div>
-        </div></div>`;}).join('')||`<div class="empty">${zh?"暂无已确认的订单。请先在『采购进销 → 订货单』下单并确认。":"No confirmed invoices yet."}</div>`;
+        </div></div>`;}).join('')||`<div class="empty">${zh?"暂无应付记录。请先在『采购进销 → 进货单』key in 货物，或在『订货单』下单并确认。":"No payables yet."}</div>`;
     return `<div class="fb"><h2 class="h" style="margin:0;">💳 ${zh?"应付账款":"Payables"} <span class="tag">${nm(outletObj())}</span></h2><button class="btn ghost sm" onclick="nav('proc')">← ${zh?"返回":"Back"}</button></div>
       <div class="hint">${zh?"点『订单状态』→ 看该店的 Invoice → 逐项核对(✔/✗)→ 按『订单正确』；付款后按『未付款』改为已付款。":"Tap Status to reconcile; mark paid."}</div>
       ${shortN?`<div class="al al-r" style="margin-bottom:10px;"><div class="t">⚠️ ${zh?"有少付":"Underpaid"}</div>${zh?("共 "+shortN+" 家供应商现金少付，合计 RM"+num(shortTot,2)+"。红色卡片即是。"):(shortN+" vendors short, total RM"+num(shortTot,2))}</div>`:''}
@@ -1422,8 +1446,19 @@ function pgAp(){
         <div class="mini">${dt} · ${zh?"下单":"by"} ${oEsc(o.by&&o.by.name||'')} · ${zh?"金额":"Total"} ${money(t.ta)}</div></div>
       <div style="overflow:auto;margin-top:6px;"><table class="odtbl"><thead><tr><th>${zh?"品名":"Item"}</th><th class="c" style="width:70px;">${zh?"数量":"Qty"}</th><th class="c" style="width:80px;">${zh?"单价":"Price"}</th><th class="c" style="width:90px;">${zh?"金额":"Amt"}</th><th class="c" style="width:96px;">${zh?"核对":"Check"}</th></tr></thead><tbody>${rows}</tbody></table></div>
       <div style="display:flex;justify-content:flex-end;gap:8px;align-items:center;margin-top:8px;flex-wrap:wrap;">${foot}</div>
-    </div>`;}).join('')||`<div class="empty">${zh?"此供应商暂无已确认 Invoice。":"No invoices."}</div>`;
-  return head+`<div class="hint">${zh?"把这里的 Invoice 和你手上的实体单逐项核对：对的按✔、不对/缺货按✗，全部核对后按『订单正确』。付款后在右上角把『未付款』改成『已付款』。":"Reconcile each item, then Order Correct; mark paid at top-right."}</div>${blocks}`;
+    </div>`;}).join('');
+  // 进货单：按日 key in 的货物，本身就是已入库的实际记录，不用再逐项核对，直接列出
+  const gridOrds=gridAll.filter(g=>g.supplier===apSel).slice().sort((a,b)=>(b.date||'').localeCompare(a.date||''));
+  const gridBlocks=gridOrds.map(g=>{
+    const rows=g.items.map(it=>`<tr><td>${oEsc(it.name)}</td><td class="c">${oEsc(it.q)}</td><td class="c">${it.price?money(it.price):'-'}</td><td class="c">${it.amt?money(it.amt):'-'}</td></tr>`).join('');
+    return `<div class="card" style="padding:12px;margin-bottom:10px;">
+      <div style="display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap;align-items:center;">
+        <div style="font-weight:800;">📦 ${oEsc(g.invoiceNo||(zh?'进货单':'Goods-In'))}</div>
+        <div class="mini">${g.date} · ${zh?"进货单":"Goods-in"} · ${zh?"金额":"Total"} ${money(g.ta)}</div></div>
+      <div style="overflow:auto;margin-top:6px;"><table class="odtbl"><thead><tr><th>${zh?"品名":"Item"}</th><th class="c" style="width:70px;">${zh?"数量":"Qty"}</th><th class="c" style="width:80px;">${zh?"单价":"Price"}</th><th class="c" style="width:90px;">${zh?"金额":"Amt"}</th></tr></thead><tbody>${rows}</tbody></table></div>
+    </div>`;}).join('');
+  const noneMsg=(blocks||gridBlocks)?'':`<div class="empty">${zh?"此供应商暂无应付记录。":"No payables."}</div>`;
+  return head+`<div class="hint">${zh?"『订货单』Invoice 要逐项核对(✔/✗)后按『订单正确』；『进货单』本身就是当天实际入库的记录，不用另外核对。付款后在右上角把『未付款』改成『已付款』。":"Order-sheet invoices need reconciling; goods-in entries are payable as entered. Mark paid at top-right."}</div>${blocks}${gridBlocks}${noneMsg}`;
 }
 
 /* ================= 订单发票（订货单确认后的 Invoice 库：供应商 → 月份 → Invoice）================= */
@@ -3207,13 +3242,15 @@ function gridRec(mod,sup,cid,date){const arr=d()[ledgerCfg(mod).arr]||[];return 
 /* 只更新合计、不重画整表 → 输入即时不卡顿 */
 function gridRecalc(mod,sup){
   const month=gridCurMonth||ledgerMonth;const cat=ensureGridCat(sup);const dates=gridDates(mod,sup,month);
+  const isP=mod==='purchase';
   const q=(cid,dt)=>{const r=gridRec(mod,sup,cid,dt);return r?(+r.qty||0):0;};
+  const amtOf=(cid,dt)=>{const r=gridRec(mod,sup,cid,dt);return r?(+r.price||0):0;}; // 进货单：每格已经存好自己的金额(数量×当天价钱)
   const dayTot=new Array(dates.length).fill(0);let grand=0;
-  cat.forEach((c,i)=>{const pr=+c.price||0;let tq=0;
-    dates.forEach((dt,j)=>{const qq=q(c.cid,dt);tq+=qq;dayTot[j]+=qq*pr;});
-    const amt=tq*pr;grand+=amt;
+  cat.forEach((c,i)=>{const pr=+c.price||0;let tq=0,ta=0;
+    dates.forEach((dt,j)=>{const qq=q(c.cid,dt);tq+=qq;const a=isP?amtOf(c.cid,dt):qq*pr;ta+=a;dayTot[j]+=a;});
+    grand+=ta;
     const eq=document.getElementById('gtq-'+i);if(eq)eq.textContent=num(tq,2);
-    const ea=document.getElementById('gta-'+i);if(ea)ea.textContent=money(amt);});
+    const ea=document.getElementById('gta-'+i);if(ea)ea.textContent=money(ta);});
   dates.forEach((dt,j)=>{const ed=document.getElementById('gtd-'+j);if(ed)ed.textContent=money(dayTot[j]);});
   const gg=document.getElementById('gtg');if(gg)gg.textContent=money(grand);
 }
@@ -3233,6 +3270,41 @@ async function setGridQty(mod,sup,cid,date,val){
   gridRecalc(mod,sup);gridSave(mod,sup); // 即时算合计；存档延后防卡
 }
 async function setGridPrice(mod,sup,cid,val){const price=+val||0;const c=gridCatRow(sup,cid);if(c)c.price=price;const arr=d()[ledgerCfg(mod).arr]||[];arr.forEach(r=>{if(r.supplier===sup&&r.cid===cid){r.unitPrice=price;r.price=+((+r.qty||0)*price).toFixed(2);}});gridRecalc(mod,sup);gridSave(mod,sup);}
+/* 进货单专用：每一格自己填数量/当天价钱(/重量)，不再共用一整月的单价。
+   价钱每天可能不同，所以每格都要重算一次加权成本：先把这一格旧的数量扣回(不追溯成本，
+   跟原本 setGridQty 的做法一致)，再用新的数量 × 这天填的价钱重新入库。 */
+async function setGridCell(mod,sup,cid,date,field,val){
+  if(mod!=='purchase')return; // 目前只有「进货单」改成按日填价；退货/月末盘点维持原本共用单价的做法
+  const cfg=ledgerCfg(mod);d()[cfg.arr]=d()[cfg.arr]||[];const arr=d()[cfg.arr];
+  const cat=gridCatRow(sup,cid);const item=cat?cat.name:'';
+  let rec=arr.find(r=>r.supplier===sup&&r.cid===cid&&r.date===date);
+  const oldQty=rec?+rec.qty||0:0;
+  if(!rec){rec={supplier:sup,date,cid,item,code:cat?cat.code:'',qty:0,weight:0,unitPrice:0,price:0,note:''};arr.push(rec);}
+  if(field==='qty')rec.qty=+val||0;
+  else if(field==='price')rec.unitPrice=+val||0;
+  else if(field==='weight')rec.weight=+val||0;
+  if(cat){rec.code=cat.code;rec.uom=cat.uom||'';}
+  rec.item=item;rec.invoice=gridInv(mod,sup,date);
+  const newQty=+rec.qty||0;
+  rec.price=+(newQty*(+rec.unitPrice||0)).toFixed(2);
+  if(oldQty>0)invUnreceive(item,oldQty);
+  if(newQty>0)invReceive(item,newQty,rec.price,null,null,date);
+  else{const i=arr.indexOf(rec);if(i>=0)arr.splice(i,1);}
+  gridRecalc(mod,sup);gridSave(mod,sup);
+}
+/* 输入当下(还没存档前)就先更新这一格自己显示的『总数』，存档交给 onchange→setGridCell */
+function gridCellRecalc(el){
+  const box=el.closest('.gcw');if(!box)return;
+  let qty=0,price=0;box.querySelectorAll('input[data-f]').forEach(inp=>{const v=+inp.value||0;if(inp.dataset.f==='qty')qty=v;else if(inp.dataset.f==='price')price=v;});
+  const amt=box.querySelector('.gcamt');if(amt)amt.textContent=(qty&&price)?money(qty*price):'-';
+}
+function gridCellHTML(mod,sup,cid,date,w){
+  const r=gridRec(mod,sup,cid,date);
+  const qty=r?(+r.qty||0):0,price=r?(+r.unitPrice||0):0,weight=r?(+r.weight||0):0,amt=r?(+r.price||0):0;
+  const fish=FISH_SUPPLIERS.includes(sup);const S=gEsc(sup);const zh=LANG==="zh";const dis=w?'':'disabled';
+  const wtIn=fish?`<input type="number" step="0.01" placeholder="${zh?'重量':'Wt'}" data-f="weight" value="${weight||''}" ${dis} oninput="gridCellRecalc(this)" onchange="setGridCell('${mod}','${S}','${cid}','${date}','weight',this.value)">`:'';
+  return `<div class="gcw">${wtIn}<input type="number" step="0.01" placeholder="${zh?'数量':'Qty'}" data-f="qty" value="${qty||''}" ${dis} oninput="gridCellRecalc(this)" onchange="setGridCell('${mod}','${S}','${cid}','${date}','qty',this.value)"><input type="number" step="0.01" placeholder="${zh?'当天价钱':'Price'}" data-f="price" value="${price||''}" ${dis} oninput="gridCellRecalc(this)" onchange="setGridCell('${mod}','${S}','${cid}','${date}','price',this.value)"><div class="gcamt">${amt?money(amt):'-'}</div></div>`;
+}
 async function addGridItem(sup){const n=(prompt(LANG==="zh"?"新增品项名称：":"New item name:")||'').trim();if(!n)return;const cat=ensureGridCat(sup);const it=findItem(n);cat.push({cid:gridCid(),name:n,code:'',uom:it?it.unit:'',spec:'',price:it?+it.cost||0:0});await save();render();} // 允许重复品项
 async function delGridItem(mod,sup,cid,month){const c=gridCatRow(sup,cid);const item=c?c.name:'';if(!confirm((LANG==="zh"?"移除品项『"+item+"』？会删除它本月的录入。":"Remove item "+item+"?")))return;const cat=ensureGridCat(sup);const i=cat.findIndex(x=>x.cid===cid);if(i>=0)cat.splice(i,1);const arr=d()[ledgerCfg(mod).arr]||[];for(let k=arr.length-1;k>=0;k--){const r=arr[k];if(r.supplier===sup&&r.cid===cid&&(r.date||'').slice(0,7)===month){if(mod==='purchase')invUnreceive(r.item,+r.qty||0);arr.splice(k,1);}}await save();render();}
 async function addGridDate(mod,sup,month){const def=(TODAY.slice(0,7)===month)?TODAY:(month+'-01');const dt=(prompt(LANG==="zh"?"添加日期 (YYYY-MM-DD)：":"Add date (YYYY-MM-DD):",def)||'').trim();if(!/^\d{4}-\d{2}-\d{2}$/.test(dt))return;if(dt.slice(0,7)!==month)return alert(LANG==="zh"?"日期必须在本月内":"Date must be in this month");const key=mod+'|'+sup+'|'+month;d().gridExtra=d().gridExtra||{};d().gridExtra[key]=d().gridExtra[key]||[];if(!d().gridExtra[key].includes(dt))d().gridExtra[key].push(dt);await save();render();}
@@ -3240,29 +3312,31 @@ async function delGridDate(mod,sup,month,date){if(!confirm((LANG==="zh"?"删除�
 function gridTable(mod,sup,month){
   gridCurMonth=month; // 记录本表实际月份，合计计算(gridRecalc)以此为准
   const zh=LANG==="zh";const w=subCanW(mod);const CI='style="width:62px;padding:4px 5px;font-size:12px;border:1px solid var(--line);border-radius:5px;"';
+  const isP=mod==='purchase'; // 进货单：每天每格自己填价钱，不再有共用一整月的单价行/列
   const cat=ensureGridCat(sup);const dates=gridDates(mod,sup,month);
   const q=(cid,dt)=>{const r=gridRec(mod,sup,cid,dt);return r?(+r.qty||0):'';};
   const rQty=c=>dates.reduce((s,dt)=>s+(+q(c.cid,dt)||0),0);
-  const rAmt=c=>rQty(c)*(+c.price||0);
+  const rAmt=c=>isP?dates.reduce((s,dt)=>{const r=gridRec(mod,sup,c.cid,dt);return s+(r?+r.price||0:0);},0):rQty(c)*(+c.price||0);
+  const dayAmt=dt=>cat.reduce((s,c)=>{if(isP){const r=gridRec(mod,sup,c.cid,dt);return s+(r?+r.price||0:0);}return s+(+q(c.cid,dt)||0)*(+c.price||0);},0);
   const grand=cat.reduce((s,c)=>s+rAmt(c),0);
   const inv=dt=>gridInv(mod,sup,dt);
   const S=gEsc(sup);
   const controls=w?`<div style="display:flex;gap:6px;margin:8px 0;flex-wrap:wrap;"><button class="btn gold sm" onclick="addGridItem('${S}')">+ ${zh?"品项":"Item"}</button><span class="mini" style="align-self:center;color:var(--muted);">${zh?"☰拖动排序 · ⧉复制 · 🗑删除":"☰ drag reorder · ⧉ copy · 🗑 delete"}</span></div>`:'';
   const rowCtl=(c,arrows)=>w?`<div class="growctl"><span class="ib gdrag" draggable="true" title="${zh?'按住拖动排序（可拉到最上/最下）':'Drag to reorder'}" ondragstart="gridDragStart(event,'${c.cid}')" ondragover="gridDragOver(event)" ondragleave="gridDragLeave(event)" ondrop="gridDrop(event,'${mod}','${S}','${c.cid}')" ondragend="gridDragEnd(event)">☰</span><span class="ib" title="${zh?'复制此品项':'Duplicate'}" onclick="dupGridItem('${mod}','${S}','${c.cid}')">⧉</span><span class="ib gidel" title="${zh?'删除品项':'Delete'}" onclick="delGridItem('${mod}','${S}','${c.cid}','${month}')">🗑️</span></div>`:'';
   if(cat.length>10){
-    // 行=品项，列=日期（整月每天）；品名/单位/规格/单价 冻结在左边
-    const head=`<th class="gcode">Code</th><th class="gname">${zh?"品名":"Item"}</th><th class="gunit">${zh?"单位":"Unit"}</th><th class="gpack">${zh?"规格/送货":"Pack"}</th><th class="gprice">${zh?"单价":"Price"}</th>`+dates.map(dt=>`<th class="gcell">${w?`<input placeholder="Invoice No." value="${inv(dt)}" onchange="setGridInv('${mod}','${S}','${dt}',this.value)">`:`<span class="mini">${inv(dt)||'—'}</span>`}<div class="mini" style="margin-top:2px;">${dt.slice(5)}</div></th>`).join('')+`<th>${zh?"合计量":"Total Qty"}</th><th>${zh?"合计RM":"Total RM"}</th>`;
-    const body=cat.map((c,i)=>`<tr><td class="gcode"><input value="${c.code||''}" ${w?'':'disabled'} onchange="setGridCode('${mod}','${S}','${c.cid}',this.value)"></td><td class="gname"><input style="text-align:left;font-weight:700;" value="${(c.name||'').replace(/"/g,'&quot;')}" ${w?'':'disabled'} onchange="setGridName('${mod}','${S}','${c.cid}',this.value)">${rowCtl(c,'ud')}</td><td class="gunit"><input value="${c.uom||''}" ${w?'':'disabled'} onchange="setGridUom('${mod}','${S}','${c.cid}',this.value)"></td><td class="gpack"><input placeholder="10kg x 6/ctn" value="${(c.spec||'').replace(/"/g,'&quot;')}" ${w?'':'disabled'} onchange="setGridSpec('${mod}','${S}','${c.cid}',this.value)"></td><td class="gprice"><input type="number" step="0.01" value="${+c.price||0}" ${w?'':'disabled'} onchange="setGridPrice('${mod}','${S}','${c.cid}',this.value)"></td>${dates.map((dt,j)=>`<td class="gcell"><input type="number" step="0.01" value="${q(c.cid,dt)}" ${w?'':'disabled'} oninput="setGridQty('${mod}','${S}','${c.cid}','${dt}',this.value)"></td>`).join('')}<td class="gtot" id="gtq-${i}">${num(rQty(c),2)}</td><td class="gtot" id="gta-${i}">${money(rAmt(c))}</td></tr>`).join('')||`<tr><td colspan="${7+dates.length}" class="empty">${zh?"点『+ 品项』添加":"Add items"}</td></tr>`;
-    const dailyRow=`<tr class="gsum"><td class="gcode"></td><td class="gname">${zh?"每日合计RM":"Daily Total"}</td><td class="gunit"></td><td class="gpack"></td><td class="gprice"></td>${dates.map((dt,j)=>`<td id="gtd-${j}">${money(cat.reduce((s,c)=>s+(+q(c.cid,dt)||0)*(+c.price||0),0))}</td>`).join('')}<td></td><td></td></tr>`;
-    return `${controls}<div class="gwrap"><table class="gtbl"><thead><tr>${head}</tr></thead><tbody>${body}<tr class="gsum"><td class="gcode"></td><td class="gname">${zh?"本月合计":"Month Total"}</td><td class="gunit"></td><td class="gpack"></td><td class="gprice"></td>${dates.map(()=>'<td></td>').join('')}<td></td><td id="gtg">${money(grand)}</td></tr>${dailyRow}</tbody></table></div>`;
+    // 行=品项，列=日期（整月每天）；品名/单位/规格 冻结在左边(进货单不再有共用单价列)
+    const head=`<th class="gcode">Code</th><th class="gname">${zh?"品名":"Item"}</th><th class="gunit">${zh?"单位":"Unit"}</th><th class="gpack">${zh?"规格/送货":"Pack"}</th>`+(isP?'':`<th class="gprice">${zh?"单价":"Price"}</th>`)+dates.map(dt=>`<th class="gcell${isP?' gcellp':''}">${w?`<input placeholder="Invoice No." value="${inv(dt)}" onchange="setGridInv('${mod}','${S}','${dt}',this.value)">`:`<span class="mini">${inv(dt)||'—'}</span>`}<div class="mini" style="margin-top:2px;">${dt.slice(5)}</div></th>`).join('')+`<th>${zh?"合计量":"Total Qty"}</th><th>${zh?"合计RM":"Total RM"}</th>`;
+    const body=cat.map((c,i)=>`<tr><td class="gcode"><input value="${c.code||''}" ${w?'':'disabled'} onchange="setGridCode('${mod}','${S}','${c.cid}',this.value)"></td><td class="gname"><input style="text-align:left;font-weight:700;" value="${(c.name||'').replace(/"/g,'&quot;')}" ${w?'':'disabled'} onchange="setGridName('${mod}','${S}','${c.cid}',this.value)">${rowCtl(c,'ud')}</td><td class="gunit"><input value="${c.uom||''}" ${w?'':'disabled'} onchange="setGridUom('${mod}','${S}','${c.cid}',this.value)"></td><td class="gpack"><input placeholder="10kg x 6/ctn" value="${(c.spec||'').replace(/"/g,'&quot;')}" ${w?'':'disabled'} onchange="setGridSpec('${mod}','${S}','${c.cid}',this.value)"></td>`+(isP?'':`<td class="gprice"><input type="number" step="0.01" value="${+c.price||0}" ${w?'':'disabled'} onchange="setGridPrice('${mod}','${S}','${c.cid}',this.value)"></td>`)+dates.map((dt,j)=>isP?`<td class="gcell gcellp">${gridCellHTML(mod,sup,c.cid,dt,w)}</td>`:`<td class="gcell"><input type="number" step="0.01" value="${q(c.cid,dt)}" ${w?'':'disabled'} oninput="setGridQty('${mod}','${S}','${c.cid}','${dt}',this.value)"></td>`).join('')+`<td class="gtot" id="gtq-${i}">${num(rQty(c),2)}</td><td class="gtot" id="gta-${i}">${money(rAmt(c))}</td></tr>`).join('')||`<tr><td colspan="${(isP?6:7)+dates.length}" class="empty">${zh?"点『+ 品项』添加":"Add items"}</td></tr>`;
+    const dailyRow=`<tr class="gsum"><td class="gcode"></td><td class="gname">${zh?"每日合计RM":"Daily Total"}</td><td class="gunit"></td><td class="gpack"></td>`+(isP?'':'<td class="gprice"></td>')+dates.map((dt,j)=>`<td id="gtd-${j}">${money(dayAmt(dt))}</td>`).join('')+`<td></td><td></td></tr>`;
+    return `${controls}<div class="gwrap"><table class="gtbl"><thead><tr>${head}</tr></thead><tbody>${body}<tr class="gsum"><td class="gcode"></td><td class="gname">${zh?"本月合计":"Month Total"}</td><td class="gunit"></td><td class="gpack"></td>`+(isP?'':'<td class="gprice"></td>')+`${dates.map(()=>'<td></td>').join('')}<td></td><td id="gtg">${money(grand)}</td></tr>${dailyRow}</tbody></table></div>`;
   }
-  // ≤10：行=日期（整月每天），列=品项；上方 单价 / 单位 / 规格 行；日期冻结在左边
+  // ≤10：行=日期（整月每天），列=品项；上方 单位/规格 行(进货单不再有共用单价行)；日期冻结在左边
   const head=`<th class="gdate">${zh?"日期":"Date"}</th><th>Invoice No.</th>`+cat.map(c=>`<th>${w?`<div class="gih"><input style="font-weight:700;" value="${(c.name||'').replace(/"/g,'&quot;')}" onchange="setGridName('${mod}','${S}','${c.cid}',this.value)">${rowCtl(c,'lr')}</div>`:c.name}</th>`).join('')+`<th>${zh?"当日RM":"Amt"}</th>`;
   const codeRow=`<tr class="ghdr"><td class="gdate ghlab">Code</td><td></td>${cat.map(c=>`<td><input value="${c.code||''}" ${w?'':'disabled'} onchange="setGridCode('${mod}','${S}','${c.cid}',this.value)"></td>`).join('')}<td></td></tr>`;
-  const priceRow=`<tr class="ghdr"><td class="gdate ghlab">${zh?"单价RM":"Price"}</td><td></td>${cat.map(c=>`<td><input type="number" step="0.01" value="${+c.price||0}" ${w?'':'disabled'} onchange="setGridPrice('${mod}','${S}','${c.cid}',this.value)"></td>`).join('')}<td></td></tr>`;
+  const priceRow=isP?'':`<tr class="ghdr"><td class="gdate ghlab">${zh?"单价RM":"Price"}</td><td></td>${cat.map(c=>`<td><input type="number" step="0.01" value="${+c.price||0}" ${w?'':'disabled'} onchange="setGridPrice('${mod}','${S}','${c.cid}',this.value)"></td>`).join('')}<td></td></tr>`;
   const uomRow=`<tr class="ghdr"><td class="gdate ghlab">${zh?"单位":"Unit"}</td><td></td>${cat.map(c=>`<td><input value="${c.uom||''}" ${w?'':'disabled'} onchange="setGridUom('${mod}','${S}','${c.cid}',this.value)"></td>`).join('')}<td></td></tr>`;
   const specRow=`<tr class="ghdr ghdr-end"><td class="gdate ghlab">${zh?"规格":"Pack"}</td><td></td>${cat.map(c=>`<td><input placeholder="10kg x 6/ctn" value="${(c.spec||'').replace(/"/g,'&quot;')}" ${w?'':'disabled'} onchange="setGridSpec('${mod}','${S}','${c.cid}',this.value)"></td>`).join('')}<td></td></tr>`;
-  const body=dates.map((dt,j)=>{const dayAmt=cat.reduce((s,c)=>s+(+q(c.cid,dt)||0)*(+c.price||0),0);return `<tr><td class="gdate">${dt.slice(5)}</td><td>${w?`<input placeholder="Invoice No." value="${inv(dt)}" onchange="setGridInv('${mod}','${S}','${dt}',this.value)">`:(inv(dt)||'—')}</td>${cat.map((c,i)=>`<td class="gcell"><input type="number" step="0.01" value="${q(c.cid,dt)}" ${w?'':'disabled'} oninput="setGridQty('${mod}','${S}','${c.cid}','${dt}',this.value)"></td>`).join('')}<td class="gtot" id="gtd-${j}">${money(dayAmt)}</td></tr>`;}).join('')||`<tr><td colspan="${cat.length+3}" class="empty">${zh?"点『+ 品项』添加品项":"Add items"}</td></tr>`;
+  const body=dates.map((dt,j)=>{const da=dayAmt(dt);return `<tr><td class="gdate">${dt.slice(5)}</td><td>${w?`<input placeholder="Invoice No." value="${inv(dt)}" onchange="setGridInv('${mod}','${S}','${dt}',this.value)">`:(inv(dt)||'—')}</td>${cat.map((c,i)=>isP?`<td class="gcell gcellp">${gridCellHTML(mod,sup,c.cid,dt,w)}</td>`:`<td class="gcell"><input type="number" step="0.01" value="${q(c.cid,dt)}" ${w?'':'disabled'} oninput="setGridQty('${mod}','${S}','${c.cid}','${dt}',this.value)"></td>`).join('')}<td class="gtot" id="gtd-${j}">${money(da)}</td></tr>`;}).join('')||`<tr><td colspan="${cat.length+3}" class="empty">${zh?"点『+ 品项』添加品项":"Add items"}</td></tr>`;
   return `${controls}<div class="gwrap"><table class="gtbl"><thead><tr>${head}</tr></thead><tbody>${cat.length?codeRow+priceRow+uomRow+specRow:''}${body}<tr class="gsum"><td class="gdate">${zh?"合计":"Total"}</td><td></td>${cat.map((c,i)=>`<td id="gta-${i}">${money(rAmt(c))}</td>`).join('')}<td id="gtg">${money(grand)}</td></tr></tbody></table></div>`;
 }
 
