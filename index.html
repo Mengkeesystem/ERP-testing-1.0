@@ -633,7 +633,7 @@ function statusOf(d){if(d<=14)return{t:"健康",e:"Fresh",c:"p-g"};if(d<=30)retu
 function stTxt(s){return LANG==="zh"?s.t:s.e;}
 
 /* ================= 数据种子 ================= */
-const BUILD="0919mk16";  // 版本标记：页面右上/网格提示可见，用来确认已载入最新版
+const BUILD="0919mk17";  // 版本标记：页面右上/网格提示可见，用来确认已载入最新版
 const SEED_VERSION="bh-master-2026-09-1";  // 版本变更→下次载入自动重置为最新主数据（仅本店云端）
 function seed(outletId){
   const isCK = outletId==="ck";
@@ -969,7 +969,7 @@ function auditLog(act,detail,oldv,newv){
 function can(p){return ROLES[curRole].can.includes(p);}
 // 作业中心(proc)只要拥有任一子作业权限即可进入；子页与页面级访问统一由 pageAllowed 判定
 function hasAnyOp(){return ['proc','transfer','waste','ent','stock'].some(p=>can(p));}
-function pageAllowed(p){if(p==='proc')return hasAnyOp();if(p==='monthly')return can('report');if(p==='opexm')return can('opex');if(p==='payrun')return can('payroll')&&canSeeSalary();if(p==='orderinv')return ['owner','area','manager','headchef'].includes(curRole);if(typeof PROC_SUB!=='undefined'&&PROC_SUB[p])return can(PROC_SUB[p]);return can(p);}
+function pageAllowed(p){if(p==='proc')return hasAnyOp();if(p==='monthly')return can('report');if(p==='opexm')return can('opex');if(p==='payrun')return can('payroll')&&canSeeSalary();if(p==='orderinv')return ['owner','area','hrmgr','manager','headchef'].includes(curRole);if(typeof PROC_SUB!=='undefined'&&PROC_SUB[p])return can(PROC_SUB[p]);return can(p);}
 function firstAllowedPage(){const order=['dash','attend','leave','payroll','hr','schedule','sales','inv','proc','ck','stock','opex','ap','bom','report','settings'];for(const p of order)if(pageAllowed(p))return p;return 'dash';}
 function canW(p){if(isAgg())return false;if((p==='payroll'||p==='payrun')&&ROLES[curRole].salaryLock)return false;return can(p);} // 汇总视图只读；店面经理薪资只读(锁死)
 function renderTop(){
@@ -1284,7 +1284,7 @@ function apOrders(){return (typeof ORDERS!=='undefined'?ORDERS:[]).filter(o=>o&&
 function apPaidMap(){d().apPaid=d().apPaid||{};return d().apPaid;}
 function apIsPaid(sup){const m=apPaidMap()[sup];return !!(m&&m.paid);}
 function apCanWrite(){return canW('ap');}
-function apCanUnpay(){return ['owner','area'].includes(curRole)&&!isAgg();}
+function apCanUnpay(){return ['owner','area','hrmgr'].includes(curRole)&&!isAgg();}
 function apItems(o){return [...(o.lines||[]).map(l=>({name:(l.d||'').replace(/\n/g,' / '),q:l.q,price:l.price})),...(o.uniform||[]).map(u=>({name:(LANG==="zh"?'制服 Size ':'Uniform Size ')+u.size,q:u.q,price:u.price}))];}
 function apSupReconciled(sup){const ords=apOrders().filter(o=>apSupOf(o)===sup);return ords.length>0&&ords.every(o=>o.reconciled);}
 async function apUnpay(sup){
@@ -1355,7 +1355,7 @@ function apPaidBtn(sup){const paid=apIsPaid(sup);const m=apPaidMap()[sup];const 
 }
 async function setApRec(id,i,v){const o=orderById(id);if(!o)return;o.reconcile=o.reconcile||{};o.reconcile[i]=(o.reconcile[i]===v?'':v);await saveOrders();render();}
 async function apConfirmCorrect(id){const o=orderById(id);if(!o)return;if(!confirm(LANG==="zh"?"确认此单已和实体 Invoice 核对无误？":"Confirm this order is correct?"))return;o.reconciled=true;o.reconciledBy=curUser?curUser.name:ROLES[curRole].name;o.reconciledAt=Date.now();await saveOrders();render();}
-async function apReReconcile(id){const o=orderById(id);if(!o)return;if(!['owner','area'].includes(curRole)){alert(LANG==="zh"?"已核对后仅区域副经理及以上可重开。":"Only Area+ can re-open.");return;}if(!confirm(LANG==="zh"?"重新核对？会清除所有 ✔/✗，需要重新逐项核对。":"Re-open? All ✔/✗ will be cleared."))return;o.reconciled=false;o.reconcile={};await saveOrders();render();}
+async function apReReconcile(id){const o=orderById(id);if(!o)return;if(!['owner','area','hrmgr'].includes(curRole)){alert(LANG==="zh"?"已核对后仅区域副经理及以上可重开。":"Only Area+ can re-open.");return;}if(!confirm(LANG==="zh"?"重新核对？会清除所有 ✔/✗，需要重新逐项核对。":"Re-open? All ✔/✗ will be cleared."))return;o.reconciled=false;o.reconcile={};await saveOrders();render();}
 /* 付款金额比对：现金少付/多付提示 */
 function apSupTotal(sup){return apOrders().filter(o=>apSupOf(o)===sup).reduce((a,o)=>a+orderTotals(o).ta,0);}
 function apPaidAmt(sup){const m=apPaidMap()[sup];if(!m||!m.paid)return 0;return (m.amount!=null&&m.amount!=='')?(+m.amount||0):apSupTotal(sup);}
@@ -1408,7 +1408,7 @@ function pgAp(){
     const badCnt=items.filter((it,i)=>(o.reconcile||{})[i]==='x').length;
     const allMarked=items.length>0&&items.every((it,i)=>(o.reconcile||{})[i]);
     const foot=o.reconciled
-      ? `<div class="pill p-g">${zh?"✅ 订单正确":"Correct"}${o.reconciledBy?(' · '+oEsc(o.reconciledBy)):''}</div>${['owner','area'].includes(curRole)?`<button class="btn ghost sm" onclick="apReReconcile('${o.id}')">${zh?"重新核对":"Re-open"}</button>`:''}`
+      ? `<div class="pill p-g">${zh?"✅ 订单正确":"Correct"}${o.reconciledBy?(' · '+oEsc(o.reconciledBy)):''}</div>${['owner','area','hrmgr'].includes(curRole)?`<button class="btn ghost sm" onclick="apReReconcile('${o.id}')">${zh?"重新核对":"Re-open"}</button>`:''}`
       : `${badCnt?`<span class="mini neg">${zh?("有 "+badCnt+" 项打叉"):badCnt+" flagged"}</span>`:''}${w?(allMarked?`<button class="btn brand sm" onclick="apConfirmCorrect('${o.id}')">✅ ${zh?"订单正确":"Order Correct"}</button>`:`<button class="btn sm" disabled style="opacity:.5;cursor:not-allowed;">✅ ${zh?"订单正确":"Order Correct"}</button><span class="mini" style="opacity:.7;">${zh?"请先把每一项都核对(✔/✗)":"Mark every item first"}</span>`):''}`;
     return `<div class="card" style="padding:12px;margin-bottom:10px;">
       <div style="display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap;align-items:center;">
@@ -1427,7 +1427,7 @@ function setOiMonth(m){oiMonth=m;render();window.scrollTo(0,0);}
 function backOi(){if(oiMonth)oiMonth=null;else oiSel=null;render();window.scrollTo(0,0);}
 function oiInvoices(){return (typeof ORDERS!=='undefined'?ORDERS:[]).filter(o=>o&&o.status==='confirmed'&&o.invoiceNo&&o.outlet===curOutlet);}
 function oiMonthOf(o){return new Date(o.confirmedAt||o.ts).toLocaleDateString('en-CA').slice(0,7);}
-function oiCanDel(){return ['owner','area'].includes(curRole)&&!isAgg();}
+function oiCanDel(){return ['owner','area','hrmgr'].includes(curRole)&&!isAgg();}
 async function delInvoice(id){if(!oiCanDel()){alert(LANG==="zh"?"只有区域副经理及以上可删除 Invoice。":"Only Area Manager & above can delete.");return;}if(!confirm(LANG==="zh"?"删除此 Invoice？此操作无法复原。":"Delete this invoice?"))return;await loadOrders();ORDERS=ORDERS.filter(o=>o.id!==id);await saveOrders();try{if(typeof auditLog==='function')auditLog(LANG==="zh"?"删除Invoice":"Delete invoice",id,"","");}catch(e){}render();}
 function pgOrderInv(){
   const zh=LANG==="zh";
@@ -2120,8 +2120,8 @@ let ckTab='prod';
 function setCkTab(t){ckTab=t;render();window.scrollTo(0,0);}
 function oEsc(s){return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
 /* 权限：区域副经理及以上可改 DESCRIPTION / 增删品项；店长及以下(厨师长)只能改数量 QTY */
-function ckCanOrderDesc(){return ['owner','area'].includes(curRole)&&!isAgg();}
-function ckCanOrderQty(){return ['owner','area','manager','headchef'].includes(curRole)&&!isAgg();}
+function ckCanOrderDesc(){return ['owner','area','hrmgr'].includes(curRole)&&!isAgg();}
+function ckCanOrderQty(){return ['owner','area','hrmgr','manager','headchef'].includes(curRole)&&!isAgg();}
 function ckCanOrderAccess(){return can('ck')||ckCanOrderQty();}
 function orderStore(){return DB['ck']||d();}
 function orderView(){const s=orderStore();return s.orderList||ORDER_SEED;}
@@ -2165,7 +2165,7 @@ function orderListHTML(){
   const wDesc=ckCanOrderDesc();const wQty=ckCanOrderQty();const sz=ordSize();
   const submitBtn=wQty?`<button class="btn brand sm" onclick="submitOrder()">🛒 ${LANG==="zh"?"下单":"Place Order"}</button>`:'';
   const sizeCtl=`<div class="seg sm" style="margin:0;"><button class="${sz==='s'?'active':''}" onclick="setOrdSize('s')">${LANG==="zh"?"小":"S"}</button><button class="${sz==='m'?'active':''}" onclick="setOrdSize('m')">${LANG==="zh"?"中":"M"}</button><button class="${sz==='l'?'active':''}" onclick="setOrdSize('l')">${LANG==="zh"?"大":"L"}</button></div>`;
-  const bar=`<div class="fb" style="align-items:center;flex-wrap:wrap;gap:8px;"><div class="obanner">TCY OKR SDN BHD · ${LANG==="zh"?"中央厨房订货表":"Central Kitchen Order List"}</div><div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;"><span class="mini" style="opacity:.7;">${LANG==="zh"?"大小":"Size"}</span>${sizeCtl}${submitBtn}<button class="btn ghost sm" onclick="printOrder()">🖨️ ${LANG==="zh"?"打印":"Print"}</button>${['owner','area'].includes(curRole)?`<button class="btn ghost sm" onclick="openOrdersPanel()">📥 ${LANG==="zh"?"收到的订单":"Orders"}${orderUnreadCount()?` (${orderUnreadCount()})`:''}</button>`:''}${wDesc?`<button class="btn ghost sm" onclick="orderResetSeed()">↩︎ ${LANG==="zh"?"还原原表":"Reset"}</button>`:''}</div></div>`;
+  const bar=`<div class="fb" style="align-items:center;flex-wrap:wrap;gap:8px;"><div class="obanner">TCY OKR SDN BHD · ${LANG==="zh"?"中央厨房订货表":"Central Kitchen Order List"}</div><div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;"><span class="mini" style="opacity:.7;">${LANG==="zh"?"大小":"Size"}</span>${sizeCtl}${submitBtn}<button class="btn ghost sm" onclick="printOrder()">🖨️ ${LANG==="zh"?"打印":"Print"}</button>${['owner','area','hrmgr'].includes(curRole)?`<button class="btn ghost sm" onclick="openOrdersPanel()">📥 ${LANG==="zh"?"收到的订单":"Orders"}${orderUnreadCount()?` (${orderUnreadCount()})`:''}</button>`:''}${wDesc?`<button class="btn ghost sm" onclick="orderResetSeed()">↩︎ ${LANG==="zh"?"还原原表":"Reset"}</button>`:''}</div></div>`;
   const note=wDesc?(LANG==="zh"?"照订货表填『数量 QTY』；DESCRIPTION 与数量都能改，也能『+品项』或 🗑️ 删除。填好按『🛒 下单』提交。":"Fill QTY; description & rows editable. Press Place Order to submit.")
                   :(LANG==="zh"?"填『数量 QTY』后按『🛒 下单』提交（会通知老板与区域副经理）。品名与描述由区域副经理及以上维护。":"Fill QTY then Place Order (owner & area manager get notified).");
   const hint=`<div class="hint">${note} ${LANG==="zh"?"图片/文字大小可用右上『小/中/大』调整。":"Use S/M/L to resize."} <span class="mini" style="opacity:.6;">build ${BUILD}</span></div>`;
@@ -2182,9 +2182,9 @@ function ordSeenKey(){return 'ordSeen:'+((curUser&&curUser.email)||'demo');}
 function ordNotifKey(){return 'ordNotified:'+((curUser&&curUser.email)||'demo');}
 function getNotified(){try{return JSON.parse(localStorage.getItem(ordNotifKey())||'{}');}catch(e){return {};}}
 function setNotified(m){try{localStorage.setItem(ordNotifKey(),JSON.stringify(m));}catch(e){}}
-function orderUnreadCount(){if(!['owner','area'].includes(curRole))return 0;const seen=+(localStorage.getItem(ordSeenKey())||0);return ORDERS.filter(o=>o.ts>seen).length;}
+function orderUnreadCount(){if(!['owner','area','hrmgr'].includes(curRole))return 0;const seen=+(localStorage.getItem(ordSeenKey())||0);return ORDERS.filter(o=>o.ts>seen).length;}
 function markOrdersSeen(){const latest=ORDERS.reduce((m,o)=>Math.max(m,o.ts),0);localStorage.setItem(ordSeenKey(),String(latest));updateBell();}
-function updateBell(){const bell=document.getElementById('bellBtn');if(!bell)return;const show=['owner','area'].includes(curRole);bell.style.display=show?'':'none';const n=orderUnreadCount();const bc=document.getElementById('bellCount');if(bc){bc.style.display=n?'':'none';bc.textContent=n>99?'99+':n;}}
+function updateBell(){const bell=document.getElementById('bellBtn');if(!bell)return;const show=['owner','area','hrmgr'].includes(curRole);bell.style.display=show?'':'none';const n=orderUnreadCount();const bc=document.getElementById('bellCount');if(bc){bc.style.display=n?'':'none';bc.textContent=n>99?'99+':n;}}
 /* 提示音：一声“叮”，响亮 + 约2秒余音（像手机信息提示，WebAudio，无需音频文件）*/
 function primeAudio(){try{_audioCtx=_audioCtx||new (window.AudioContext||window.webkitAudioContext)();if(_audioCtx.state==='suspended')_audioCtx.resume();}catch(e){}}
 function playBeep(){
@@ -2226,7 +2226,7 @@ function fireNotify(order,extra){
 /* 按订单ID逐单去重：每一张新单都会响铃+弹通知（不再只弹第一次）*/
 function notifyNewOrders(silent){
   updateBell();
-  if(!['owner','area'].includes(curRole))return;
+  if(!['owner','area','hrmgr'].includes(curRole))return;
   const done=getNotified();
   const fresh=ORDERS.filter(o=>o&&o.id&&!done[o.id]);
   if(!fresh.length)return;
@@ -2244,7 +2244,7 @@ async function enablePushSub(){
   try{
     if(!('serviceWorker'in navigator)||!('PushManager'in window))return{ok:false,reason:'unsupported'};
     if(!VAPID_PUBLIC||!AUTH())return{ok:false,reason:'nocloud'};
-    if(!['owner','area'].includes(curRole))return{ok:false,reason:'role'};
+    if(!['owner','area','hrmgr'].includes(curRole))return{ok:false,reason:'role'};
     if(!('Notification'in window)||Notification.permission!=='granted')return{ok:false,reason:'perm'};
     const reg=_swReg||await navigator.serviceWorker.ready;
     let sub=await reg.pushManager.getSubscription();
@@ -2265,7 +2265,7 @@ async function sendOrderPush(order){
     await fetch(PUSH_FN_URL,{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+token,'apikey':SUPABASE_ANON_KEY},body:JSON.stringify({title,body,icon:BH_ICON})});
   }catch(e){}
 }
-function startOrderPoll(){if(_ordPollT)clearInterval(_ordPollT);if(!CLOUD)return;_ordPollT=setInterval(async()=>{if(!['owner','area'].includes(curRole))return;if(_orderEditing||ordersWritePending())return;await loadOrders();notifyNewOrders();},10000);}
+function startOrderPoll(){if(_ordPollT)clearInterval(_ordPollT);if(!CLOUD)return;_ordPollT=setInterval(async()=>{if(!['owner','area','hrmgr'].includes(curRole))return;if(_orderEditing||ordersWritePending())return;await loadOrders();notifyNewOrders();},10000);}
 async function submitOrder(){
   const o=orderView();
   const gather=k=>(o[k]||[]).filter(it=>!it.divider&&String(it.q||'').trim()!=='').map(it=>({d:it.d,q:it.q}));
@@ -2352,7 +2352,7 @@ function openOrderDetail(id){
 }
 async function deleteOrder(id){if(!confirm(LANG==="zh"?"删除此订单记录？":"Delete this order?"))return;await orderEditFlush();ORDERS=ORDERS.filter(o=>o.id!==id);await saveOrders();openOrdersPanel();}
 /* 确认订单(仅区域副经理及以上) → 生成 Invoice 编号 */
-function canConfirmOrder(){return ['owner','area'].includes(curRole);}
+function canConfirmOrder(){return ['owner','area','hrmgr'].includes(curRole);}
 function nextInvoiceNo(){
   const day=new Date().toLocaleDateString('en-CA').replace(/-/g,'');
   const n=ORDERS.filter(o=>o.invoiceNo&&o.invoiceNo.indexOf('INV-'+day)===0).length+1;
@@ -2439,7 +2439,7 @@ async function submitSheetOrder(sup){
   alert(LANG==="zh"?("✅ 已向 "+sup+" 下单！共 "+lines.length+" 项，已通知老板与区域副经理。"):("✅ Order to "+sup+" placed."));
 }
 function osTable(sup){
-  const wDesc=['owner','area'].includes(curRole)&&!isAgg();
+  const wDesc=['owner','area','hrmgr'].includes(curRole)&&!isAgg();
   const wQty=subCanW('ordersheet');
   const a=osData(sup);const sz=ordSize();
   const cols=1+1+(wDesc?1:0);
