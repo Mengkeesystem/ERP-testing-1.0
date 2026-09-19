@@ -650,7 +650,7 @@ function statusOf(d){if(d<=14)return{t:"健康",e:"Fresh",c:"p-g"};if(d<=30)retu
 function stTxt(s){return LANG==="zh"?s.t:s.e;}
 
 /* ================= 数据种子 ================= */
-const BUILD="0919mk25";  // 版本标记：页面右上/网格提示可见，用来确认已载入最新版
+const BUILD="0919mk26";  // 版本标记：页面右上/网格提示可见，用来确认已载入最新版
 const SEED_VERSION="bh-master-2026-09-1";  // 版本变更→下次载入自动重置为最新主数据（仅本店云端）
 function seed(outletId){
   const isCK = outletId==="ck";
@@ -2254,6 +2254,27 @@ async function addOrderItem(k){orderEdit()[k].push({d:'',imgs:[],q:''});await sa
 async function delOrderItem(k,i){const o=orderEdit();const it=o[k][i];if(!confirm(LANG==="zh"?("移除『"+((it.d||it.divider||'').split('\n')[0])+"』？"):"Remove this item?"))return;o[k].splice(i,1);await save('ck');render();}
 function setUniformQty(i,v){orderEdit().uniform[i].q=v;orderSave();}
 async function orderResetSeed(){if(!confirm(LANG==="zh"?"还原为原始订货表？你所有的改动（数量/品项）都会清空。":"Reset to original order list? All edits will be cleared."))return;const s=orderStore();delete s.orderList;await save('ck');render();}
+/* 这个分店如果已经存过自己的订货单(填过数量/改过品项)，系统会一直用那份存档，
+   不会再看程式码里最新版的 ORDER_SEED——所以后来在 ORDER_SEED 补上的照片，
+   这些已经存档过的分店看不到。这个工具只把「缺照片、品项文字完全没改过」的
+   那些行，从 ORDER_SEED 把照片补进来，不会动到已经填的数量，也不会动到
+   已经被改过品名的行(避免补错)。 */
+async function orderFillImages(){
+  const zh=LANG==="zh";const s=orderStore();
+  if(!s.orderList){alert(zh?"目前用的就是最新的原始订货表，本来就有照片，不用补。":"Already using the latest seed list with images.");return;}
+  if(!confirm(zh?"从原始订货表把缺的照片补进你现在这份订货单？不会动到你已经填的数量/品项文字。":"Backfill missing images from the seed list, without touching your quantities/text?"))return;
+  let n=0;
+  ["A","B","C"].forEach(k=>{
+    const list=s.orderList[k]||[];const seed=ORDER_SEED[k]||[];
+    list.forEach(it=>{
+      if(it.divider||(it.imgs&&it.imgs.length))return; // 分隔行跳过；已经有图的不动
+      const match=seed.find(si=>si.d===it.d); // 品项文字要完全一样才补，避免配错
+      if(match&&match.imgs&&match.imgs.length){it.imgs=match.imgs.slice();n++;}
+    });
+  });
+  await save('ck');render();
+  alert(zh?`已补上 ${n} 个品项的图片。`:`Backfilled images for ${n} items.`);
+}
 function printOrder(){window.print();}
 function divStyle(txt){txt=txt||'';if(/VEGE/i.test(txt))return'background:#16a34a;';if(/MEAT/i.test(txt))return'background:#eab308;color:#3b2f00;';return'background:#7c3aed;';}
 function orderImgs(it){const a=(it.imgs&&it.imgs.length)?it.imgs:(it.img?[it.img]:[]);return a.map(u=>`<img src="${u}" alt="" loading="lazy">`).join('');}
@@ -2285,7 +2306,7 @@ function orderListHTML(){
   const wDesc=ckCanOrderDesc();const wQty=ckCanOrderQty();const sz=ordSize();
   const submitBtn=wQty?`<button class="btn brand sm" onclick="submitOrder()">🛒 ${LANG==="zh"?"下单":"Place Order"}</button>`:'';
   const sizeCtl=`<div class="seg sm" style="margin:0;"><button class="${sz==='s'?'active':''}" onclick="setOrdSize('s')">${LANG==="zh"?"小":"S"}</button><button class="${sz==='m'?'active':''}" onclick="setOrdSize('m')">${LANG==="zh"?"中":"M"}</button><button class="${sz==='l'?'active':''}" onclick="setOrdSize('l')">${LANG==="zh"?"大":"L"}</button></div>`;
-  const bar=`<div class="fb" style="align-items:center;flex-wrap:wrap;gap:8px;"><div class="obanner">TCY OKR SDN BHD · ${LANG==="zh"?"中央厨房订货表":"Central Kitchen Order List"}</div><div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;"><span class="mini" style="opacity:.7;">${LANG==="zh"?"大小":"Size"}</span>${sizeCtl}${submitBtn}<button class="btn ghost sm" onclick="printOrder()">🖨️ ${LANG==="zh"?"打印":"Print"}</button>${['owner','area','hrmgr'].includes(curRole)?`<button class="btn ghost sm" onclick="openOrdersPanel()">📥 ${LANG==="zh"?"收到的订单":"Orders"}${orderUnreadCount()?` (${orderUnreadCount()})`:''}</button>`:''}${wDesc?`<button class="btn ghost sm" onclick="orderResetSeed()">↩︎ ${LANG==="zh"?"还原原表":"Reset"}</button>`:''}</div></div>`;
+  const bar=`<div class="fb" style="align-items:center;flex-wrap:wrap;gap:8px;"><div class="obanner">TCY OKR SDN BHD · ${LANG==="zh"?"中央厨房订货表":"Central Kitchen Order List"}</div><div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;"><span class="mini" style="opacity:.7;">${LANG==="zh"?"大小":"Size"}</span>${sizeCtl}${submitBtn}<button class="btn ghost sm" onclick="printOrder()">🖨️ ${LANG==="zh"?"打印":"Print"}</button>${['owner','area','hrmgr'].includes(curRole)?`<button class="btn ghost sm" onclick="openOrdersPanel()">📥 ${LANG==="zh"?"收到的订单":"Orders"}${orderUnreadCount()?` (${orderUnreadCount()})`:''}</button>`:''}${wDesc?`<button class="btn ghost sm" onclick="orderFillImages()">🖼️ ${LANG==="zh"?"补齐图片":"Fill images"}</button><button class="btn ghost sm" onclick="orderResetSeed()">↩︎ ${LANG==="zh"?"还原原表":"Reset"}</button>`:''}</div></div>`;
   const note=wDesc?(LANG==="zh"?"照订货表填『数量 QTY』；DESCRIPTION 与数量都能改，也能『+品项』或 🗑️ 删除。填好按『🛒 下单』提交。":"Fill QTY; description & rows editable. Press Place Order to submit.")
                   :(LANG==="zh"?"填『数量 QTY』后按『🛒 下单』提交（会通知老板与区域副经理）。品名与描述由区域副经理及以上维护。":"Fill QTY then Place Order (owner & area manager get notified).");
   const hint=`<div class="hint">${note} ${LANG==="zh"?"图片/文字大小可用右上『小/中/大』调整。":"Use S/M/L to resize."} <span class="mini" style="opacity:.6;">build ${BUILD}</span></div>`;
