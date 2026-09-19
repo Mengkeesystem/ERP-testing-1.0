@@ -648,7 +648,7 @@ function statusOf(d){if(d<=14)return{t:"健康",e:"Fresh",c:"p-g"};if(d<=30)retu
 function stTxt(s){return LANG==="zh"?s.t:s.e;}
 
 /* ================= 数据种子 ================= */
-const BUILD="0919mk21";  // 版本标记：页面右上/网格提示可见，用来确认已载入最新版
+const BUILD="0919mk22";  // 版本标记：页面右上/网格提示可见，用来确认已载入最新版
 const SEED_VERSION="bh-master-2026-09-1";  // 版本变更→下次载入自动重置为最新主数据（仅本店云端）
 function seed(outletId){
   const isCK = outletId==="ck";
@@ -1223,7 +1223,8 @@ function pgInv(){
   const addBtns=`<div style="display:flex;gap:6px;flex-wrap:wrap;">
       <button class="btn ghost sm" onclick="openM('suggest')">🤖 ${zh?"建议订货":"Suggest"}</button>
       ${canW('proc')?`<button class="btn gold sm" onclick="openM('item')">+ ${zh?"品项":"Item"}</button>`:''}
-      ${canW('proc')?`<button class="btn ghost sm" onclick="bulkAddForm('item')">📋 ${zh?"批量导入":"Bulk"}</button>`:''}</div>`;
+      ${canW('proc')?`<button class="btn ghost sm" onclick="bulkAddForm('item')">📋 ${zh?"批量导入":"Bulk"}</button>`:''}
+      ${canW('proc')?`<button class="btn ghost sm" onclick="recalcCostForm()">🔧 ${zh?"用月均价重算成本":"Recalc cost from month avg"}</button>`:''}</div>`;
   // 按供应商分组
   const groups={};(x.items||[]).forEach(i=>{const s=itemSupplier(i.name);(groups[s]=groups[s]||[]).push(i);});
   const tHead=`<thead><tr><th>${zh?"品名":"Item"}</th><th>${zh?"库存":"Qty"}</th><th>${zh?"加权单价":"W.Cost"}</th><th>${zh?"净料成本":"Net Cost"}</th><th>${zh?"库存值":"Value"}</th><th>${zh?"批次/状态":"Batch"}</th>${canW('proc')?`<th>${zh?"操作":"Action"}</th>`:''}</tr></thead>`;
@@ -1557,6 +1558,25 @@ function monthAvgPrice(month,item){ // 原料当月加权平均进价（锁定�
   if(mc&&mc.locked&&mc.avgPrices&&(item in mc.avgPrices))return mc.avgPrices[item];
   let amt=0,qty=0;(d().purchases||[]).forEach(r=>{if((r.date||'').slice(0,7)===month&&r.item===item){amt+=(+r.price||0);qty+=(+r.qty||0);}});
   return qty?amt/qty:0;
+}
+/* 修复工具：把每个品项的加权成本，改成用某个月份的实际进货记录重算出来的月均价。
+   monthAvgPrice 是直接从 d().purchases 原始记录算的，不受库存那边加权成本被污染影响，
+   用来「重置」被污染的加权成本很干净。只会改有当月进货记录的品项，没有记录的不动。 */
+function recalcCostForm(){
+  const zh=LANG==="zh";
+  openForm(`<h3>🔧 ${zh?"用月均价重算加权成本":"Recalc weighted cost from month avg"} <span class="x" onclick="closeM()">×</span></h3>
+    <div class="mini" style="margin-bottom:10px;">${zh?"只会改「这个月有进货记录」的品项：把它的加权成本改成这个月的实际采购总额 ÷ 总数量。没有进货记录的品项不会被改动。适合用来修正之前因为操作/系统问题被弄错的成本。":"Only affects items purchased in this month: cost is reset to (total amount ÷ total qty) for that month."}</div>
+    <div class="fr"><label>${zh?"月份 (YYYY-MM)":"Month"}</label><input id="rc_month" value="${TODAY.slice(0,7)}"></div>
+    <button class="btn block brand" onclick="recalcCostRun()">✅ ${zh?"确认重算":"Recalculate"}</button>`);
+}
+async function recalcCostRun(){
+  const zh=LANG==="zh";const month=(document.getElementById('rc_month')?.value||'').trim();
+  if(!/^\d{4}-\d{2}$/.test(month)){alert(zh?"月份格式要 YYYY-MM":"Format must be YYYY-MM");return;}
+  if(!confirm(zh?`确定用 ${month} 的月均价重算所有有进货记录的品项成本？这会覆盖它们目前的加权成本。`:`Recalculate cost for items purchased in ${month}? This overwrites their current weighted cost.`))return;
+  const items=d().items||[];let n=0;
+  items.forEach(it=>{const avg=monthAvgPrice(month,it.name);if(avg>0){it.cost=+avg.toFixed(4);n++;}});
+  await save();closeM();render();
+  alert((zh?`已用 ${month} 的月均价重算了 ${n} 个品项的加权成本。`:`Recalculated ${n} items using ${month} average.`));
 }
 function monthMaterials(month){ // 当月采购原料汇总
   const m={};(d().purchases||[]).forEach(r=>{if((r.date||'').slice(0,7)!==month)return;const k=r.item||'—';if(!m[k])m[k]={item:k,qty:0,amt:0};m[k].qty+=(+r.qty||0);m[k].amt+=(+r.price||0);});
