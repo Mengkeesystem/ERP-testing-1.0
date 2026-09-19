@@ -50,7 +50,7 @@ language sql security definer set search_path = public stable
 as $$
   select exists(
     select 1 from public.erp_users
-    where email = public.my_email() and active = true and role in ('owner','area')
+    where email = public.my_email() and active = true and role in ('owner','area','hrmgr')
   );
 $$;
 

@@ -556,15 +556,18 @@ const DISH_CATALOG=[
 ];
 
 const ROLES={
-  owner:{name:"老板/人事经理 Owner/HR",en:"Owner / HR Manager",
+  owner:{name:"老板 Owner",en:"Owner",
     can:["dash","sales","inv","proc","transfer","ck","stock","waste","ent","bom","ap","opex","report","hr","attend","schedule","leave","payroll","settings"],
-    allBranch:true, hrScope:"all", salaryView:"full", approveLeave:true, canEditPerms:true}, // 全权：含财务、人力财务(个人明细)、所有分店、系统设置
+    allBranch:true, hrScope:"all", salaryView:"full", salaryLock:true, approveLeave:true, canEditPerms:true}, // 全权：含财务、人力财务(个人明细)、所有分店、系统设置；薪资发放只读(锁死)，实际发放交人事经理处理
+  hrmgr:{name:"人事经理 HR Manager",en:"HR Manager",
+    can:["dash","sales","inv","proc","transfer","ck","stock","waste","ent","bom","ap","opex","report","hr","attend","schedule","leave","payroll","settings"],
+    allBranch:true, hrScope:"all", salaryView:"full", approveLeave:true, canEditPerms:true}, // 权限与老板相同；唯一能实际处理『薪资发放』的角色(不锁死)；后台手动分配，不走邀请码注册
   area:{name:"区域副经理 Area A.M.",en:"Area Assistant Manager",
     can:["dash","sales","inv","proc","transfer","stock","waste","ent","bom","ap","opex","report","hr","attend","schedule","leave","payroll","settings"],
     allBranch:true, hrScope:"all", salaryView:"total", approveLeave:true, canEditPerms:true}, // 全分店(不含中央厨房)；人力财务只看总数(不看个人薪水)
   outletmgr:{name:"店面经理 Outlet P.I.C",en:"Outlet P.I.C",
-    can:["dash","inv","proc","stock","waste","ent","bom","opex","report","ap","hr","attend","schedule","leave"],
-    allBranch:false, hrScope:"branch", salaryView:"self", approveLeave:true}, // 本店负责人：不含中央厨房、不跨店；不能看薪资/Payroll(只看自己的)
+    can:["dash","inv","proc","stock","waste","ent","bom","opex","report","ap","hr","attend","schedule","leave","payroll"],
+    allBranch:false, hrScope:"branch", salaryView:"full", salaryLock:true, approveLeave:true}, // 本店负责人：可看本店每位员工薪水(锁死只读，不能处理发放)；不含中央厨房、不跨店
   manager:{name:"店长 Manager",en:"Manager",
     can:["dash","inv","proc","stock","waste","opex","report","ap"],
     allBranch:false, hrScope:"branch", salaryView:"self", approveLeave:true}, // 本店采购/盘点/损耗/OpEx录入 + 本店报表
@@ -630,7 +633,7 @@ function statusOf(d){if(d<=14)return{t:"健康",e:"Fresh",c:"p-g"};if(d<=30)retu
 function stTxt(s){return LANG==="zh"?s.t:s.e;}
 
 /* ================= 数据种子 ================= */
-const BUILD="0919mk15";  // 版本标记：页面右上/网格提示可见，用来确认已载入最新版
+const BUILD="0919mk16";  // 版本标记：页面右上/网格提示可见，用来确认已载入最新版
 const SEED_VERSION="bh-master-2026-09-1";  // 版本变更→下次载入自动重置为最新主数据（仅本店云端）
 function seed(outletId){
   const isCK = outletId==="ck";
