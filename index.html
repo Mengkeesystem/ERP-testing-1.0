@@ -650,7 +650,7 @@ function statusOf(d){if(d<=14)return{t:"健康",e:"Fresh",c:"p-g"};if(d<=30)retu
 function stTxt(s){return LANG==="zh"?s.t:s.e;}
 
 /* ================= 数据种子 ================= */
-const BUILD="0919mk23";  // 版本标记：页面右上/网格提示可见，用来确认已载入最新版
+const BUILD="0919mk24";  // 版本标记：页面右上/网格提示可见，用来确认已载入最新版
 const SEED_VERSION="bh-master-2026-09-1";  // 版本变更→下次载入自动重置为最新主数据（仅本店云端）
 function seed(outletId){
   const isCK = outletId==="ck";
@@ -1303,15 +1303,19 @@ function apOrders(){return (typeof ORDERS!=='undefined'?ORDERS:[]).filter(o=>o&&
 /* 进货单(按供应商/按日 key in 的每一笔)自动出现在应付账款；中央厨房不算在内，
    中央厨房走「订货单→Invoice」那一套(apOrders 已经处理)。 */
 function apGridGroups(){
-  const rows=(d().purchases||[]).filter(r=>r.supplier&&r.supplier!==CK_SUPPLIER_NAME&&(+r.qty||0)>0);
+  // 鱼类供应商是用「重量」驱动金额(数量只是参考)，其余供应商用「数量」；两种都要算进来
+  const rows=(d().purchases||[]).filter(r=>r.supplier&&r.supplier!==CK_SUPPLIER_NAME&&((+r.qty||0)>0||(+r.weight||0)>0));
   const map={};
   rows.forEach(r=>{const k=r.supplier+'|'+r.date;(map[k]=map[k]||{supplier:r.supplier,date:r.date,rows:[]}).rows.push(r);});
-  return Object.values(map).map(g=>({
-    id:'grid|'+g.supplier+'|'+g.date, isGrid:true, supplier:g.supplier, date:g.date,
-    invoiceNo:gridInv('purchase',g.supplier,g.date),
-    items:g.rows.map(r=>({name:r.item,q:r.qty,price:r.unitPrice,amt:+r.price||0})),
-    ta:g.rows.reduce((s,r)=>s+(+r.price||0),0),
-  }));
+  return Object.values(map).map(g=>{
+    const fish=FISH_SUPPLIERS.includes(g.supplier);
+    return{
+      id:'grid|'+g.supplier+'|'+g.date, isGrid:true, supplier:g.supplier, date:g.date,
+      invoiceNo:gridInv('purchase',g.supplier,g.date),
+      // 鱼类显示「重量」当数量列(它才是拿去乘价钱算金额的那个数)，其余显示「数量」
+      items:g.rows.map(r=>({name:r.item,q:fish?r.weight:r.qty,price:r.unitPrice,amt:+r.price||0})),
+      ta:g.rows.reduce((s,r)=>s+(+r.price||0),0),
+    };});
 }
 /* 进货单每一笔(供应商+日期)也要核对(✔/✗)后按『订单正确』才算数，跟订货单 Invoice 的做法一致 */
 function apGridRecMap(){d().apGridRec=d().apGridRec||{};return d().apGridRec;}
@@ -3336,36 +3340,43 @@ async function setGridQty(mod,sup,cid,date,val){
 }
 async function setGridPrice(mod,sup,cid,val){const price=+val||0;const c=gridCatRow(sup,cid);if(c)c.price=price;const arr=d()[ledgerCfg(mod).arr]||[];arr.forEach(r=>{if(r.supplier===sup&&r.cid===cid){r.unitPrice=price;r.price=+((+r.qty||0)*price).toFixed(2);}});gridRecalc(mod,sup);gridSave(mod,sup);}
 /* 进货单专用：每一格自己填数量/当天价钱(/重量)，不再共用一整月的单价。
-   价钱每天可能不同，所以每格都要重算一次加权成本：先把这一格旧的数量扣回(不追溯成本，
-   跟原本 setGridQty 的做法一致)，再用新的数量 × 这天填的价钱重新入库。 */
+   价钱每天可能不同，所以每格都要重算一次加权成本：先把这一格旧的「驱动数量」扣回(不追溯成本，
+   跟原本 setGridQty 的做法一致)，再用新的驱动数量 × 这天填的价钱重新入库。
+   鱼类供应商(FISH_SUPPLIERS)是「重量×价钱」算总数、驱动加权成本；其余供应商是「数量×价钱」。
+   鱼类的「数量」(条数/尾数)只是参考记录，不影响金额跟库存。 */
 async function setGridCell(mod,sup,cid,date,field,val){
   if(mod!=='purchase')return; // 目前只有「进货单」改成按日填价；退货/月末盘点维持原本共用单价的做法
   const cfg=ledgerCfg(mod);d()[cfg.arr]=d()[cfg.arr]||[];const arr=d()[cfg.arr];
   const cat=gridCatRow(sup,cid);const item=cat?cat.name:'';
+  const fish=FISH_SUPPLIERS.includes(sup);
   let rec=arr.find(r=>r.supplier===sup&&r.cid===cid&&r.date===date);
-  const oldQty=rec?+rec.qty||0:0;
-  // 只有「数量和价钱都已经填了」的那一笔，才算真的入过库——避免数量先填、价钱还没填时
+  const oldDrive=rec?(fish?+rec.weight||0:+rec.qty||0):0;
+  // 只有「驱动数量和价钱都已经填了」的那一笔，才算真的入过库——避免只填一半时
   // 用金额=0 入库把加权成本冲淡；而 invUnreceive 又不会把成本追溯还原，冲淡了就回不来了。
-  const hadValidOld=oldQty>0&&(rec?+rec.price||0:0)>0;
+  const hadValidOld=oldDrive>0&&(rec?+rec.price||0:0)>0;
   if(!rec){rec={supplier:sup,date,cid,item,code:cat?cat.code:'',qty:0,weight:0,unitPrice:0,price:0,note:''};arr.push(rec);}
   if(field==='qty')rec.qty=+val||0;
   else if(field==='price')rec.unitPrice=+val||0;
   else if(field==='weight')rec.weight=+val||0;
   if(cat){rec.code=cat.code;rec.uom=cat.uom||'';}
   rec.item=item;rec.invoice=gridInv(mod,sup,date);
-  const newQty=+rec.qty||0,newPrice=+rec.unitPrice||0;
-  rec.price=+(newQty*newPrice).toFixed(2);
-  const validNow=newQty>0&&newPrice>0;
-  if(hadValidOld)invUnreceive(item,oldQty);
-  if(validNow)invReceive(item,newQty,rec.price,null,null,date);
-  if(newQty<=0){const i=arr.indexOf(rec);if(i>=0)arr.splice(i,1);}
+  const newQty=+rec.qty||0,newWeight=+rec.weight||0,newPrice=+rec.unitPrice||0;
+  const newDrive=fish?newWeight:newQty;
+  rec.price=+(newDrive*newPrice).toFixed(2);
+  const validNow=newDrive>0&&newPrice>0;
+  if(hadValidOld)invUnreceive(item,oldDrive);
+  if(validNow)invReceive(item,newDrive,rec.price,null,null,date);
+  if(newQty<=0&&newWeight<=0){const i=arr.indexOf(rec);if(i>=0)arr.splice(i,1);} // 数量、重量都清空才算这格没填
   gridRecalc(mod,sup);gridSave(mod,sup);
 }
-/* 输入当下(还没存档前)就先更新这一格自己显示的『总数』，存档交给 onchange→setGridCell */
+/* 输入当下(还没存档前)就先更新这一格自己显示的『总数』，存档交给 onchange→setGridCell
+   有「重量」栏的(鱼类)用 重量×价钱；没有的用 数量×价钱。 */
 function gridCellRecalc(el){
   const box=el.closest('.gcw');if(!box)return;
-  let qty=0,price=0;box.querySelectorAll('input[data-f]').forEach(inp=>{const v=+inp.value||0;if(inp.dataset.f==='qty')qty=v;else if(inp.dataset.f==='price')price=v;});
-  const amt=box.querySelector('.gcamt');if(amt)amt.textContent=(qty&&price)?money(qty*price):'-';
+  let qty=0,price=0,weight=0,hasWeight=false;
+  box.querySelectorAll('input[data-f]').forEach(inp=>{const v=+inp.value||0;if(inp.dataset.f==='qty')qty=v;else if(inp.dataset.f==='price')price=v;else if(inp.dataset.f==='weight'){weight=v;hasWeight=true;}});
+  const drive=hasWeight?weight:qty;
+  const amt=box.querySelector('.gcamt');if(amt)amt.textContent=(drive&&price)?money(drive*price):'-';
 }
 function gridCellHTML(mod,sup,cid,date,w){
   const r=gridRec(mod,sup,cid,date);
