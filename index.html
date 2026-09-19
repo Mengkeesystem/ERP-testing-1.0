@@ -648,7 +648,7 @@ function statusOf(d){if(d<=14)return{t:"健康",e:"Fresh",c:"p-g"};if(d<=30)retu
 function stTxt(s){return LANG==="zh"?s.t:s.e;}
 
 /* ================= 数据种子 ================= */
-const BUILD="0919mk20";  // 版本标记：页面右上/网格提示可见，用来确认已载入最新版
+const BUILD="0919mk21";  // 版本标记：页面右上/网格提示可见，用来确认已载入最新版
 const SEED_VERSION="bh-master-2026-09-1";  // 版本变更→下次载入自动重置为最新主数据（仅本店云端）
 function seed(outletId){
   const isCK = outletId==="ck";
@@ -1309,12 +1309,19 @@ function apGridGroups(){
     ta:g.rows.reduce((s,r)=>s+(+r.price||0),0),
   }));
 }
+/* 进货单每一笔(供应商+日期)也要核对(✔/✗)后按『订单正确』才算数，跟订货单 Invoice 的做法一致 */
+function apGridRecMap(){d().apGridRec=d().apGridRec||{};return d().apGridRec;}
+function apGridKey(sup,date){return sup+'|'+date;}
+function apGridRecState(sup,date){return apGridRecMap()[apGridKey(sup,date)]||{};}
+async function setApGridMark(sup,date,i,v){const k=apGridKey(sup,date);const m=apGridRecMap();m[k]=m[k]||{};m[k].marks=m[k].marks||{};m[k].marks[i]=(m[k].marks[i]===v?'':v);await save();render();}
+async function apGridConfirmCorrect(sup,date){const k=apGridKey(sup,date);const m=apGridRecMap();m[k]=m[k]||{};if(!confirm(LANG==="zh"?"确认此单已核对无误？":"Confirm this is correct?"))return;m[k].reconciled=true;m[k].reconciledBy=curUser?curUser.name:ROLES[curRole].name;m[k].reconciledAt=Date.now();await save();render();}
+async function apGridReReconcile(sup,date){if(!['owner','area','hrmgr','outletmgr','manager','headchef'].includes(curRole)){alert(LANG==="zh"?"无权限重新核对。":"No permission to re-open.");return;}const k=apGridKey(sup,date);const m=apGridRecMap();if(!m[k])return;if(!confirm(LANG==="zh"?"重新核对？会清除所有 ✔/✗，需要重新逐项核对。":"Re-open? All ✔/✗ will be cleared."))return;m[k].reconciled=false;m[k].marks={};await save();render();}
 function apPaidMap(){d().apPaid=d().apPaid||{};return d().apPaid;}
 function apIsPaid(sup){const m=apPaidMap()[sup];return !!(m&&m.paid);}
 function apCanWrite(){return canW('ap');}
 function apCanUnpay(){return ['owner','area','hrmgr','outletmgr','manager','headchef'].includes(curRole)&&!isAgg();}
 function apItems(o){return [...(o.lines||[]).map(l=>({name:(l.d||'').replace(/\n/g,' / '),q:l.q,price:l.price})),...(o.uniform||[]).map(u=>({name:(LANG==="zh"?'制服 Size ':'Uniform Size ')+u.size,q:u.q,price:u.price}))];}
-function apSupReconciled(sup){const ords=apOrders().filter(o=>apSupOf(o)===sup);return ords.every(o=>o.reconciled);} // 只看订货单/Invoice 那一批；进货单不用逐项核对，本身就是已入库的实际记录
+function apSupReconciled(sup){const ords=apOrders().filter(o=>apSupOf(o)===sup);const grids=apGridGroups().filter(g=>g.supplier===sup);return ords.every(o=>o.reconciled)&&grids.every(g=>apGridRecState(g.supplier,g.date).reconciled);}
 async function apUnpay(sup){
   if(!apCanUnpay()){alert(LANG==="zh"?"无权限改回『未付款』。":"No permission to revert.");return;}
   if(!confirm(LANG==="zh"?("改回『未付款』？— "+sup):"Mark as UNPAID?"))return;
@@ -1450,15 +1457,27 @@ function pgAp(){
   // 进货单：按日 key in 的货物，本身就是已入库的实际记录，不用再逐项核对，直接列出
   const gridOrds=gridAll.filter(g=>g.supplier===apSel).slice().sort((a,b)=>(b.date||'').localeCompare(a.date||''));
   const gridBlocks=gridOrds.map(g=>{
-    const rows=g.items.map(it=>`<tr><td>${oEsc(it.name)}</td><td class="c">${oEsc(it.q)}</td><td class="c">${it.price?money(it.price):'-'}</td><td class="c">${it.amt?money(it.amt):'-'}</td></tr>`).join('');
+    const st=apGridRecState(g.supplier,g.date);const gS=g.supplier.replace(/'/g,"\\'");
+    const rows=g.items.map((it,i)=>{const rec=(st.marks||{})[i];
+      return `<tr><td>${oEsc(it.name)}</td><td class="c">${oEsc(it.q)}</td><td class="c">${it.price?money(it.price):'-'}</td><td class="c">${it.amt?money(it.amt):'-'}</td>
+        <td class="c" style="white-space:nowrap;">
+          <span class="ib" style="${rec==='ok'?'background:#dcfce7;border-color:#16a34a;':''}" onclick="setApGridMark('${gS}','${g.date}',${i},'ok')">✔</span>
+          <span class="ib" style="${rec==='x'?'background:#fee2e2;border-color:#dc2626;':''}" onclick="setApGridMark('${gS}','${g.date}',${i},'x')">✗</span>
+        </td></tr>`;}).join('');
+    const badCnt=g.items.filter((it,i)=>(st.marks||{})[i]==='x').length;
+    const allMarked=g.items.length>0&&g.items.every((it,i)=>(st.marks||{})[i]);
+    const foot=st.reconciled
+      ? `<div class="pill p-g">${zh?"✅ 订单正确":"Correct"}${st.reconciledBy?(' · '+oEsc(st.reconciledBy)):''}</div>${['owner','area','hrmgr','outletmgr','manager','headchef'].includes(curRole)?`<button class="btn ghost sm" onclick="apGridReReconcile('${gS}','${g.date}')">${zh?"重新核对":"Re-open"}</button>`:''}`
+      : `${badCnt?`<span class="mini neg">${zh?("有 "+badCnt+" 项打叉"):badCnt+" flagged"}</span>`:''}${w?(allMarked?`<button class="btn brand sm" onclick="apGridConfirmCorrect('${gS}','${g.date}')">✅ ${zh?"订单正确":"Order Correct"}</button>`:`<button class="btn sm" disabled style="opacity:.5;cursor:not-allowed;">✅ ${zh?"订单正确":"Order Correct"}</button><span class="mini" style="opacity:.7;">${zh?"请先把每一项都核对(✔/✗)":"Mark every item first"}</span>`):''}`;
     return `<div class="card" style="padding:12px;margin-bottom:10px;">
       <div style="display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap;align-items:center;">
         <div style="font-weight:800;">📦 ${oEsc(g.invoiceNo||(zh?'进货单':'Goods-In'))}</div>
         <div class="mini">${g.date} · ${zh?"进货单":"Goods-in"} · ${zh?"金额":"Total"} ${money(g.ta)}</div></div>
-      <div style="overflow:auto;margin-top:6px;"><table class="odtbl"><thead><tr><th>${zh?"品名":"Item"}</th><th class="c" style="width:70px;">${zh?"数量":"Qty"}</th><th class="c" style="width:80px;">${zh?"单价":"Price"}</th><th class="c" style="width:90px;">${zh?"金额":"Amt"}</th></tr></thead><tbody>${rows}</tbody></table></div>
+      <div style="overflow:auto;margin-top:6px;"><table class="odtbl"><thead><tr><th>${zh?"品名":"Item"}</th><th class="c" style="width:70px;">${zh?"数量":"Qty"}</th><th class="c" style="width:80px;">${zh?"单价":"Price"}</th><th class="c" style="width:90px;">${zh?"金额":"Amt"}</th><th class="c" style="width:96px;">${zh?"核对":"Check"}</th></tr></thead><tbody>${rows}</tbody></table></div>
+      <div style="display:flex;justify-content:flex-end;gap:8px;align-items:center;margin-top:8px;flex-wrap:wrap;">${foot}</div>
     </div>`;}).join('');
   const noneMsg=(blocks||gridBlocks)?'':`<div class="empty">${zh?"此供应商暂无应付记录。":"No payables."}</div>`;
-  return head+`<div class="hint">${zh?"『订货单』Invoice 要逐项核对(✔/✗)后按『订单正确』；『进货单』本身就是当天实际入库的记录，不用另外核对。付款后在右上角把『未付款』改成『已付款』。":"Order-sheet invoices need reconciling; goods-in entries are payable as entered. Mark paid at top-right."}</div>${blocks}${gridBlocks}${noneMsg}`;
+  return head+`<div class="hint">${zh?"把 Invoice / 进货单 和实体单逐项核对：对的按✔、不对按✗，全部核对后按『订单正确』。付款后在右上角把『未付款』改成『已付款』。":"Reconcile each item, then Order Correct; mark paid at top-right."}</div>${blocks}${gridBlocks}${noneMsg}`;
 }
 
 /* ================= 订单发票（订货单确认后的 Invoice 库：供应商 → 月份 → Invoice）================= */
@@ -3279,17 +3298,21 @@ async function setGridCell(mod,sup,cid,date,field,val){
   const cat=gridCatRow(sup,cid);const item=cat?cat.name:'';
   let rec=arr.find(r=>r.supplier===sup&&r.cid===cid&&r.date===date);
   const oldQty=rec?+rec.qty||0:0;
+  // 只有「数量和价钱都已经填了」的那一笔，才算真的入过库——避免数量先填、价钱还没填时
+  // 用金额=0 入库把加权成本冲淡；而 invUnreceive 又不会把成本追溯还原，冲淡了就回不来了。
+  const hadValidOld=oldQty>0&&(rec?+rec.price||0:0)>0;
   if(!rec){rec={supplier:sup,date,cid,item,code:cat?cat.code:'',qty:0,weight:0,unitPrice:0,price:0,note:''};arr.push(rec);}
   if(field==='qty')rec.qty=+val||0;
   else if(field==='price')rec.unitPrice=+val||0;
   else if(field==='weight')rec.weight=+val||0;
   if(cat){rec.code=cat.code;rec.uom=cat.uom||'';}
   rec.item=item;rec.invoice=gridInv(mod,sup,date);
-  const newQty=+rec.qty||0;
-  rec.price=+(newQty*(+rec.unitPrice||0)).toFixed(2);
-  if(oldQty>0)invUnreceive(item,oldQty);
-  if(newQty>0)invReceive(item,newQty,rec.price,null,null,date);
-  else{const i=arr.indexOf(rec);if(i>=0)arr.splice(i,1);}
+  const newQty=+rec.qty||0,newPrice=+rec.unitPrice||0;
+  rec.price=+(newQty*newPrice).toFixed(2);
+  const validNow=newQty>0&&newPrice>0;
+  if(hadValidOld)invUnreceive(item,oldQty);
+  if(validNow)invReceive(item,newQty,rec.price,null,null,date);
+  if(newQty<=0){const i=arr.indexOf(rec);if(i>=0)arr.splice(i,1);}
   gridRecalc(mod,sup);gridSave(mod,sup);
 }
 /* 输入当下(还没存档前)就先更新这一格自己显示的『总数』，存档交给 onchange→setGridCell */
