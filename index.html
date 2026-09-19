@@ -650,7 +650,7 @@ function statusOf(d){if(d<=14)return{t:"健康",e:"Fresh",c:"p-g"};if(d<=30)retu
 function stTxt(s){return LANG==="zh"?s.t:s.e;}
 
 /* ================= 数据种子 ================= */
-const BUILD="0919mk24";  // 版本标记：页面右上/网格提示可见，用来确认已载入最新版
+const BUILD="0919mk25";  // 版本标记：页面右上/网格提示可见，用来确认已载入最新版
 const SEED_VERSION="bh-master-2026-09-1";  // 版本变更→下次载入自动重置为最新主数据（仅本店云端）
 function seed(outletId){
   const isCK = outletId==="ck";
@@ -1719,15 +1719,25 @@ function formDcIng(dishId,idx){
   const zh=LANG==="zh";const dc=(d().dishCosts||[]).find(x=>x.id===dishId);if(!dc)return;const ig=idx!=null?(dc.ing||[])[idx]:null;
   const types=["主料 Main","配料 Side","调味 Season","油 Oil","其他 Other"];
   const linkOpts=`<option value="">${zh?"（不关联＝固定配料）":"(fixed)"}</option>`+(d().items||[]).map(i=>`<option value="${i.name}" ${ig&&ig.link===i.name?'selected':''}>${i.name}</option>`).join('');
+  const itemList=(d().items||[]).map(i=>`<option value="${(i.name||'').replace(/"/g,'&quot;')}">`).join('');
+  const noItems=(d().items||[]).length===0;
   openForm(`<h3>🧪 ${ig?(zh?"编辑材料":"Edit Ingredient"):(zh?"新增材料":"New Ingredient")} <span class="x" onclick="closeM()">×</span></h3>
-    <div class="fr"><label>${zh?"材料/项目":"Item"}</label><input id="di_item" value="${ig?(ig.item||''):''}"></div>
+    ${noItems?`<div class="al al-a" style="margin-bottom:8px;">${zh?"库存品项库目前是空的，去「库存」页点「📥 导入供应商全部品项」可以一次把常用食材建好，之后这里打字就会有建议可选。":"Inventory item list is empty — use \"Import supplier items\" on the Inventory page first."}</div>`:''}
+    <div class="fr"><label>${zh?"材料/项目（打字会带出库存品项建议，也可以直接手打自订名称）":"Item (type to see suggestions, or type a custom name)"}</label><input id="di_item" list="dcItemList" value="${ig?(ig.item||''):''}" oninput="dcItemPick(this.value)"></div>
+    <datalist id="dcItemList">${itemList}</datalist>
     <div class="fg2"><div class="fr"><label>${zh?"类别":"Type"}</label><select id="di_type">${types.map(t=>`<option ${ig&&ig.type===t?'selected':''}>${t}</option>`).join('')}</select></div>
       <div class="fr"><label>${zh?"用量":"Qty"}</label><input id="di_qty" type="number" step="0.01" value="${ig?ig.qty:''}"></div></div>
     <div class="fg2"><div class="fr"><label>${zh?"单位":"Unit"}</label><input id="di_unit" value="${ig?(ig.unit||''):''}" placeholder="G/ML/条"></div>
       <div class="fr"><label>${zh?"成本RM(固定)":"Cost"}</label><input id="di_cost" type="number" step="0.001" value="${ig?ig.cost:''}"></div></div>
     <div class="fr"><label>🔗 ${zh?"关联原料（跟当月进价联动，可留空）":"Link material (monthly avg)"}</label><select id="di_link">${linkOpts}</select></div>
-    <div class="hint">${zh?"关联原料后，该材料成本＝<b>当月该原料平均进价 × 用量</b>（用量请填成与该原料采购单位一致，如按kg则填kg数）。留空则用上面的固定成本(固定配料)。":"Linked cost = monthly avg price × qty; else fixed."}</div>
+    <div class="hint">${zh?"材料/项目选到跟库存一样的名字，会自动帮你勾好『关联原料』和单位；关联原料后，该材料成本＝<b>当月该原料平均进价 × 用量</b>（用量请填成与该原料采购单位一致，如按kg则填kg数）。留空则用上面的固定成本(固定配料)。":"Picking a name matching inventory auto-links it. Linked cost = monthly avg price × qty; else fixed."}</div>
     <button class="btn block brand" onclick="saveDcIng(${dishId},${idx!=null?idx:'null'})">${zh?"保存":"Save"}</button>`);
+}
+/* 材料名字打的/选的刚好对上库存品项 → 自动帮忙勾好「关联原料」+ 带入单位，省得再选一次 */
+function dcItemPick(name){
+  const it=(d().items||[]).find(i=>i.name===name);
+  const link=document.getElementById('di_link'),unit=document.getElementById('di_unit');
+  if(it){if(link)link.value=it.name;if(unit&&!unit.value)unit.value=it.unit||'';}
 }
 async function saveDcIng(dishId,idx){const g=x=>document.getElementById(x);const dc=(d().dishCosts||[]).find(x=>x.id===dishId);if(!dc)return;dc.ing=dc.ing||[];
   const rec={item:g('di_item').value.trim(),type:g('di_type').value,qty:+g('di_qty').value||0,unit:g('di_unit').value.trim(),cost:+g('di_cost').value||0,link:g('di_link').value||''};
