@@ -601,16 +601,22 @@ const TODAY=new Date().toLocaleDateString('en-CA');  // 真实当天日期（YYY
 let curOutlet="b1", curRole="owner", LANG="zh", moveFilter="all", curPage="dash";
 let curUser=null;   // 真实登录用户 {email,name,role,outlet}；演示模式为 null
 let USERS=[];       // 白名单/用户目录缓存（erp_users）
-// 注册邀请码 → 角色（不分大小写）；首位注册者自动为老板，不需要邀请码
+// 注册邀请码 → {角色,分店}（不分大小写）；首位注册者自动为老板，不需要邀请码
+// 店面经理/经理/厨师长/员工 是每间分店各自一组码(bN + 职位码)，注册后锁定在那间分店；
+// 区域副经理/中央经理/中央员工维持单一码、不分分店(区域副经理本来就看全部分店，中央厨房角色本来就看中央厨房)。
+// 旧的不分分店版本(mkpic888/mkmgr888/chef888/mkstaff888)已移除，注册一律要用新的 bN 开头版本。
 const INVITE_CODES={
-  tcymgmt888:"area",     // 区域副经理
-  mkpic888:"outletmgr",  // 店面经理
-  mkmgr888:"manager",    // 经理/店长
-  chef888:"headchef",    // 厨师长
-  mkstaff888:"staff",    // 员工
-  tcymgr888:"ckmgr",     // 中央经理
-  tcystaff888:"ckstaff", // 中央员工
+  tcymgmt888:{role:"area", outlet:"b1"},     // 区域副经理(全分店)
+  tcymgr888:{role:"ckmgr", outlet:"ck"},     // 中央经理
+  tcystaff888:{role:"ckstaff", outlet:"ck"}, // 中央员工
 };
+for(let i=1;i<=11;i++){
+  const b="b"+i;
+  INVITE_CODES[b+"mkpic888"]={role:"outletmgr", outlet:b}; // 店面经理
+  INVITE_CODES[b+"mkmgr888"]={role:"manager", outlet:b};   // 经理/店长
+  INVITE_CODES[b+"chef888"]={role:"headchef", outlet:b};   // 厨师长
+  INVITE_CODES[b+"staff888"]={role:"staff", outlet:b};     // 员工
+}
 // 唯一免邀请码的管理员救援账号：注册时不用填邀请码，直接可当老板登录
 // (数据库那边 security-hardening.sql 也要设一样的邮箱，两边要对得上)
 const NO_CODE_EMAIL="yxchong3@gmail.com";
@@ -633,7 +639,7 @@ function statusOf(d){if(d<=14)return{t:"健康",e:"Fresh",c:"p-g"};if(d<=30)retu
 function stTxt(s){return LANG==="zh"?s.t:s.e;}
 
 /* ================= 数据种子 ================= */
-const BUILD="0919mk17";  // 版本标记：页面右上/网格提示可见，用来确认已载入最新版
+const BUILD="0919mk18";  // 版本标记：页面右上/网格提示可见，用来确认已载入最新版
 const SEED_VERSION="bh-master-2026-09-1";  // 版本变更→下次载入自动重置为最新主数据（仅本店云端）
 function seed(outletId){
   const isCK = outletId==="ck";
@@ -3865,9 +3871,9 @@ async function afterAuth(user){
   // 因为权限隔离，看不到别人的资料，不能用来判断"是不是空的"）
   if(!wu){
     const inviteCode=(user.user_metadata&&user.user_metadata.invite_code||'').toLowerCase();
-    const role=INVITE_CODES[inviteCode];
-    if(role){
-      try{const {error}=await _sb.from('erp_users').upsert({email:(user.email||'').toLowerCase(),name:(user.email||'').split('@')[0],role,outlet:(ROLES[role]&&ROLES[role].ckOnly)?'ck':'b1',active:true},{onConflict:'email'});
+    const inv=INVITE_CODES[inviteCode];
+    if(inv){
+      try{const {error}=await _sb.from('erp_users').upsert({email:(user.email||'').toLowerCase(),name:(user.email||'').split('@')[0],role:inv.role,outlet:inv.outlet,active:true},{onConflict:'email'});
         if(error)throw error;await loadUsers();wu=findUser(user.email);
       }catch(e){/* 邀请码本身没问题，但写入失败(可能是权限/网络) → 往下走，交给最后的白名单检查统一报错 */}
     }

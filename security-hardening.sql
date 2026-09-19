@@ -10,23 +10,48 @@
 -- 这份补丁把权限判断搬到数据库这一层，就算绕过网页也挡得住。
 -- ============================================================
 
--- ========== 第 1 部分：邀请码 → 职位 的对照表（跟 index.html 的 INVITE_CODES 一致）==========
--- 之后在 index.html 改邀请码，记得同步把下面这个函数也改一次。
+-- ========== 第 1 部分：邀请码 → {职位,分店} 的对照表（跟 index.html 的 INVITE_CODES 一致）==========
+-- 之后在 index.html 改邀请码，记得同步把下面这两个函数也改一次。
+-- 店面经理/经理/厨师长/员工 是每间分店各自一组码(格式 b1~b11 + 职位码)，
+-- 区域副经理/中央经理/中央员工维持单一固定码。
 create or replace function public.invite_role(code text)
 returns text
-language sql
+language plpgsql
 immutable
 as $$
-  select case lower(coalesce(code,''))
-    when 'tcymgmt888' then 'area'       -- 区域副经理
-    when 'mkpic888'   then 'outletmgr'  -- 店面经理
-    when 'mkmgr888'   then 'manager'    -- 经理/店长
-    when 'chef888'    then 'headchef'   -- 厨师长
-    when 'mkstaff888' then 'staff'      -- 员工
-    when 'tcymgr888'  then 'ckmgr'      -- 中央经理
-    when 'tcystaff888' then 'ckstaff'   -- 中央员工
-    else null
+declare
+  c text := lower(coalesce(code,''));
+  m text[];
+begin
+  if c = 'tcymgmt888' then return 'area'; end if;
+  if c = 'tcymgr888' then return 'ckmgr'; end if;
+  if c = 'tcystaff888' then return 'ckstaff'; end if;
+  m := regexp_match(c, '^b([1-9]|1[01])(mkpic888|mkmgr888|chef888|staff888)$');
+  if m is null then return null; end if;
+  return case m[2]
+    when 'mkpic888' then 'outletmgr'
+    when 'mkmgr888' then 'manager'
+    when 'chef888'  then 'headchef'
+    when 'staff888' then 'staff'
   end;
+end;
+$$;
+
+create or replace function public.invite_outlet(code text)
+returns text
+language plpgsql
+immutable
+as $$
+declare
+  c text := lower(coalesce(code,''));
+  m text[];
+begin
+  if c in ('tcymgr888','tcystaff888') then return 'ck'; end if;
+  if c = 'tcymgmt888' then return 'b1'; end if; -- 区域副经理是全分店角色，outlet 存什么不影响权限，固定填 b1
+  m := regexp_match(c, '^b([1-9]|1[01])(mkpic888|mkmgr888|chef888|staff888)$');
+  if m is null then return null; end if;
+  return 'b'||m[1];
+end;
 $$;
 
 -- ========== 第 2 部分：判断「当前登录的人是谁 / 是不是白名单里的管理员」==========
@@ -92,7 +117,10 @@ create policy "erp_users insert self via invite or admin"
       and (
         (role = 'owner' and public.erp_users_is_empty())
         or (role = 'owner' and email = 'yxchong3@gmail.com')
-        or role = public.invite_role(auth.jwt()->'user_metadata'->>'invite_code')
+        or (
+          role = public.invite_role(auth.jwt()->'user_metadata'->>'invite_code')
+          and outlet = public.invite_outlet(auth.jwt()->'user_metadata'->>'invite_code')
+        )
       )
     )
   );
