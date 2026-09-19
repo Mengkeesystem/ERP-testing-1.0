@@ -572,8 +572,8 @@ const ROLES={
     can:["dash","inv","proc","stock","waste","opex","report","ap"],
     allBranch:false, hrScope:"branch", salaryView:"self", approveLeave:true}, // 本店采购/盘点/损耗/OpEx录入 + 本店报表
   headchef:{name:"厨师长 Head Chef",en:"Head Chef",
-    can:["dash","inv","transfer","stock"],
-    allBranch:false, hrScope:"self", salaryView:"self", approveLeave:false}, // 生产工单/成品入库/配送调拨
+    can:["dash","inv","transfer","stock","ap"],
+    allBranch:false, hrScope:"self", salaryView:"self", approveLeave:false}, // 生产工单/成品入库/配送调拨；可核对/更改应付账款(不能删除)
   staff:{name:"员工 Staff",en:"Staff",
     can:["attend","leave","payroll"],
     allBranch:false, hrScope:"self", salaryView:"self", approveLeave:false}, // 只有人事自助：打卡、请假、查看自己薪资/Payslip
@@ -639,7 +639,7 @@ function statusOf(d){if(d<=14)return{t:"健康",e:"Fresh",c:"p-g"};if(d<=30)retu
 function stTxt(s){return LANG==="zh"?s.t:s.e;}
 
 /* ================= 数据种子 ================= */
-const BUILD="0919mk18";  // 版本标记：页面右上/网格提示可见，用来确认已载入最新版
+const BUILD="0919mk19";  // 版本标记：页面右上/网格提示可见，用来确认已载入最新版
 const SEED_VERSION="bh-master-2026-09-1";  // 版本变更→下次载入自动重置为最新主数据（仅本店云端）
 function seed(outletId){
   const isCK = outletId==="ck";
@@ -1290,11 +1290,11 @@ function apOrders(){return (typeof ORDERS!=='undefined'?ORDERS:[]).filter(o=>o&&
 function apPaidMap(){d().apPaid=d().apPaid||{};return d().apPaid;}
 function apIsPaid(sup){const m=apPaidMap()[sup];return !!(m&&m.paid);}
 function apCanWrite(){return canW('ap');}
-function apCanUnpay(){return ['owner','area','hrmgr'].includes(curRole)&&!isAgg();}
+function apCanUnpay(){return ['owner','area','hrmgr','outletmgr','manager','headchef'].includes(curRole)&&!isAgg();}
 function apItems(o){return [...(o.lines||[]).map(l=>({name:(l.d||'').replace(/\n/g,' / '),q:l.q,price:l.price})),...(o.uniform||[]).map(u=>({name:(LANG==="zh"?'制服 Size ':'Uniform Size ')+u.size,q:u.q,price:u.price}))];}
 function apSupReconciled(sup){const ords=apOrders().filter(o=>apSupOf(o)===sup);return ords.length>0&&ords.every(o=>o.reconciled);}
 async function apUnpay(sup){
-  if(!apCanUnpay()){alert(LANG==="zh"?"已确认『已付款』后，只有区域副经理及以上才能改回。":"Only Area Manager & above can revert.");return;}
+  if(!apCanUnpay()){alert(LANG==="zh"?"无权限改回『未付款』。":"No permission to revert.");return;}
   if(!confirm(LANG==="zh"?("改回『未付款』？— "+sup):"Mark as UNPAID?"))return;
   const who=curUser?curUser.name:ROLES[curRole].name;apPaidMap()[sup]={paid:false,by:who,at:Date.now()};
   await save();try{if(typeof auditLog==='function')auditLog(LANG==="zh"?"应付状态":"AP",sup+" · 未付款 · "+who,"","");}catch(e){}render();
@@ -1361,7 +1361,7 @@ function apPaidBtn(sup){const paid=apIsPaid(sup);const m=apPaidMap()[sup];const 
 }
 async function setApRec(id,i,v){const o=orderById(id);if(!o)return;o.reconcile=o.reconcile||{};o.reconcile[i]=(o.reconcile[i]===v?'':v);await saveOrders();render();}
 async function apConfirmCorrect(id){const o=orderById(id);if(!o)return;if(!confirm(LANG==="zh"?"确认此单已和实体 Invoice 核对无误？":"Confirm this order is correct?"))return;o.reconciled=true;o.reconciledBy=curUser?curUser.name:ROLES[curRole].name;o.reconciledAt=Date.now();await saveOrders();render();}
-async function apReReconcile(id){const o=orderById(id);if(!o)return;if(!['owner','area','hrmgr'].includes(curRole)){alert(LANG==="zh"?"已核对后仅区域副经理及以上可重开。":"Only Area+ can re-open.");return;}if(!confirm(LANG==="zh"?"重新核对？会清除所有 ✔/✗，需要重新逐项核对。":"Re-open? All ✔/✗ will be cleared."))return;o.reconciled=false;o.reconcile={};await saveOrders();render();}
+async function apReReconcile(id){const o=orderById(id);if(!o)return;if(!['owner','area','hrmgr','outletmgr','manager','headchef'].includes(curRole)){alert(LANG==="zh"?"无权限重新核对。":"No permission to re-open.");return;}if(!confirm(LANG==="zh"?"重新核对？会清除所有 ✔/✗，需要重新逐项核对。":"Re-open? All ✔/✗ will be cleared."))return;o.reconciled=false;o.reconcile={};await saveOrders();render();}
 /* 付款金额比对：现金少付/多付提示 */
 function apSupTotal(sup){return apOrders().filter(o=>apSupOf(o)===sup).reduce((a,o)=>a+orderTotals(o).ta,0);}
 function apPaidAmt(sup){const m=apPaidMap()[sup];if(!m||!m.paid)return 0;return (m.amount!=null&&m.amount!=='')?(+m.amount||0):apSupTotal(sup);}
@@ -1414,7 +1414,7 @@ function pgAp(){
     const badCnt=items.filter((it,i)=>(o.reconcile||{})[i]==='x').length;
     const allMarked=items.length>0&&items.every((it,i)=>(o.reconcile||{})[i]);
     const foot=o.reconciled
-      ? `<div class="pill p-g">${zh?"✅ 订单正确":"Correct"}${o.reconciledBy?(' · '+oEsc(o.reconciledBy)):''}</div>${['owner','area','hrmgr'].includes(curRole)?`<button class="btn ghost sm" onclick="apReReconcile('${o.id}')">${zh?"重新核对":"Re-open"}</button>`:''}`
+      ? `<div class="pill p-g">${zh?"✅ 订单正确":"Correct"}${o.reconciledBy?(' · '+oEsc(o.reconciledBy)):''}</div>${['owner','area','hrmgr','outletmgr','manager','headchef'].includes(curRole)?`<button class="btn ghost sm" onclick="apReReconcile('${o.id}')">${zh?"重新核对":"Re-open"}</button>`:''}`
       : `${badCnt?`<span class="mini neg">${zh?("有 "+badCnt+" 项打叉"):badCnt+" flagged"}</span>`:''}${w?(allMarked?`<button class="btn brand sm" onclick="apConfirmCorrect('${o.id}')">✅ ${zh?"订单正确":"Order Correct"}</button>`:`<button class="btn sm" disabled style="opacity:.5;cursor:not-allowed;">✅ ${zh?"订单正确":"Order Correct"}</button><span class="mini" style="opacity:.7;">${zh?"请先把每一项都核对(✔/✗)":"Mark every item first"}</span>`):''}`;
     return `<div class="card" style="padding:12px;margin-bottom:10px;">
       <div style="display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap;align-items:center;">
