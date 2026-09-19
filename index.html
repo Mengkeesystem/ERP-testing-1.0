@@ -650,7 +650,7 @@ function statusOf(d){if(d<=14)return{t:"健康",e:"Fresh",c:"p-g"};if(d<=30)retu
 function stTxt(s){return LANG==="zh"?s.t:s.e;}
 
 /* ================= 数据种子 ================= */
-const BUILD="0919mk26";  // 版本标记：页面右上/网格提示可见，用来确认已载入最新版
+const BUILD="0919mk27";  // 版本标记：页面右上/网格提示可见，用来确认已载入最新版
 const SEED_VERSION="bh-master-2026-09-1";  // 版本变更→下次载入自动重置为最新主数据（仅本店云端）
 function seed(outletId){
   const isCK = outletId==="ck";
@@ -2256,24 +2256,45 @@ function setUniformQty(i,v){orderEdit().uniform[i].q=v;orderSave();}
 async function orderResetSeed(){if(!confirm(LANG==="zh"?"还原为原始订货表？你所有的改动（数量/品项）都会清空。":"Reset to original order list? All edits will be cleared."))return;const s=orderStore();delete s.orderList;await save('ck');render();}
 /* 这个分店如果已经存过自己的订货单(填过数量/改过品项)，系统会一直用那份存档，
    不会再看程式码里最新版的 ORDER_SEED——所以后来在 ORDER_SEED 补上的照片，
-   这些已经存档过的分店看不到。这个工具只把「缺照片、品项文字完全没改过」的
-   那些行，从 ORDER_SEED 把照片补进来，不会动到已经填的数量，也不会动到
-   已经被改过品名的行(避免补错)。 */
+   这些已经存档过的分店看不到。
+   这个工具只把「缺照片」的那些行，从 ORDER_SEED 把照片补进来，不会动到已经填
+   的数量。品项文字很多分店存的是供应商目录格式(比如"DRYC - P003 · Peanut 花生")
+   跟 ORDER_SEED 的品牌名格式("BEER / Cooking Rice Wine\n兴兴发花雕酒...")不一样，
+   完全对不上，所以改用「拆字比对」：把两边文字拆成英文单字/中文词，重叠越多分越
+   高，只有唯一一个分数最高、且分数够高(≥2)才会自动配对，分数不够或有并列最高分
+   (代表可能配错)一律跳过不补，交给人工处理，避免乱放。 */
+function _ordTokens(s){
+  s=(s||'').replace(/[（）()【】\[\]\/,.\-·@]/g,' ');
+  const m=s.match(/[A-Za-z]{3,}|[一-鿿]{2,}/g)||[];
+  return m.map(x=>x.toLowerCase());
+}
+function _ordBestMatch(text,seedArr){
+  const t=new Set(_ordTokens(text));if(!t.size)return null;
+  let best=null,bestScore=0,tie=false;
+  seedArr.forEach(si=>{
+    if(!si.d||!si.imgs||!si.imgs.length)return; // 没图的候选没意义
+    const st=_ordTokens(si.d);
+    let score=0;st.forEach(w=>{if(t.has(w))score++;});
+    if(score>bestScore){bestScore=score;best=si;tie=false;}
+    else if(score===bestScore&&score>0&&si!==best){tie=true;}
+  });
+  return (bestScore>=2&&!tie)?best:null;
+}
 async function orderFillImages(){
   const zh=LANG==="zh";const s=orderStore();
   if(!s.orderList){alert(zh?"目前用的就是最新的原始订货表，本来就有照片，不用补。":"Already using the latest seed list with images.");return;}
-  if(!confirm(zh?"从原始订货表把缺的照片补进你现在这份订货单？不会动到你已经填的数量/品项文字。":"Backfill missing images from the seed list, without touching your quantities/text?"))return;
-  let n=0;
+  if(!confirm(zh?"从原始订货表把缺的照片补进你现在这份订货单？只补「文字对得上、不会配错」的品项，不会动到你已经填的数量。":"Backfill missing images from the seed list where the text confidently matches. Quantities are untouched."))return;
+  let n=0,skip=0;
   ["A","B","C"].forEach(k=>{
-    const list=s.orderList[k]||[];const seed=ORDER_SEED[k]||[];
+    const list=s.orderList[k]||[];const seed=[...(ORDER_SEED.A||[]),...(ORDER_SEED.B||[]),...(ORDER_SEED.C||[])];
     list.forEach(it=>{
       if(it.divider||(it.imgs&&it.imgs.length))return; // 分隔行跳过；已经有图的不动
-      const match=seed.find(si=>si.d===it.d); // 品项文字要完全一样才补，避免配错
-      if(match&&match.imgs&&match.imgs.length){it.imgs=match.imgs.slice();n++;}
+      const match=_ordBestMatch(it.d,seed);
+      if(match){it.imgs=match.imgs.slice();n++;}else skip++;
     });
   });
   await save('ck');render();
-  alert(zh?`已补上 ${n} 个品项的图片。`:`Backfilled images for ${n} items.`);
+  alert(zh?`已补上 ${n} 个品项的图片；${skip} 个品项文字对不上/不够确定，没有帮您补(避免配错)。`:`Backfilled ${n} items; ${skip} skipped (uncertain match).`);
 }
 function printOrder(){window.print();}
 function divStyle(txt){txt=txt||'';if(/VEGE/i.test(txt))return'background:#16a34a;';if(/MEAT/i.test(txt))return'background:#eab308;color:#3b2f00;';return'background:#7c3aed;';}
