@@ -650,7 +650,7 @@ function statusOf(d){if(d<=14)return{t:"健康",e:"Fresh",c:"p-g"};if(d<=30)retu
 function stTxt(s){return LANG==="zh"?s.t:s.e;}
 
 /* ================= 数据种子 ================= */
-const BUILD="0919mk28";  // 版本标记：页面右上/网格提示可见，用来确认已载入最新版
+const BUILD="0922mk29";  // 版本标记：页面右上/网格提示可见，用来确认已载入最新版
 const SEED_VERSION="bh-master-2026-09-1";  // 版本变更→下次载入自动重置为最新主数据（仅本店云端）
 function seed(outletId){
   const isCK = outletId==="ck";
@@ -1277,6 +1277,7 @@ function pgProc(){
   if(can('transfer'))cards.push(["transfer","🔁",LANG==="zh"?"跨店调拨":"Transfer",LANG==="zh"?"物品调拨 + 人力借调":"Items + staff loans",var_navy()]);
   if(can('waste'))cards.push(["waste2","🗑",LANG==="zh"?"报废损耗":"Wastage",LANG==="zh"?"成本×数量 · 原因备注":"Cost × qty · reason",var_red()]);
   if(can('ent'))cards.push(["offer","🎁",LANG==="zh"?"招待 / 赠送":"Offers",LANG==="zh"?"ENT/Offer · 负责人":"ENT/Offer · in-charge",var_amber()]);
+  if(can('opex'))cards.push(["opexlog","🧾",LANG==="zh"?"运营开销记录":"OpEx Log",LANG==="zh"?"营销/维修/杂费 · 按月流水账":"Marketing/Maintenance/Misc · monthly log",var_teal()]);
   // 月末盘点已移到侧栏「库存」组（原盘点位置），此处不再重复卡片
   return `
   <h2 class="h" style="margin-top:2px;">🔄 ${LANG==="zh"?"进销存作业":"Operations"} <span class="tag">${nm(outletObj())}</span></h2>
@@ -3193,8 +3194,9 @@ function exportCSV(){
    ================================================================ */
 let selSupplier=null;                          // 供应商钻取页共用：当前选中供应商
 let ledgerMonth='all';                         // 账册月份筛选（YYYY-MM 或 all）
-let wasteMonth='', grnMonth='', offerMonth='', transferMonth='';  // 各作业当前月份
+let wasteMonth='', grnMonth='', offerMonth='', transferMonth='', opexLogMonth='';  // 各作业当前月份
 function setWasteMonth(m){wasteMonth=m;render();window.scrollTo(0,0);}
+function setOpexLogMonth(m){opexLogMonth=m;render();window.scrollTo(0,0);}
 function setGrnMonth(m){grnMonth=m;render();window.scrollTo(0,0);}
 function setOfferMonth(m){offerMonth=m;render();window.scrollTo(0,0);}
 function setTransferMonth(m){transferMonth=m;render();window.scrollTo(0,0);}
@@ -3203,7 +3205,7 @@ function logMonthTabs(months,cur,setter){return `<div class="seg" style="flex-wr
 let gridCurMonth='';                            // 当前网格实际渲染的月份（合计计算以此为准，避免 ledgerMonth='all' 导致合计归零）
 function setLedgerMonth(v){ledgerMonth=v;render();window.scrollTo(0,0);}
 function monthLabel(ymk){if(ymk==='all')return LANG==="zh"?"全部月份":"All months";const[y,m]=ymk.split('-');return LANG==="zh"?(y+"年"+(+m)+"月"):(ymk);}
-const PROC_SUB={ordersheet:'proc',purchase:'proc',grn:'proc',transfer:'transfer',waste2:'waste',offer:'ent',monthend:'stock'};
+const PROC_SUB={ordersheet:'proc',purchase:'proc',grn:'proc',transfer:'transfer',waste2:'waste',offer:'ent',monthend:'stock',opexlog:'opex'};
 function subCan(p){return PROC_SUB[p]?can(PROC_SUB[p]):can(p);}   // 子页读权限
 function subCanW(p){return PROC_SUB[p]?canW(PROC_SUB[p]):canW(p);}// 子页写权限（汇总视图只读）
 function setSupplier(n){selSupplier=n;ledgerMonth='all';render();window.scrollTo(0,0);}
@@ -3686,6 +3688,51 @@ async function saveWaste2(editIdx){const g=id=>document.getElementById(id);
   await save();closeM();render();}
 async function delWaste2(gi){if(!confirm(LANG==="zh"?"删除此报废？":"Delete?"))return;const old=d().wasteLog[gi]||{};invReceive(old.item,old.qty,null);d().wasteLog.splice(gi,1);auditLog("删除报废",(old.item||'')+" ×"+(old.qty||''),money((old.cost||0)*(old.qty||0)),"");await save();render();}
 
+/* ================= 运营开销记录（按月·按类别 key in 的零散开销，独立于「运营开销」预算表）================= */
+const OPEXLOG_CATS=[
+  ["marketing","营销与广告","Marketing & Advertising"],
+  ["maintenance","维修与保养","Maintenance"],
+  ["wifi","Wi-Fi","Wi-Fi"],
+  ["rubbish","垃圾清理","Rubbish"],
+  ["possaas","POS 月租","POS SaaS"],
+  ["accounting","会计费","Accounting"],
+  ["repair","维修杂项","Repair (misc)"],
+];
+function opexLogCatLabel(k){const c=OPEXLOG_CATS.find(x=>x[0]===k);return c?(LANG==="zh"?c[1]:c[2]):(k||'—');}
+function pgOpexLog(){
+  const zh=LANG==="zh";const x=d();const writable=subCanW('opexlog');
+  const all=(x.opexLog||[]).slice();
+  const months=logMonths(all);const cur=(opexLogMonth&&months.includes(opexLogMonth))?opexLogMonth:months[0];
+  const rs=all.filter(r=>(r.date||'').slice(0,7)===cur).sort((a,b)=>(b.date||'').localeCompare(a.date||''));
+  const tot=rs.reduce((s,r)=>s+(+r.amount||0),0);
+  return `<div class="fb"><h2 class="h" style="margin:0;">🧾 ${zh?"运营开销记录":"OpEx Log"} <span class="tag">${nm(outletObj())}</span></h2><button class="btn ghost sm" onclick="nav('proc')">← ${zh?"进销存作业":"Operations"}</button></div>
+  <div class="hint">${zh?"按月分开。记录 类别·日期·Invoice No.·金额·备注，跟「运营开销」预算表是两回事，这里是零散开销的流水账。":"By month. Category, date, invoice no., amount & note — a running log, separate from the OpEx budget sheet."}</div>
+  ${writable?`<button class="btn brand sm" style="margin-bottom:8px;" onclick="formOpexLog()">+ ${zh?"新增开销":"Add"}</button>`:''}
+  ${logMonthTabs(months,cur,'setOpexLogMonth')}
+  <div class="grid g2" style="margin-bottom:10px;"><div class="kpi"><div class="k">${zh?"本月笔数":"Records"}</div><div class="v sm">${rs.length}</div></div><div class="kpi"><div class="k">${zh?"本月开销总额":"Total"}</div><div class="v sm neg">${money(tot)}</div></div></div>
+  <div class="card tbl"><table><thead><tr><th>${zh?"日期":"Date"}</th><th>${zh?"类别":"Category"}</th><th>Invoice No.</th><th>${zh?"金额":"Amount"}</th><th>${zh?"备注":"Note"}</th>${writable?'<th></th>':''}</tr></thead><tbody>
+  ${rs.map(r=>{const gi=x.opexLog.indexOf(r);return `<tr><td class="mini">${r.date}</td><td>${opexLogCatLabel(r.cat)}</td><td class="mini">${r.invoiceNo||'—'}</td><td class="neg">${money(r.amount)}</td><td class="mini">${r.note||''}</td>${writable?`<td style="white-space:nowrap;"><button class="ib" onclick="formOpexLog(${gi})">✏️</button> <button class="ib" onclick="delOpexLog(${gi})">🗑️</button></td>`:''}</tr>`;}).join('')||`<tr><td colspan="6" class="empty">${zh?"暂无记录":"None"}</td></tr>`}
+  </tbody><tfoot><tr style="background:#FAFBFC;font-weight:800;"><td colspan="3">${zh?"合计":"Total"}</td><td class="neg">${money(tot)}</td><td colspan="${writable?2:1}"></td></tr></tfoot></table></div>`;
+}
+function formOpexLog(editIdx){
+  const zh=LANG==="zh";const r=(editIdx!=null)?(d().opexLog||[])[editIdx]:null;const isEdit=!!r;
+  const catOpts=OPEXLOG_CATS.map(c=>`<option value="${c[0]}" ${r&&r.cat===c[0]?'selected':''}>${zh?c[1]:c[2]}</option>`).join('');
+  openForm(`<h3>🧾 ${isEdit?(zh?"编辑开销":"Edit Expense"):(zh?"新增开销":"New Expense")} <span class="x" onclick="closeM()">×</span></h3>
+    <div class="fr"><label>${zh?"类别":"Category"}</label><select id="ol_cat">${catOpts}</select></div>
+    <div class="fg2"><div class="fr"><label>${zh?"日期":"Date"}</label><input id="ol_date" type="date" value="${r?r.date:((opexLogMonth&&opexLogMonth!==TODAY.slice(0,7))?opexLogMonth+'-01':TODAY)}"></div>
+      <div class="fr"><label>Invoice No.</label><input id="ol_inv" value="${r?(r.invoiceNo||''):''}"></div></div>
+    <div class="fr"><label>${zh?"金额 RM":"Amount RM"}</label><input id="ol_amt" type="number" step="0.01" value="${r?r.amount:''}"></div>
+    <div class="fr"><label>${zh?"备注":"Note"}</label><input id="ol_note" value="${r?(r.note||''):''}"></div>
+    <button class="btn block brand" onclick="saveOpexLog(${isEdit?editIdx:'null'})">${zh?"保存":"Save"}</button>`);
+}
+async function saveOpexLog(editIdx){const g=id=>document.getElementById(id);
+  const rec={date:g('ol_date').value||TODAY,cat:g('ol_cat').value,invoiceNo:g('ol_inv').value.trim(),amount:+g('ol_amt').value||0,note:g('ol_note').value.trim()};
+  if(!d().opexLog)d().opexLog=[];
+  if(editIdx!=null&&d().opexLog[editIdx]){const old=d().opexLog[editIdx];auditLog("编辑运营开销记录",opexLogCatLabel(rec.cat)+" · "+rec.date,money(old.amount),money(rec.amount));d().opexLog[editIdx]=rec;}
+  else{d().opexLog.unshift(rec);auditLog("运营开销记录",opexLogCatLabel(rec.cat)+" · "+rec.date,"",money(rec.amount));}
+  await save();closeM();render();}
+async function delOpexLog(gi){if(!confirm(LANG==="zh"?"删除此开销记录？":"Delete?"))return;const old=d().opexLog[gi]||{};d().opexLog.splice(gi,1);auditLog("删除运营开销记录",opexLogCatLabel(old.cat)+" · "+(old.date||''),money(old.amount||0),"");await save();render();}
+
 /* ================= 招待 / 赠送（独立）================= */
 function pgOffer(){
   const x=d();const writable=subCanW('offer');
@@ -3976,7 +4023,7 @@ function pgPayrun(){
 
 /* 页面路由补充（ap/opex 不在底部tab，用函数导航） */
 const _pages={dash:pgDash,sales:pgSales,inv:pgInv,proc:pgProc,bom:pgBom,report:pgReport,settings:pgSettings,ap:pgAp,opex:pgOpex,opexm:pgOpexM,payroll:pgPayroll,payrun:pgPayrun,hr:pgHR,attend:pgAttend,schedule:pgSchedule,leave:pgLeave,ck:pgCK,stock:pgStock,
-  purchase:pgPurchase,grn:pgGRN,transfer:pgTransfer,waste2:pgWaste2,offer:pgOffer,monthend:pgMonthEnd,monthly:pgMonthly,ordersheet:pgOrderSheet,orderinv:pgOrderInv};
+  purchase:pgPurchase,grn:pgGRN,transfer:pgTransfer,waste2:pgWaste2,offer:pgOffer,monthend:pgMonthEnd,monthly:pgMonthly,ordersheet:pgOrderSheet,orderinv:pgOrderInv,opexlog:pgOpexLog};
 function render(){
   if(!pageAllowed(curPage)){curPage=firstAllowedPage();selSupplier=null;} // 权限收紧后自动落到可访问页
   renderTop();renderSidebar();
