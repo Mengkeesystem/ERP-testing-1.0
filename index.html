@@ -650,7 +650,7 @@ function statusOf(d){if(d<=14)return{t:"健康",e:"Fresh",c:"p-g"};if(d<=30)retu
 function stTxt(s){return LANG==="zh"?s.t:s.e;}
 
 /* ================= 数据种子 ================= */
-const BUILD="0924mk32";  // 版本标记：页面右上/网格提示可见，用来确认已载入最新版
+const BUILD="0924mk33";  // 版本标记：页面右上/网格提示可见，用来确认已载入最新版
 const SEED_VERSION="bh-master-2026-09-1";  // 版本变更→下次载入自动重置为最新主数据（仅本店云端）
 function seed(outletId){
   const isCK = outletId==="ck";
@@ -3384,7 +3384,7 @@ function gridRecalc(mod,sup){
   const q=(cid,dt)=>{const r=gridRec(mod,sup,cid,dt);return r?(+r.qty||0):0;};
   const amtOf=(cid,dt)=>{const r=gridRec(mod,sup,cid,dt);return r?(+r.price||0):0;}; // 进货单：每格已经存好自己的金额(数量×当天价钱)
   const dayTot=new Array(dates.length).fill(0);let grand=0;
-  cat.forEach((c,i)=>{const pr=+c.price||0;let tq=0,ta=0;
+  cat.forEach((c,i)=>{const pr=gridUnitPrice(mod,sup,c.cid,month);let tq=0,ta=0;
     dates.forEach((dt,j)=>{const qq=q(c.cid,dt);tq+=qq;const a=isP?amtOf(c.cid,dt):qq*pr;ta+=a;dayTot[j]+=a;});
     grand+=ta;
     const eq=document.getElementById('gtq-'+i);if(eq)eq.textContent=num(tq,2);
@@ -3397,9 +3397,22 @@ let _gridSaveT=null,_gridSaveCtx=null;
 function gridSave(mod,sup){_gridSaveCtx={mod,sup};if(_gridSaveT)clearTimeout(_gridSaveT);_gridSaveT=setTimeout(()=>{_gridSaveT=null;save();const sm=document.getElementById('gridSummary');if(sm&&_gridSaveCtx)sm.innerHTML=gridSummaryHTML(_gridSaveCtx.mod,_gridSaveCtx.sup,gridCurMonth||ledgerMonth);},400);}
 function gridSaveFlush(){if(_gridSaveT){clearTimeout(_gridSaveT);_gridSaveT=null;save();}}
 if(typeof window!=='undefined')window.addEventListener('beforeunload',gridSaveFlush);
+/* 月末盘点单价＝该品项当月每天进货单价的「中间值」(中位数，不是平均值)，自动算好直接用，不用手动填。
+   例：菜心1-10号5元、11-20号6元、21-30号5.5元→30个日价钱排序取中间值。取不到(当月没进货过)才退回手动单价。 */
+function monthMedianPrice(sup,item,month){
+  const prices=(d().purchases||[]).filter(r=>r.supplier===sup&&r.item===item&&(r.date||'').slice(0,7)===month&&(+r.unitPrice||0)>0).map(r=>+r.unitPrice||0).sort((a,b)=>a-b);
+  if(!prices.length)return 0;
+  const n=prices.length,mid=Math.floor(n/2);
+  return n%2?prices[mid]:(prices[mid-1]+prices[mid])/2;
+}
+function gridUnitPrice(mod,sup,cid,month){
+  const c=gridCatRow(sup,cid);if(!c)return 0;
+  if(mod==='monthend'){const med=monthMedianPrice(sup,c.name,month);if(med>0)return med;}
+  return +c.price||0;
+}
 async function setGridQty(mod,sup,cid,date,val){
   const qty=+val||0;const cfg=ledgerCfg(mod);d()[cfg.arr]=d()[cfg.arr]||[];const arr=d()[cfg.arr];
-  const cat=gridCatRow(sup,cid);const item=cat?cat.name:'';const unit=cat?+cat.price||0:0;
+  const cat=gridCatRow(sup,cid);const item=cat?cat.name:'';const unit=gridUnitPrice(mod,sup,cid,date.slice(0,7));
   let rec=arr.find(r=>r.supplier===sup&&r.cid===cid&&r.date===date);const oldQty=rec?+rec.qty||0:0;
   if(qty<=0){if(rec){if(mod==='purchase')invUnreceive(item,oldQty);arr.splice(arr.indexOf(rec),1);}}
   else{if(!rec){rec={supplier:sup,date,cid,item,code:cat?cat.code:'',qty:0,weight:0,unitPrice:unit,price:0,note:''};arr.push(rec);}
@@ -3407,7 +3420,8 @@ async function setGridQty(mod,sup,cid,date,val){
     if(mod==='purchase'){const dq=qty-oldQty;if(dq>0)invReceive(item,dq,dq*unit,null,null,date);else if(dq<0)invUnreceive(item,-dq);}}
   gridRecalc(mod,sup);gridSave(mod,sup); // 即时算合计；存档延后防卡
 }
-async function setGridPrice(mod,sup,cid,val){const price=+val||0;const c=gridCatRow(sup,cid);if(c)c.price=price;const arr=d()[ledgerCfg(mod).arr]||[];arr.forEach(r=>{if(r.supplier===sup&&r.cid===cid){r.unitPrice=price;r.price=+((+r.qty||0)*price).toFixed(2);}});gridRecalc(mod,sup);gridSave(mod,sup);}
+async function setGridPrice(mod,sup,cid,val){if(mod==='monthend')return; // 月末盘点单价改自动算，不再手动填
+  const price=+val||0;const c=gridCatRow(sup,cid);if(c)c.price=price;const arr=d()[ledgerCfg(mod).arr]||[];arr.forEach(r=>{if(r.supplier===sup&&r.cid===cid){r.unitPrice=price;r.price=+((+r.qty||0)*price).toFixed(2);}});gridRecalc(mod,sup);gridSave(mod,sup);}
 /* 进货单专用：每一格自己填数量/当天价钱(/重量)，不再共用一整月的单价。
    价钱每天可能不同，所以每格都要重算一次加权成本：先把这一格旧的「驱动数量」扣回(不追溯成本，
    跟原本 setGridQty 的做法一致)，再用新的驱动数量 × 这天填的价钱重新入库。
@@ -3462,11 +3476,13 @@ function gridTable(mod,sup,month){
   gridCurMonth=month; // 记录本表实际月份，合计计算(gridRecalc)以此为准
   const zh=LANG==="zh";const w=subCanW(mod);const CI='style="width:62px;padding:4px 5px;font-size:12px;border:1px solid var(--line);border-radius:5px;"';
   const isP=mod==='purchase'; // 进货单：每天每格自己填价钱，不再有共用一整月的单价行/列
+  const isME=mod==='monthend'; // 月末盘点：单价改自动＝当月每天进货单价的中间值，不能手动填
+  const priceCell=c=>isME?`<input type="number" step="0.01" value="${(+gridUnitPrice(mod,sup,c.cid,month)).toFixed(2)}" disabled title="${zh?'自动＝本月每日进货单价的中间值(中位数)':'auto = median of this months daily purchase price'}">`:`<input type="number" step="0.01" value="${+c.price||0}" ${w?'':'disabled'} onchange="setGridPrice('${mod}','${gEsc(sup)}','${c.cid}',this.value)">`;
   const cat=ensureGridCat(sup);const dates=gridDates(mod,sup,month);
   const q=(cid,dt)=>{const r=gridRec(mod,sup,cid,dt);return r?(+r.qty||0):'';};
   const rQty=c=>dates.reduce((s,dt)=>s+(+q(c.cid,dt)||0),0);
-  const rAmt=c=>isP?dates.reduce((s,dt)=>{const r=gridRec(mod,sup,c.cid,dt);return s+(r?+r.price||0:0);},0):rQty(c)*(+c.price||0);
-  const dayAmt=dt=>cat.reduce((s,c)=>{if(isP){const r=gridRec(mod,sup,c.cid,dt);return s+(r?+r.price||0:0);}return s+(+q(c.cid,dt)||0)*(+c.price||0);},0);
+  const rAmt=c=>isP?dates.reduce((s,dt)=>{const r=gridRec(mod,sup,c.cid,dt);return s+(r?+r.price||0:0);},0):rQty(c)*gridUnitPrice(mod,sup,c.cid,month);
+  const dayAmt=dt=>cat.reduce((s,c)=>{if(isP){const r=gridRec(mod,sup,c.cid,dt);return s+(r?+r.price||0:0);}return s+(+q(c.cid,dt)||0)*gridUnitPrice(mod,sup,c.cid,month);},0);
   const grand=cat.reduce((s,c)=>s+rAmt(c),0);
   const inv=dt=>gridInv(mod,sup,dt);
   const S=gEsc(sup);
@@ -3475,14 +3491,14 @@ function gridTable(mod,sup,month){
   if(cat.length>10){
     // 行=品项，列=日期（整月每天）；品名/单位/规格 冻结在左边(进货单不再有共用单价列)
     const head=`<th class="gcode">Code</th><th class="gname">${zh?"品名":"Item"}</th><th class="gunit">${zh?"单位":"Unit"}</th><th class="gpack">${zh?"规格/送货":"Pack"}</th>`+(isP?'':`<th class="gprice">${zh?"单价":"Price"}</th>`)+dates.map(dt=>`<th class="gcell${isP?' gcellp':''}">${w?`<input placeholder="Invoice No." value="${inv(dt)}" onchange="setGridInv('${mod}','${S}','${dt}',this.value)">`:`<span class="mini">${inv(dt)||'—'}</span>`}<div class="mini" style="margin-top:2px;">${dt.slice(5)}</div></th>`).join('')+`<th>${zh?"合计量":"Total Qty"}</th><th>${zh?"合计RM":"Total RM"}</th>`;
-    const body=cat.map((c,i)=>`<tr><td class="gcode"><input value="${c.code||''}" ${w?'':'disabled'} onchange="setGridCode('${mod}','${S}','${c.cid}',this.value)"></td><td class="gname"><input style="text-align:left;font-weight:700;" value="${(c.name||'').replace(/"/g,'&quot;')}" ${w?'':'disabled'} onchange="setGridName('${mod}','${S}','${c.cid}',this.value)">${rowCtl(c,'ud')}</td><td class="gunit"><input value="${c.uom||''}" ${w?'':'disabled'} onchange="setGridUom('${mod}','${S}','${c.cid}',this.value)"></td><td class="gpack"><input placeholder="10kg x 6/ctn" value="${(c.spec||'').replace(/"/g,'&quot;')}" ${w?'':'disabled'} onchange="setGridSpec('${mod}','${S}','${c.cid}',this.value)"></td>`+(isP?'':`<td class="gprice"><input type="number" step="0.01" value="${+c.price||0}" ${w?'':'disabled'} onchange="setGridPrice('${mod}','${S}','${c.cid}',this.value)"></td>`)+dates.map((dt,j)=>isP?`<td class="gcell gcellp">${gridCellHTML(mod,sup,c.cid,dt,w)}</td>`:`<td class="gcell"><input type="number" step="0.01" value="${q(c.cid,dt)}" ${w?'':'disabled'} oninput="setGridQty('${mod}','${S}','${c.cid}','${dt}',this.value)"></td>`).join('')+`<td class="gtot" id="gtq-${i}">${num(rQty(c),2)}</td><td class="gtot" id="gta-${i}">${money(rAmt(c))}</td></tr>`).join('')||`<tr><td colspan="${(isP?6:7)+dates.length}" class="empty">${zh?"点『+ 品项』添加":"Add items"}</td></tr>`;
+    const body=cat.map((c,i)=>`<tr><td class="gcode"><input value="${c.code||''}" ${w?'':'disabled'} onchange="setGridCode('${mod}','${S}','${c.cid}',this.value)"></td><td class="gname"><input style="text-align:left;font-weight:700;" value="${(c.name||'').replace(/"/g,'&quot;')}" ${w?'':'disabled'} onchange="setGridName('${mod}','${S}','${c.cid}',this.value)">${rowCtl(c,'ud')}</td><td class="gunit"><input value="${c.uom||''}" ${w?'':'disabled'} onchange="setGridUom('${mod}','${S}','${c.cid}',this.value)"></td><td class="gpack"><input placeholder="10kg x 6/ctn" value="${(c.spec||'').replace(/"/g,'&quot;')}" ${w?'':'disabled'} onchange="setGridSpec('${mod}','${S}','${c.cid}',this.value)"></td>`+(isP?'':`<td class="gprice">${priceCell(c)}</td>`)+dates.map((dt,j)=>isP?`<td class="gcell gcellp">${gridCellHTML(mod,sup,c.cid,dt,w)}</td>`:`<td class="gcell"><input type="number" step="0.01" value="${q(c.cid,dt)}" ${w?'':'disabled'} oninput="setGridQty('${mod}','${S}','${c.cid}','${dt}',this.value)"></td>`).join('')+`<td class="gtot" id="gtq-${i}">${num(rQty(c),2)}</td><td class="gtot" id="gta-${i}">${money(rAmt(c))}</td></tr>`).join('')||`<tr><td colspan="${(isP?6:7)+dates.length}" class="empty">${zh?"点『+ 品项』添加":"Add items"}</td></tr>`;
     const dailyRow=`<tr class="gsum"><td class="gcode"></td><td class="gname">${zh?"每日合计RM":"Daily Total"}</td><td class="gunit"></td><td class="gpack"></td>`+(isP?'':'<td class="gprice"></td>')+dates.map((dt,j)=>`<td id="gtd-${j}">${money(dayAmt(dt))}</td>`).join('')+`<td></td><td></td></tr>`;
     return `${controls}<div class="gwrap"><table class="gtbl"><thead><tr>${head}</tr></thead><tbody>${body}<tr class="gsum"><td class="gcode"></td><td class="gname">${zh?"本月合计":"Month Total"}</td><td class="gunit"></td><td class="gpack"></td>`+(isP?'':'<td class="gprice"></td>')+`${dates.map(()=>'<td></td>').join('')}<td></td><td id="gtg">${money(grand)}</td></tr>${dailyRow}</tbody></table></div>`;
   }
   // ≤10：行=日期（整月每天），列=品项；上方 单位/规格 行(进货单不再有共用单价行)；日期冻结在左边
   const head=`<th class="gdate">${zh?"日期":"Date"}</th><th>Invoice No.</th>`+cat.map(c=>`<th>${w?`<div class="gih"><input style="font-weight:700;" value="${(c.name||'').replace(/"/g,'&quot;')}" onchange="setGridName('${mod}','${S}','${c.cid}',this.value)">${rowCtl(c,'lr')}</div>`:c.name}</th>`).join('')+`<th>${zh?"当日RM":"Amt"}</th>`;
   const codeRow=`<tr class="ghdr"><td class="gdate ghlab">Code</td><td></td>${cat.map(c=>`<td><input value="${c.code||''}" ${w?'':'disabled'} onchange="setGridCode('${mod}','${S}','${c.cid}',this.value)"></td>`).join('')}<td></td></tr>`;
-  const priceRow=isP?'':`<tr class="ghdr"><td class="gdate ghlab">${zh?"单价RM":"Price"}</td><td></td>${cat.map(c=>`<td><input type="number" step="0.01" value="${+c.price||0}" ${w?'':'disabled'} onchange="setGridPrice('${mod}','${S}','${c.cid}',this.value)"></td>`).join('')}<td></td></tr>`;
+  const priceRow=isP?'':`<tr class="ghdr"><td class="gdate ghlab">${zh?"单价RM":"Price"}${isME?' <span class="mini" title="'+(zh?'自动＝本月中位数':'auto=median')+'">🔗</span>':''}</td><td></td>${cat.map(c=>`<td>${priceCell(c)}</td>`).join('')}<td></td></tr>`;
   const uomRow=`<tr class="ghdr"><td class="gdate ghlab">${zh?"单位":"Unit"}</td><td></td>${cat.map(c=>`<td><input value="${c.uom||''}" ${w?'':'disabled'} onchange="setGridUom('${mod}','${S}','${c.cid}',this.value)"></td>`).join('')}<td></td></tr>`;
   const specRow=`<tr class="ghdr ghdr-end"><td class="gdate ghlab">${zh?"规格":"Pack"}</td><td></td>${cat.map(c=>`<td><input placeholder="10kg x 6/ctn" value="${(c.spec||'').replace(/"/g,'&quot;')}" ${w?'':'disabled'} onchange="setGridSpec('${mod}','${S}','${c.cid}',this.value)"></td>`).join('')}<td></td></tr>`;
   const body=dates.map((dt,j)=>{const da=dayAmt(dt);return `<tr><td class="gdate">${dt.slice(5)}</td><td>${w?`<input placeholder="Invoice No." value="${inv(dt)}" onchange="setGridInv('${mod}','${S}','${dt}',this.value)">`:(inv(dt)||'—')}</td>${cat.map((c,i)=>isP?`<td class="gcell gcellp">${gridCellHTML(mod,sup,c.cid,dt,w)}</td>`:`<td class="gcell"><input type="number" step="0.01" value="${q(c.cid,dt)}" ${w?'':'disabled'} oninput="setGridQty('${mod}','${S}','${c.cid}','${dt}',this.value)"></td>`).join('')}<td class="gtot" id="gtd-${j}">${money(da)}</td></tr>`;}).join('')||`<tr><td colspan="${cat.length+3}" class="empty">${zh?"点『+ 品项』添加品项":"Add items"}</td></tr>`;
