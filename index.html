@@ -650,7 +650,7 @@ function statusOf(d){if(d<=14)return{t:"健康",e:"Fresh",c:"p-g"};if(d<=30)retu
 function stTxt(s){return LANG==="zh"?s.t:s.e;}
 
 /* ================= 数据种子 ================= */
-const BUILD="0924mk30";  // 版本标记：页面右上/网格提示可见，用来确认已载入最新版
+const BUILD="0924mk31";  // 版本标记：页面右上/网格提示可见，用来确认已载入最新版
 const SEED_VERSION="bh-master-2026-09-1";  // 版本变更→下次载入自动重置为最新主数据（仅本店云端）
 function seed(outletId){
   const isCK = outletId==="ck";
@@ -1846,7 +1846,7 @@ function pgOpex(){
   const labourKeys=["salaries","epf","socso","eis","levy","ot"];
   const pl=payrollLabour();const plMap={salaries:pl.salaries,epf:pl.epf,socso:pl.socso,eis:pl.eis,levy:pl.levy,ot:pl.ot};
   const labourSynced=labourKeys.every(k=>Math.round((+o[k]||0))===Math.round((plMap[k]||0)));
-  return `<div class="fb"><h2 class="h" style="margin:0;">💵 ${LANG==="zh"?"运营开销 OpEx":"Operating Expenses"} <span class="tag">${monthLabel2(m)}${locked?' 🔒':''}</span></h2>${canW('opex')&&canSeeSalary()&&!locked?`<div style="display:flex;gap:6px;"><button class="btn ghost sm" onclick="syncOpexFromPayroll()">🔗 ${LANG==="zh"?"同步人事薪资":"Sync Payroll"}</button><button class="btn gold sm" onclick="openM('opex')">✎ ${LANG==="zh"?"编辑":"Edit"}</button></div>`:''}</div>
+  return `<div class="fb"><h2 class="h" style="margin:0;">💵 ${LANG==="zh"?"运营开销 OpEx":"Operating Expenses"} <span class="tag">${monthLabel2(m)}${locked?' 🔒':''}</span></h2>${canW('opex')&&!locked?`<div style="display:flex;gap:6px;flex-wrap:wrap;">${canSeeSalary()?`<button class="btn ghost sm" onclick="syncOpexFromPayroll()">🔗 ${LANG==="zh"?"同步人事薪资":"Sync Payroll"}</button>`:''}<button class="btn ghost sm" onclick="syncOpexFromLogDirect()">🔗 ${LANG==="zh"?"同步开销记录":"Sync OpEx Log"}</button><button class="btn gold sm" onclick="openM('opex')">✎ ${LANG==="zh"?"编辑":"Edit"}</button></div>`:''}</div>
   <div class="seg" style="margin-bottom:8px;flex-wrap:wrap;">${availMonths().map(mm=>`<button class="${mm===m?'active':''}" onclick="setCostMonth('${mm}')">${monthLabel2(mm)}${monthLocked(mm)?' 🔒':''}</button>`).join('')}</div>
   <div class="hint">${LANG==="zh"?"运营开销按自然月独立核算，直接带入该月损益与净利。人工成本随『人事薪资』自动联动（也可手动改）。":"Per-month OpEx feeds that month's P&L. Labour auto-links to Payroll."}${hideSalary?(LANG==="zh"?" ⚠️ 你的角色只能看人工总数。":" ⚠️ Labour total only."):""}</div>
   ${locked?`<div class="al al-b" style="margin-bottom:8px;"><div class="t">🔒 ${LANG==="zh"?monthLabel2(m)+" 已月末锁定":"Locked"}</div>${LANG==="zh"?"该月开销已归档固定；如需修改请到『月度核算』解锁。":"Archived; unlock in Monthly."}</div>`:`<div class="hint" style="margin-bottom:8px;">${own?(LANG==="zh"?"📌 本月为专属开销（与其他月独立）。":"📌 Month-specific."):(LANG==="zh"?"📄 本月沿用默认开销；一旦编辑/同步即建立本月专属副本。":"📄 Using default template.")}</div>`}
@@ -1981,6 +1981,20 @@ async function syncOpexFromPayroll(){
   if(!confirm(LANG==="zh"?("用人事薪资的实际数据填入【"+monthLabel2(costMonth)+"】运营开销的人工成本（薪资/EPF/SOCSO/EIS/人头税/OT）？之后仍可手动微调。"):"Fill labour OpEx from payroll?"))return;
   const pl=payrollLabour();const o=materializeOpex(costMonth);applyLabour(o,pl);applyLabour(opexTemplate(),pl);
   auditLog("同步人工成本","人事薪资→OpEx "+monthLabel2(costMonth),"",money(pl.salaries+pl.ot+pl.epf+pl.socso+pl.eis+pl.levy));await save();render();}
+/* 「运营开销」页面直接同步「运营开销记录」(不用先去「运营开销录入」)：
+   营销/维修/Wi-Fi/垃圾清理/POS月租/会计费/维修杂项 这7项直接写入并存档；
+   租金/水电/商场抽成不受影响(那几项本来就只在「运营开销录入」手动填，不连结开销记录)。 */
+async function syncOpexFromLogDirect(){
+  const zh=LANG==="zh";const m=costMonth;
+  if(monthLocked(m))return alert(zh?"本月已月末锁定，请先解锁再同步。":"Month is locked.");
+  const totals=opexLogMonthTotals(m);
+  const cats=OPEXLOG_CATS.map(c=>c[0]).filter(k=>OPEXM_KEYS.includes(k));
+  if(!cats.some(k=>totals[k]!=null)){alert(zh?"这个月的「运营开销记录」里还没有资料可以同步。":"No OpEx Log entries this month.");return;}
+  if(!confirm(zh?("用「运营开销记录」这个月按类别汇总的金额，覆盖填入【"+monthLabel2(m)+"】的营销/维修/Wi-Fi/垃圾清理/POS月租/会计费/维修杂项？租金/水电/商场抽成不受影响。"):"Sync this month's OpEx Log totals into the matching fields? Rent/utilities untouched."))return;
+  const o=materializeOpex(m);let sum=0;
+  cats.forEach(k=>{o[k]=totals[k]||0;sum+=o[k];});
+  auditLog("同步开销记录","运营开销记录→OpEx "+monthLabel2(m),"",money(sum));await save();render();
+}
 function pgPayroll(){
   const x=d();const allStaff=x.staff||[];
   const scope=salaryScope(); // full / total / self
