@@ -650,7 +650,7 @@ function statusOf(d){if(d<=14)return{t:"健康",e:"Fresh",c:"p-g"};if(d<=30)retu
 function stTxt(s){return LANG==="zh"?s.t:s.e;}
 
 /* ================= 数据种子 ================= */
-const BUILD="0922mk29";  // 版本标记：页面右上/网格提示可见，用来确认已载入最新版
+const BUILD="0924mk30";  // 版本标记：页面右上/网格提示可见，用来确认已载入最新版
 const SEED_VERSION="bh-master-2026-09-1";  // 版本变更→下次载入自动重置为最新主数据（仅本店云端）
 function seed(outletId){
   const isCK = outletId==="ck";
@@ -1905,7 +1905,23 @@ function pgOpexM(){
       <div style="display:flex;align-items:center;gap:4px;"><span class="mini" style="color:var(--muted);">RM</span><input id="oxm_${k}" type="number" inputmode="decimal" step="0.01" min="0" value="${(+o[k]||0)}" ${(locked||!w)?'disabled':''} style="width:120px;text-align:right;padding:8px 9px;border:1.5px solid var(--line);border-radius:8px;font-size:14px;font-weight:700;"></div>
     </div>`).join('')}</div>`;}).join('')}
   <div class="pl" style="margin-top:12px;"><div class="row tot"><span>${zh?"本月运营开销小计":"Month OpEx subtotal"}</span><span>${money(sub)}</span></div></div>
-  ${(!locked&&w)?`<button class="btn block brand" style="margin-top:12px;" onclick="saveOpexM()">💾 ${zh?"保存本月":"Save Month"}</button>`:''}`;
+  ${(!locked&&w)?`<div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:12px;"><button class="btn ghost" onclick="syncOpexFromLog()">🔗 ${zh?"从运营开销记录汇总填入":"Sync from OpEx Log"}</button><button class="btn brand" style="flex:1;" onclick="saveOpexM()">💾 ${zh?"保存本月":"Save Month"}</button></div>`:''}`;
+}
+/* 「运营开销记录」(采购进销里那份零散流水账) 按类别加总，直接填进「运营开销录入」对应欄位
+   (marketing/maintenance/wifi/rubbish/possaas/accounting/repair 两边 key 完全对得上)。
+   只覆盖这几个欄位，租金/水电/商场抽成等不受影响；填完还没存档，按『保存本月』才真正写入。 */
+function opexLogMonthTotals(month){
+  const t={};(d().opexLog||[]).forEach(r=>{if((r.date||'').slice(0,7)!==month)return;t[r.cat]=(t[r.cat]||0)+(+r.amount||0);});
+  return t;
+}
+function syncOpexFromLog(){
+  const zh=LANG==="zh";const m=opexMSel;if(!m)return;
+  if(monthLocked(m))return alert(zh?"本月已锁定，请先解锁再同步。":"Month is locked.");
+  const totals=opexLogMonthTotals(m);
+  const cats=OPEXLOG_CATS.map(c=>c[0]).filter(k=>OPEXM_KEYS.includes(k));
+  if(!cats.some(k=>totals[k]!=null)){alert(zh?"这个月的「运营开销记录」里还没有资料可以汇总。":"No OpEx Log entries this month.");return;}
+  if(!confirm(zh?"用「运营开销记录」这个月按类别汇总的金额，覆盖填入下面对应欄位(营销/维修/Wi-Fi/垃圾清理/POS月租/会计费/维修杂项)？其余欄位(租金/水电等)不受影响，填好还要按『保存本月』才存档。":"Fill the matching fields below from this month's OpEx Log totals? Other fields untouched; still need to Save."))return;
+  cats.forEach(k=>{const el=document.getElementById('oxm_'+k);if(el)el.value=(totals[k]||0).toFixed(2);});
 }
 async function saveOpexM(){
   const m=opexMSel;if(!m)return;
