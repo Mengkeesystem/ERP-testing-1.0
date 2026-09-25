@@ -650,7 +650,7 @@ function statusOf(d){if(d<=14)return{t:"健康",e:"Fresh",c:"p-g"};if(d<=30)retu
 function stTxt(s){return LANG==="zh"?s.t:s.e;}
 
 /* ================= 数据种子 ================= */
-const BUILD="0925mk34";  // 版本标记：页面右上/网格提示可见，用来确认已载入最新版
+const BUILD="0925mk35";  // 版本标记：页面右上/网格提示可见，用来确认已载入最新版
 const SEED_VERSION="bh-master-2026-09-1";  // 版本变更→下次载入自动重置为最新主数据（仅本店云端）
 function seed(outletId){
   const isCK = outletId==="ck";
@@ -1211,7 +1211,7 @@ function invRow(i){
   const expSoon=firstBatch?days(firstBatch.exp,TODAY):999;
   const stt=expSoon<=3?{t:"临期",e:"Expiring",c:"p-r"}:st;
   return `<tr>
-    <td><b>${i.name}</b> <span class="pill ${acctPill(itemAcctGroup(i.name))}">${acctLabel(itemAcctGroup(i.name))}</span><br><span class="mini">${i.cat} · ${LANG==="zh"?"得率":"Yield"}${i.yield}% · 1${i.buyUnit}=${i.conv}${i.unit}</span></td>
+    <td><b>${oEsc(i.name)}</b> <span class="pill ${acctPill(itemAcctGroup(i.name))}">${acctLabel(itemAcctGroup(i.name))}</span><br><span class="mini">${oEsc(i.cat)} · ${LANG==="zh"?"得率":"Yield"}${i.yield}% · 1${oEsc(i.buyUnit)}=${i.conv}${oEsc(i.unit)}</span></td>
     <td>${num(i.qty)} ${i.unit}<br><span class="mini ${i.qty<=i.par?'neg':''}">Par ${i.par}</span></td>
     <td>${money(i.cost)}</td>
     <td>${money(netCost(i))}</td>
@@ -1652,10 +1652,10 @@ function pgBom(){
     if(!dc){dcSel=null;}else{
       const tot=dcTotal(dc);const gp=(+dc.price||0)-tot;const cp=dc.price?tot/dc.price*100:0;const gm=dc.price?gp/dc.price*100:0;
       const rows=(dc.ing||[]).map((ig,idx)=>{const share=tot?(+ig.cost||0)/tot*100:0;return `<tr>
-        <td><b>${ig.item||''}</b>${ig.link?` <span class="pill p-b" title="关联 ${ig.link}">🔗</span>`:''}</td><td class="mini">${ig.type||'—'}</td><td>${num(ig.qty,2)}</td><td class="mini">${ig.unit||''}</td><td>${money(ig.link?monthAvgPrice(costMonth,ig.link)*(+ig.qty||0):ig.cost)}${ig.link?`<br><span class="mini">${monthLabel2(costMonth)}</span>`:''}</td><td class="mini">${share.toFixed(1)}%</td>
+        <td><b>${oEsc(ig.item)}</b>${ig.link?` <span class="pill p-b" title="关联 ${oEsc(ig.link)}">🔗</span>`:''}</td><td class="mini">${oEsc(ig.type)||'—'}</td><td>${num(ig.qty,2)}</td><td class="mini">${oEsc(ig.unit)}</td><td>${money(ig.link?monthAvgPrice(costMonth,ig.link)*(+ig.qty||0):ig.cost)}${ig.link?`<br><span class="mini">${monthLabel2(costMonth)}</span>`:''}</td><td class="mini">${share.toFixed(1)}%</td>
         ${w?`<td style="white-space:nowrap;"><button class="ib" onclick="formDcIng(${dc.id},${idx})">✏️</button> <button class="ib" onclick="delDcIng(${dc.id},${idx})">🗑️</button></td>`:''}</tr>`;}).join('')||`<tr><td colspan="7" class="empty">${zh?"暂无材料，点『+ 材料』添加":"No ingredients"}</td></tr>`;
-      return `<div class="fb"><h2 class="h" style="margin:0;">🍽 ${dc.cn||dc.code} <span class="tag">${dc.code||''}</span></h2><button class="btn ghost sm" onclick="backDc()">← ${zh?"菜品列表":"Dishes"}</button></div>
-      <div class="mini" style="margin-bottom:8px;">${dc.en||''}</div>
+      return `<div class="fb"><h2 class="h" style="margin:0;">🍽 ${oEsc(dc.cn||dc.code)} <span class="tag">${oEsc(dc.code)}</span></h2><button class="btn ghost sm" onclick="backDc()">← ${zh?"菜品列表":"Dishes"}</button></div>
+      <div class="mini" style="margin-bottom:8px;">${oEsc(dc.en)}</div>
       <div class="grid g4" style="margin-bottom:10px;">
         <div class="kpi"><div class="k">${zh?"售价":"Price"}</div><div class="v sm">${money(dc.price)}</div></div>
         <div class="kpi"><div class="k">${zh?"总成本":"Cost"}</div><div class="v sm">${money(tot)}</div></div>
@@ -1675,7 +1675,7 @@ function pgBom(){
   const shown=q?list.filter(d=>((d.code||'')+(d.cn||'')+(d.en||'')).toLowerCase().includes(q)):list;
   const rows=shown.map(dc=>{const tot=dcTotal(dc);const gp=(+dc.price||0)-tot;const cp=dc.price?tot/dc.price*100:0;const gm=dc.price?gp/dc.price*100:0;
     return `<tr style="cursor:pointer;" onclick="setDcSel(${dc.id})">
-      <td class="mini">${dc.code||''}</td><td><b>${dc.cn||''}</b><br><span class="mini">${dc.en||''}${(dc.ing||[]).length?` · ${(dc.ing||[]).length}${zh?"料":""}`:''}</span></td>
+      <td class="mini">${oEsc(dc.code)}</td><td><b>${oEsc(dc.cn)}</b><br><span class="mini">${oEsc(dc.en)}${(dc.ing||[]).length?` · ${(dc.ing||[]).length}${zh?"料":""}`:''}</span></td>
       <td>${money(dc.price)}</td><td>${money(tot)}</td><td class="${gp>=0?'pos':'neg'}">${money(gp)}</td>
       <td style="color:${dcCostPctColor(cp)};font-weight:800;">${dc.price?cp.toFixed(0)+'%':'—'}</td><td class="mini">${dc.price?gm.toFixed(0)+'%':'—'}</td>
       ${w?`<td style="white-space:nowrap;" onclick="event.stopPropagation();"><button class="ib" onclick="formDish(${dc.id})">✏️</button> <button class="ib" onclick="delDish(${dc.id})">🗑️</button></td>`:''}
@@ -1775,7 +1775,7 @@ function pgMonthly(){
   const cpCol=(pct)=>pct<28?'#0891B2':(pct<=35?'var(--green)':'var(--red)');
   // 销售明细
   const salesRows=sales.map((s,i)=>{const dc=dishes.find(x=>x.id===s.dishId);if(!dc)return '';const q=+s.qty||0;const uc=dishCostForMonth(dc,m);const rev=(+dc.price||0)*q;const cogs=uc*q;return `<tr>
-    <td><b>${dc.cn||dc.code}</b> <span class="mini">${dc.code||''}</span></td><td>${num(q)}</td><td>${money(dc.price)}</td><td>${money(uc)}</td><td>${money(rev)}</td><td class="neg">${money(cogs)}</td><td class="${rev-cogs>=0?'pos':'neg'}">${money(rev-cogs)}</td>
+    <td><b>${oEsc(dc.cn||dc.code)}</b> <span class="mini">${oEsc(dc.code)}</span></td><td>${num(q)}</td><td>${money(dc.price)}</td><td>${money(uc)}</td><td>${money(rev)}</td><td class="neg">${money(cogs)}</td><td class="${rev-cogs>=0?'pos':'neg'}">${money(rev-cogs)}</td>
     ${w&&!locked?`<td style="white-space:nowrap;"><button class="ib" onclick="formMonthSale('${m}',${i})">✏️</button> <button class="ib" onclick="delMonthSale('${m}',${i})">🗑️</button></td>`:''}</tr>`;}).join('')||`<tr><td colspan="8" class="empty">${zh?"本月暂无销量，点『录入销量』或由 POS 推送":"No sales this month"}</td></tr>`;
   return `<div class="fb"><h2 class="h" style="margin:0;">📅 ${zh?"月度核算":"Monthly Cost"} ${picker}</h2>
     ${locked?`<span class="pill p-b">🔒 ${zh?"已锁定":"Locked"}</span>`:''}</div>
@@ -1805,12 +1805,12 @@ function pgMonthly(){
   <details class="card" style="padding:0;margin-top:12px;"><summary style="padding:13px;font-weight:800;cursor:pointer;">🥩 ${zh?"原料月度平均进价":"Monthly Avg Material Price"} <span class="mini">· ${mats.length}</span></summary><div style="padding:2px 12px 12px;">
     <div class="mini" style="margin-bottom:6px;">${zh?"月均单价＝当月该原料采购总额÷总数量（来自采购单）":"= month purchase amount / qty"}</div>
     <div class="card tbl"><table><thead><tr><th>${zh?"原料":"Material"}</th><th>${zh?"当月采购量":"Qty"}</th><th>${zh?"当月采购额":"Amount"}</th><th>${zh?"月均单价":"Avg Price"}</th></tr></thead><tbody>
-    ${mats.map(x=>`<tr><td><b>${x.item}</b></td><td>${num(x.qty,2)}</td><td>${money(x.amt)}</td><td style="font-weight:800;">${money(x.avg)}</td></tr>`).join('')||`<tr><td colspan="4" class="empty">${zh?"当月无采购":"No purchases"}</td></tr>`}
+    ${mats.map(x=>`<tr><td><b>${oEsc(x.item)}</b></td><td>${num(x.qty,2)}</td><td>${money(x.amt)}</td><td style="font-weight:800;">${money(x.avg)}</td></tr>`).join('')||`<tr><td colspan="4" class="empty">${zh?"当月无采购":"No purchases"}</td></tr>`}
     </tbody></table></div>
   </div></details>
   <details class="card" style="padding:0;margin-top:12px;"><summary style="padding:13px;font-weight:800;cursor:pointer;">🍽 ${zh?"各菜品当月成本":"Dish Cost This Month"}</summary><div style="padding:2px 12px 12px;">
     <div class="card tbl"><table><thead><tr><th>${zh?"菜品":"Dish"}</th><th>${zh?"售价":"Price"}</th><th>${zh?"当月成本":"Cost"}</th><th>${zh?"成本率":"Food%"}</th></tr></thead><tbody>
-    ${dishes.filter(dc=>(dc.ing||[]).length).slice(0,300).map(dc=>{const c=dishCostForMonth(dc,m);const cp=dc.price?c/dc.price*100:0;return `<tr><td><b>${dc.cn||dc.code}</b></td><td>${money(dc.price)}</td><td>${money(c)}</td><td style="color:${cpCol(cp)};font-weight:800;">${dc.price?cp.toFixed(0)+'%':'—'}</td></tr>`;}).join('')||`<tr><td colspan="4" class="empty">${zh?"暂无带配方的菜品":"No dishes"}</td></tr>`}
+    ${dishes.filter(dc=>(dc.ing||[]).length).slice(0,300).map(dc=>{const c=dishCostForMonth(dc,m);const cp=dc.price?c/dc.price*100:0;return `<tr><td><b>${oEsc(dc.cn||dc.code)}</b></td><td>${money(dc.price)}</td><td>${money(c)}</td><td style="color:${cpCol(cp)};font-weight:800;">${dc.price?cp.toFixed(0)+'%':'—'}</td></tr>`;}).join('')||`<tr><td colspan="4" class="empty">${zh?"暂无带配方的菜品":"No dishes"}</td></tr>`}
     </tbody></table></div>
   </div></details>`;
 }
@@ -1995,8 +1995,8 @@ function pgPayroll(){
     return `<h2 class="h" style="margin-top:2px;">💴 ${LANG==="zh"?"我的薪资单 Payslip":"My Payslip"} <span class="tag">${nm(outletObj())}</span></h2>
     <div class="hint">${LANG==="zh"?"你的角色只能查看自己的薪资明细。":"You can view your own payslip only."}</div>
     <div class="card" style="padding:16px;">
-      <div style="font-weight:800;font-size:16px;margin-bottom:2px;">${me.name}</div>
-      <div class="mini" style="margin-bottom:12px;">${me.role}${me.nationality?' · '+me.nationality:''}</div>
+      <div style="font-weight:800;font-size:16px;margin-bottom:2px;">${oEsc(me.name)}</div>
+      <div class="mini" style="margin-bottom:12px;">${oEsc(me.role)}${me.nationality?' · '+oEsc(me.nationality):''}</div>
       <div class="pl">
         <div class="row"><span>${LANG==="zh"?"底薪 Basic":"Basic"}</span><b>${money(me.basic)}</b></div>
         <div class="row"><span>${LANG==="zh"?"津贴 Allowance":"Allowance"}</span><b>${money(me.allowance)}</b></div>
@@ -2037,7 +2037,7 @@ function pgPayroll(){
     <th>${LANG==="zh"?"员工":"Employee"}</th><th>${LANG==="zh"?"底薪":"Basic"}</th><th>${LANG==="zh"?"津贴":"Allow"}</th><th>OT</th><th>EPF</th><th>SOCSO</th><th>EIS</th><th>${LANG==="zh"?"人头税":"Levy"}</th><th>${LANG==="zh"?"实发":"Net"}</th>${canW('payroll')?`<th>${LANG==="zh"?"操作":"Action"}</th>`:''}
   </tr></thead><tbody>
     ${staff.map(e=>`<tr>
-      <td><b>${e.name}</b><br><span class="mini">${e.role}${e.nationality?' · '+e.nationality:''}</span></td>
+      <td><b>${oEsc(e.name)}</b><br><span class="mini">${oEsc(e.role)}${e.nationality?' · '+oEsc(e.nationality):''}</span></td>
       <td>${money(e.basic)}</td><td>${money(e.allowance)}</td><td>${money(e.ot)}</td>
       <td class="mini">${e.epf?money(e.epf):'—'}</td><td class="mini">${money(e.socso)}</td><td class="mini">${e.eis?money(e.eis):'—'}</td>
       <td class="mini">${e.levy?money(e.levy):'—'}</td>
@@ -2128,15 +2128,15 @@ function pgReport(){
   ${renderCharts(f)}
   <h2 class="h">📋 ${LANG==="zh"?"盘点差异 (理论 vs 实盘)":"Stock Variance"}</h2>
   <div class="card tbl"><table><thead><tr><th>${LANG==="zh"?"品项":"Item"}</th><th>${LANG==="zh"?"理论":"Theory"}</th><th>${LANG==="zh"?"实盘":"Actual"}</th><th>${LANG==="zh"?"盘差":"Var"}</th><th>${LANG==="zh"?"盘差额":"Val"}</th></tr></thead><tbody>
-  ${varRows.map(r=>`<tr><td>${r.name}</td><td>${num(r.theory)} ${r.unit}</td><td>${num(r.count)} ${r.unit}</td><td><span class="pill ${Math.abs(r.v)>0.4?'p-r':'p-g'}">${r.v>0?'+':''}${num(r.v)}</span></td><td class="${Math.abs(r.v)>0.4?'neg':''}">${money(r.val)}</td></tr>`).join('')}
+  ${varRows.map(r=>`<tr><td>${oEsc(r.name)}</td><td>${num(r.theory)} ${oEsc(r.unit)}</td><td>${num(r.count)} ${oEsc(r.unit)}</td><td><span class="pill ${Math.abs(r.v)>0.4?'p-r':'p-g'}">${r.v>0?'+':''}${num(r.v)}</span></td><td class="${Math.abs(r.v)>0.4?'neg':''}">${money(r.val)}</td></tr>`).join('')}
   </tbody></table></div>
   <h2 class="h">🗑 ${LANG==="zh"?"报废原因统计":"Wastage by Reason"}</h2>
   <div class="card tbl"><table><thead><tr><th>${LANG==="zh"?"原因":"Reason"}</th><th>${LANG==="zh"?"次数":"Count"}</th><th>${LANG==="zh"?"损失":"Loss"}</th></tr></thead><tbody>
-  ${Object.entries(reasons).map(([k,v])=>`<tr><td>${k}</td><td>${v.n}</td><td class="neg">${money(v.amt)}</td></tr>`).join('')||`<tr><td colspan="3" class="empty">—</td></tr>`}
+  ${Object.entries(reasons).map(([k,v])=>`<tr><td>${oEsc(k)}</td><td>${v.n}</td><td class="neg">${money(v.amt)}</td></tr>`).join('')||`<tr><td colspan="3" class="empty">—</td></tr>`}
   </tbody></table></div>
   <h2 class="h">💀 ${LANG==="zh"?"呆滞/死货报表":"Dead Stock"}</h2>
   <div class="card tbl"><table><thead><tr><th>${LANG==="zh"?"品项":"Item"}</th><th>${LANG==="zh"?"在库天数":"Age"}</th><th>${LANG==="zh"?"占用金额":"Value"}</th></tr></thead><tbody>
-  ${dead.map(i=>`<tr><td>${i.name}</td><td>${days(TODAY,i.batches[0].in)} ${LANG==="zh"?"天":"d"}</td><td class="neg">${money(i.qty*i.cost)}</td></tr>`).join('')||`<tr><td colspan="3" class="empty">✅ ${LANG==="zh"?"无死货":"None"}</td></tr>`}
+  ${dead.map(i=>`<tr><td>${oEsc(i.name)}</td><td>${days(TODAY,i.batches[0].in)} ${LANG==="zh"?"天":"d"}</td><td class="neg">${money(i.qty*i.cost)}</td></tr>`).join('')||`<tr><td colspan="3" class="empty">✅ ${LANG==="zh"?"无死货":"None"}</td></tr>`}
   </tbody></table></div>`;
 }
 
@@ -2156,7 +2156,7 @@ function pgSales(){
     <div class="kpi"><div class="k">${LANG==="zh"?"食材成本率":"Food%"}</div><div class="v sm ${(totRev>0&&(totCogs/(totRev/1.06)*100)>40)?'up':'down'}">${totRev>0?(totCogs/(totRev/1.06)*100).toFixed(1):'0.0'}%</div></div>
   </div>
   <div class="card tbl" style="margin-top:10px;"><table><thead><tr><th>${LANG==="zh"?"菜品":"Dish"}</th><th>${LANG==="zh"?"售价":"Price"}</th><th>${LANG==="zh"?"单成本":"Cost"}</th><th>${LANG==="zh"?"销量":"Qty"}</th><th>${LANG==="zh"?"营业额":"Revenue"}</th><th>${LANG==="zh"?"成本":"COGS"}</th><th>${LANG==="zh"?"毛利":"GP"}</th></tr></thead><tbody>
-  ${rows.map(r=>`<tr><td><b>${r.name}</b></td><td>${money(r.price)}</td><td class="mini">${money(r.cost)}</td><td><b>${r.qty}</b></td><td>${money(r.rev)}</td><td class="up">${money(r.cogs)}</td><td class="down">${money(r.gp)}</td></tr>`).join('')}
+  ${rows.map(r=>`<tr><td><b>${oEsc(r.name)}</b></td><td>${money(r.price)}</td><td class="mini">${money(r.cost)}</td><td><b>${r.qty}</b></td><td>${money(r.rev)}</td><td class="up">${money(r.cogs)}</td><td class="down">${money(r.gp)}</td></tr>`).join('')}
   </tbody><tfoot><tr style="background:#FAFBFC;font-weight:800;"><td colspan="4">${LANG==="zh"?"合计":"Total"}</td><td>${money(totRev)}</td><td class="up">${money(totCogs)}</td><td class="down">${money(totRev/1.06-totCogs)}</td></tr></tfoot></table></div>
   <div class="hint" style="margin-top:10px;">💡 ${LANG==="zh"?"试试：去「配方成本」改某道菜的用量，或「采购进货」让食材变贵 → 回来看这里的 COGS 和大盘净利会跟着变。":"Change a recipe or purchase cost → COGS & Net Profit update here."}</div>`;
 }
@@ -2180,11 +2180,11 @@ function pgHR(){
   <div class="hint">${selfOnly?(LANG==="zh"?"你的角色只能查看自己的档案。":"You can view your own profile only."):(w?(LANG==="zh"?"本店员工档案。点 ✏️ 编辑基本资料。":"Branch staff profiles."):(LANG==="zh"?"只能查看，不能修改；如需更改/新增/删除员工档案，请联系区域副经理/人事经理/老板。":"View only — contact Area/HR Manager/Owner to edit."))}</div>
   ${staff.map(e=>`<div class="card" style="padding:13px;margin-bottom:9px;">
     <div style="display:flex;justify-content:space-between;align-items:flex-start;">
-      <div><div style="font-weight:800;font-size:15px;">${e.name}</div><div class="mini">${e.empNo?e.empNo+' · ':''}${e.role}${e.nationality?' · '+e.nationality:''}</div></div>
+      <div><div style="font-weight:800;font-size:15px;">${oEsc(e.name)}</div><div class="mini">${e.empNo?oEsc(e.empNo)+' · ':''}${oEsc(e.role)}${e.nationality?' · '+oEsc(e.nationality):''}</div></div>
       ${w?`<div><button class="ib" onclick="openM('emp',${e.id})">✏️</button> <button class="ib" onclick="delEmp(${e.id})">🗑️</button></div>`:''}
     </div>
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-top:9px;font-size:12px;">
-      <div class="mini">🆔 ${e.ic||'—'}</div><div class="mini">📱 ${e.phone||'—'}</div>
+      <div class="mini">🆔 ${oEsc(e.ic)||'—'}</div><div class="mini">📱 ${oEsc(e.phone)||'—'}</div>
       <div class="mini">📅 ${LANG==="zh"?"入职":"Joined"} ${e.joined||'—'}</div><div class="mini">🌴 ${LANG==="zh"?"年假":"Leave"} ${e.usedLeave||0}/${e.annualLeave||0}</div>
     </div>
   </div>`).join('')||`<div class="empty">${LANG==="zh"?"暂无员工":"No staff"}</div>`}`;
@@ -2204,7 +2204,7 @@ function pgAttend(){
   </div>
   <h2 class="h">📋 ${LANG==="zh"?"考勤记录":"Records"}</h2>
   <div class="card tbl"><table><thead><tr><th>${LANG==="zh"?"员工":"Staff"}</th><th>${LANG==="zh"?"日期":"Date"}</th><th>${LANG==="zh"?"上班":"In"}</th><th>${LANG==="zh"?"下班":"Out"}</th><th>${LANG==="zh"?"时数":"Hrs"}</th></tr></thead><tbody>
-  ${att.map(a=>{const e=empById(a.empId);return `<tr><td>${e?e.name:a.empId}</td><td class="mini">${a.date.slice(5)}</td><td>${a.in}</td><td>${a.out||'—'}</td><td>${a.hours?a.hours.toFixed(1):'—'}</td></tr>`;}).join('')||`<tr><td colspan="5" class="empty">${LANG==="zh"?"暂无记录":"No records"}</td></tr>`}
+  ${att.map(a=>{const e=empById(a.empId);return `<tr><td>${e?oEsc(e.name):oEsc(a.empId)}</td><td class="mini">${a.date.slice(5)}</td><td>${a.in}</td><td>${a.out||'—'}</td><td>${a.hours?a.hours.toFixed(1):'—'}</td></tr>`;}).join('')||`<tr><td colspan="5" class="empty">${LANG==="zh"?"暂无记录":"No records"}</td></tr>`}
   </tbody></table></div>`;
 }
 function doClockIn(){
@@ -2233,7 +2233,7 @@ function pgSchedule(){
   return `<div class="fb"><h2 class="h" style="margin:0;">📅 ${LANG==="zh"?"排班表":"Schedule"} <span class="tag">${nm(outletObj())}</span></h2>${canW('schedule')&&hrScope()!=="self"?`<button class="btn gold sm" onclick="openM('shift')">+ ${LANG==="zh"?"排班":"Shift"}</button>`:''}</div>
   <div class="hint">${hrScope()==="self"?(LANG==="zh"?"你只能看自己的班表。":"Your shifts only."):(LANG==="zh"?"安排本店员工班次。":"Assign shifts.")}</div>
   <div class="card tbl"><table><thead><tr><th>${LANG==="zh"?"日期":"Date"}</th><th>${LANG==="zh"?"员工":"Staff"}</th><th>${LANG==="zh"?"班次":"Shift"}</th>${canW('schedule')&&hrScope()!=="self"?'<th></th>':''}</tr></thead><tbody>
-  ${sch.map((s,i)=>{const e=empById(s.empId);return `<tr><td class="mini">${s.date.slice(5)}</td><td>${e?e.name:s.empId}</td><td>${s.shift}</td>${canW('schedule')&&hrScope()!=="self"?`<td><button class="ib" onclick="delShift(${i})">🗑️</button></td>`:''}</tr>`;}).join('')||`<tr><td colspan="4" class="empty">${LANG==="zh"?"暂无排班":"No shifts"}</td></tr>`}
+  ${sch.map((s,i)=>{const e=empById(s.empId);return `<tr><td class="mini">${s.date.slice(5)}</td><td>${e?oEsc(e.name):oEsc(s.empId)}</td><td>${oEsc(s.shift)}</td>${canW('schedule')&&hrScope()!=="self"?`<td><button class="ib" onclick="delShift(${i})">🗑️</button></td>`:''}</tr>`;}).join('')||`<tr><td colspan="4" class="empty">${LANG==="zh"?"暂无排班":"No shifts"}</td></tr>`}
   </tbody></table></div>`;
 }
 async function delShift(i){if(!confirm(LANG==="zh"?"删除此班次？":"Delete shift?"))return;d().schedule.splice(i,1);await save();render();}
@@ -2245,7 +2245,7 @@ function pgLeave(){
   return `<div class="fb"><h2 class="h" style="margin:0;">🌴 ${LANG==="zh"?"请假管理":"Leave"} <span class="tag">${nm(outletObj())}</span></h2><button class="btn gold sm" onclick="openM('leave')">+ ${LANG==="zh"?"申请请假":"Apply"}</button></div>
   <div class="hint">${canApprove?(LANG==="zh"?"你可以批准／拒绝本店请假申请。":"You can approve/reject."):(LANG==="zh"?"提交请假申请，等待上级批准。":"Submit and await approval.")}</div>
   <div class="card tbl"><table><thead><tr><th>${LANG==="zh"?"员工":"Staff"}</th><th>${LANG==="zh"?"类型":"Type"}</th><th>${LANG==="zh"?"日期":"Dates"}</th><th>${LANG==="zh"?"天":"Days"}</th><th>${LANG==="zh"?"状态":"Status"}</th>${canApprove?'<th></th>':''}</tr></thead><tbody>
-  ${leaves.map(l=>{const e=empById(l.empId);const cls=l.status==="已批准"?"p-g":l.status==="已拒绝"?"p-r":"p-a";return `<tr><td>${e?e.name:l.empId}</td><td>${l.type}</td><td class="mini">${l.from.slice(5)}~${l.to.slice(5)}</td><td>${l.days}</td><td><span class="pill ${cls}">${l.status}</span></td>${canApprove?`<td style="white-space:nowrap;">${l.status==="待批准"?`<button class="ib" onclick="approveLeave(${l.id},1)">✅</button> <button class="ib" onclick="approveLeave(${l.id},0)">❌</button>`:''}</td>`:''}</tr>`;}).join('')||`<tr><td colspan="6" class="empty">${LANG==="zh"?"暂无申请":"None"}</td></tr>`}
+  ${leaves.map(l=>{const e=empById(l.empId);const cls=l.status==="已批准"?"p-g":l.status==="已拒绝"?"p-r":"p-a";return `<tr><td>${e?oEsc(e.name):oEsc(l.empId)}</td><td>${oEsc(l.type)}</td><td class="mini">${l.from.slice(5)}~${l.to.slice(5)}</td><td>${l.days}</td><td><span class="pill ${cls}">${oEsc(l.status)}</span></td>${canApprove?`<td style="white-space:nowrap;">${l.status==="待批准"?`<button class="ib" onclick="approveLeave(${l.id},1)">✅</button> <button class="ib" onclick="approveLeave(${l.id},0)">❌</button>`:''}</td>`:''}</tr>`;}).join('')||`<tr><td colspan="6" class="empty">${LANG==="zh"?"暂无申请":"None"}</td></tr>`}
   </tbody></table></div>`;
 }
 async function approveLeave(id,ok){const l=d().leaves.find(x=>x.id===id);if(!l)return;l.status=ok?"已批准":"已拒绝";auditLog("请假审批",l.type+" "+(ok?"批准":"拒绝"),"待批准",l.status);await save();render();}
@@ -2643,7 +2643,7 @@ function pgOrderSheet(){
       const isck=isCkOrderSup(v.name);
       return `<div class="card" style="padding:13px;margin-bottom:9px;cursor:pointer;" onclick="setSupplier('${v.name.replace(/'/g,"\\'")}')">
         <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;">
-          <div><div style="font-weight:800;font-size:15px;">🏢 ${v.name}${isck?` <span class="tag">${LANG==="zh"?"含图片":"photos"}</span>`:''}</div>
+          <div><div style="font-weight:800;font-size:15px;">🏢 ${oEsc(v.name)}${isck?` <span class="tag">${LANG==="zh"?"含图片":"photos"}</span>`:''}</div>
           <div class="mini">${LANG==="zh"?"点进去下单":"Tap to order"}</div></div>
           <div style="white-space:nowrap;">${wSup?`<button class="ib" title="${LANG==="zh"?'改名':'Rename'}" onclick="event.stopPropagation();renameSupplier(${v.id})">✏️</button> <button class="ib" title="${LANG==="zh"?'删除':'Delete'}" onclick="event.stopPropagation();delSupplier(${v.id})">🗑️</button> `:''}<span class="mini">›</span></div>
         </div></div>`;
@@ -2709,7 +2709,7 @@ function pgStock(){
   return `<div class="fb"><h2 class="h" style="margin:0;">📋 ${LANG==="zh"?"实物盘点":"Stock Take"} <span class="tag">${nm(outletObj())}</span></h2>${canW('stock')?`<button class="btn gold sm" onclick="openM('stocktake')">+ ${LANG==="zh"?"盘点":"Count"}</button>`:''}</div>
   <div class="hint">${LANG==="zh"?"👉 功能：月底(或定期)数一次实际库存填进来，系统自动算出账面 vs 实物差多少(＝隐性损耗/被偷被浪费)，也用来做月度实耗成本。":"Enter your physical count; system shows the shortfall vs book stock."}</div>
   <div class="card tbl"><table><thead><tr><th>${LANG==="zh"?"品项":"Item"}</th><th>${LANG==="zh"?"理论":"Theory"}</th><th>${LANG==="zh"?"实盘":"Actual"}</th><th>${LANG==="zh"?"盘差":"Var"}</th><th>${LANG==="zh"?"盘差额":"Val"}</th></tr></thead><tbody>
-  ${x.stocktakes.map(s=>{const it=findItem(s.item);const v=s.theory-s.count;return `<tr><td>${s.item}</td><td>${num(s.theory)}</td><td>${num(s.count)}</td><td><span class="pill ${Math.abs(v)>0.4?'p-r':'p-g'}">${v>0?'+':''}${num(v)}</span></td><td class="${Math.abs(v)>0.4?'neg':''}">${money(Math.abs(v)*(it?it.cost:0))}</td></tr>`;}).join('')}
+  ${x.stocktakes.map(s=>{const it=findItem(s.item);const v=s.theory-s.count;return `<tr><td>${oEsc(s.item)}</td><td>${num(s.theory)}</td><td>${num(s.count)}</td><td><span class="pill ${Math.abs(v)>0.4?'p-r':'p-g'}">${v>0?'+':''}${num(v)}</span></td><td class="${Math.abs(v)>0.4?'neg':''}">${money(Math.abs(v)*(it?it.cost:0))}</td></tr>`;}).join('')}
   </tbody></table></div>`;
 }
 
@@ -2808,7 +2808,7 @@ function auditMonitorHTML(){
     <select style="${selStyle}" onchange="setAuditRole(this.value)">${roleOpts}</select>
   </div>
   <div class="card tbl"><table><thead><tr><th>${LANG==="zh"?"时间":"Time"}</th><th>${LANG==="zh"?"分店":"Branch"}</th><th>${LANG==="zh"?"岗位":"Role"}</th><th>${LANG==="zh"?"类别":"Kind"}</th><th>${LANG==="zh"?"动作":"Action"}</th><th>${LANG==="zh"?"明细":"Detail"}</th><th>${LANG==="zh"?"旧→新":"Old→New"}</th></tr></thead><tbody>
-    ${rows.map(a=>{const k=auditKind(a.act);return `<tr><td class="mini">${a.date}</td><td>${a._outletName}</td><td><span class="pill ${rolePill[a._role]||'p-n'}">${roleName[a._role]||a._role}</span></td><td><span class="pill ${k.c}">${k.t}</span></td><td>${a.act}</td><td>${a.detail||''}</td><td class="mini">${(a.old||'')}${a.old||a.new?'→':''}${(a.new||'')}</td></tr>`;}).join('')||`<tr><td colspan="7" class="empty">${LANG==="zh"?"暂无符合条件的记录":"No records"}</td></tr>`}
+    ${rows.map(a=>{const k=auditKind(a.act);return `<tr><td class="mini">${a.date}</td><td>${oEsc(a._outletName)}</td><td><span class="pill ${rolePill[a._role]||'p-n'}">${oEsc(roleName[a._role]||a._role)}</span></td><td><span class="pill ${k.c}">${k.t}</span></td><td>${oEsc(a.act)}</td><td>${oEsc(a.detail)}</td><td class="mini">${oEsc(a.old)}${a.old||a.new?'→':''}${oEsc(a.new)}</td></tr>`;}).join('')||`<tr><td colspan="7" class="empty">${LANG==="zh"?"暂无符合条件的记录":"No records"}</td></tr>`}
   </tbody></table></div>`;
   return settingsPanel(`🔍 ${LANG==="zh"?"员工操作监察（跨分店审计）":"Staff Activity Monitor"} <span class="mini" style="font-weight:400;">· ${rows.length}</span>`, body);
 }
@@ -2823,8 +2823,8 @@ function whitelistHTML(){
   <div class="hint">${LANG==="zh"?"只有在此名单且『启用』的邮箱才能登录。岗位与所属分店由你分配；员工首次用该邮箱注册密码即可登录。":"Only listed & active emails can sign in. You assign role & branch."}</div>
   <div class="card tbl"><table><thead><tr><th>${LANG==="zh"?"邮箱":"Email"}</th><th>${LANG==="zh"?"姓名":"Name"}</th><th>${LANG==="zh"?"岗位":"Role"}</th><th>${LANG==="zh"?"分店":"Branch"}</th><th>${LANG==="zh"?"状态":"Status"}</th><th></th></tr></thead><tbody>
   ${USERS.map(u=>`<tr>
-    <td><b>${u.email}</b>${curUser&&u.email===curUser.email?` <span class="pill p-b">${LANG==="zh"?"你":"you"}</span>`:''}</td>
-    <td>${u.name||'—'}</td>
+    <td><b>${oEsc(u.email)}</b>${curUser&&u.email===curUser.email?` <span class="pill p-b">${LANG==="zh"?"你":"you"}</span>`:''}</td>
+    <td>${oEsc(u.name)||'—'}</td>
     <td><span class="pill p-p">${roleShort(u.role)}</span></td>
     <td class="mini">${ROLES[u.role]&&ROLES[u.role].allBranch?(LANG==="zh"?"全部":"All"):outName(u.outlet)}</td>
     <td>${u.active===false?`<span class="pill p-r">${LANG==="zh"?"停用":"Off"}</span>`:`<span class="pill p-g">${LANG==="zh"?"启用":"On"}</span>`}</td>
@@ -2879,7 +2879,7 @@ function pgSettings(){
   </div>
   <div class="card" style="padding:12px;margin-bottom:12px;">
     <div class="fr" style="margin:0;"><label>🔐 ${LANG==="zh"?"登录方式":"Login Mode"}</label>
-    <div class="mini">${CLOUD?(curUser?(LANG==="zh"?`已启用真实登录：当前 ${curUser.name}（${curUser.email}）· 岗位与分店由白名单锁定。未登录无法读取任何数据。`:`Real auth on: ${curUser.email}.`):(LANG==="zh"?"已启用 Supabase 真实邮箱登录 + 白名单。":"Supabase auth + whitelist enabled.")):(LANG==="zh"?"当前为演示登录（未连云端）。填入 Supabase 后自动切换为真实邮箱登录 + 白名单。":"Demo login. Configure Supabase for real auth.")}</div></div>
+    <div class="mini">${CLOUD?(curUser?(LANG==="zh"?`已启用真实登录：当前 ${oEsc(curUser.name)}（${oEsc(curUser.email)}）· 岗位与分店由白名单锁定。未登录无法读取任何数据。`:`Real auth on: ${oEsc(curUser.email)}.`):(LANG==="zh"?"已启用 Supabase 真实邮箱登录 + 白名单。":"Supabase auth + whitelist enabled.")):(LANG==="zh"?"当前为演示登录（未连云端）。填入 Supabase 后自动切换为真实邮箱登录 + 白名单。":"Demo login. Configure Supabase for real auth.")}</div></div>
   </div>`;
 }
 
@@ -3519,8 +3519,8 @@ function pgLedger(mod){
       const tot=sumField(rs,'price');
       return `<div class="card" style="padding:13px;margin-bottom:9px;cursor:pointer;" onclick="setSupplier('${v.name.replace(/'/g,"\\'")}')">
         <div style="display:flex;justify-content:space-between;align-items:center;">
-          <div><div style="font-weight:800;font-size:15px;">🏢 ${v.name}</div>
-          <div class="mini">${rs.length} ${LANG==="zh"?"笔单据":"records"} · ${LANG==="zh"?"账期":"Terms"} ${v.terms}${LANG==="zh"?"天":"d"}</div></div>
+          <div><div style="font-weight:800;font-size:15px;">🏢 ${oEsc(v.name)}</div>
+          <div class="mini">${rs.length} ${LANG==="zh"?"笔单据":"records"} · ${LANG==="zh"?"账期":"Terms"} ${oEsc(v.terms)}${LANG==="zh"?"天":"d"}</div></div>
           <div style="text-align:right;"><div style="font-weight:800;">${money(tot)}</div>
           <div style="white-space:nowrap;">${writable?`<button class="ib" onclick="event.stopPropagation();renameSupplier(${v.id})">✏️</button> <button class="ib" onclick="event.stopPropagation();delSupplier(${v.id})">🗑️</button> `:''}<span class="mini">›</span></div></div>
         </div></div>`;
@@ -3547,7 +3547,7 @@ function gridSummaryHTML(mod,sup,month){
   if(!summ.length)return '';
   return `<h2 class="h">📦 ${LANG==="zh"?"各货物本月总计":"Per-Item Totals"} <span class="tag">${monthLabel(month)}</span></h2>
     <div class="card tbl" style="overflow-x:auto;"><table><thead><tr><th>${LANG==="zh"?"品名":"Item"}</th><th>${LANG==="zh"?"总数量":"Qty"}</th><th>${LANG==="zh"?"总价钱":"Total"}</th></tr></thead><tbody>
-    ${summ.map(s=>`<tr><td><b>${s.item}</b></td><td>${num(s.qty,2)}</td><td>${money(s.price)}</td></tr>`).join('')}
+    ${summ.map(s=>`<tr><td><b>${oEsc(s.item)}</b></td><td>${num(s.qty,2)}</td><td>${money(s.price)}</td></tr>`).join('')}
     <tr style="background:#FAFBFC;font-weight:800;"><td colspan="2">${LANG==="zh"?"本月合计":"Month Total"}</td><td>${money(mTot)}</td></tr></tbody></table></div>`;
 }
 
@@ -3696,7 +3696,7 @@ function pgWaste2(){
   ${logMonthTabs(months,cur,'setWasteMonth')}
   <div class="grid g2" style="margin-bottom:10px;"><div class="kpi"><div class="k">${LANG==="zh"?"本月报废笔数":"Records"}</div><div class="v sm">${rs.length}</div></div><div class="kpi"><div class="k">${LANG==="zh"?"本月损耗总额":"Total Loss"}</div><div class="v sm neg">${money(tot)}</div></div></div>
   <div class="card tbl"><table><thead><tr><th>${LANG==="zh"?"日期":"Date"}</th><th>${LANG==="zh"?"物品名称":"Item"}</th><th>Code</th><th>${LANG==="zh"?"成本价":"Cost"}</th><th>${LANG==="zh"?"数量":"Qty"}</th><th>Total</th><th>${LANG==="zh"?"原因":"Reason"}</th><th>${LANG==="zh"?"备注":"Note"}</th>${writable?'<th></th>':''}</tr></thead><tbody>
-  ${rs.map(r=>{const gi=x.wasteLog.indexOf(r);const line=(+r.cost||0)*(+r.qty||0);return `<tr><td class="mini">${r.date}</td><td><b>${r.item}</b></td><td class="mini">${r.code||'—'}</td><td>${money(r.cost)}</td><td>${num(r.qty,2)}</td><td class="neg">${money(line)}</td><td>${r.reason||'—'}</td><td class="mini">${r.note||''}</td>${writable?`<td style="white-space:nowrap;"><button class="ib" onclick="formWaste2(${gi})">✏️</button> <button class="ib" onclick="delWaste2(${gi})">🗑️</button></td>`:''}</tr>`;}).join('')||`<tr><td colspan="9" class="empty">${LANG==="zh"?"暂无报废":"None"}</td></tr>`}
+  ${rs.map(r=>{const gi=x.wasteLog.indexOf(r);const line=(+r.cost||0)*(+r.qty||0);return `<tr><td class="mini">${r.date}</td><td><b>${oEsc(r.item)}</b></td><td class="mini">${oEsc(r.code)||'—'}</td><td>${money(r.cost)}</td><td>${num(r.qty,2)}</td><td class="neg">${money(line)}</td><td>${oEsc(r.reason)||'—'}</td><td class="mini">${oEsc(r.note)}</td>${writable?`<td style="white-space:nowrap;"><button class="ib" onclick="formWaste2(${gi})">✏️</button> <button class="ib" onclick="delWaste2(${gi})">🗑️</button></td>`:''}</tr>`;}).join('')||`<tr><td colspan="9" class="empty">${LANG==="zh"?"暂无报废":"None"}</td></tr>`}
   </tbody><tfoot><tr style="background:#FAFBFC;font-weight:800;"><td colspan="5">${LANG==="zh"?"合计":"Total"}</td><td class="neg">${money(tot)}</td><td colspan="${writable?3:2}"></td></tr></tfoot></table></div>`;
 }
 function formWaste2(editIdx){
@@ -3745,7 +3745,7 @@ function pgOpexLog(){
   ${logMonthTabs(months,cur,'setOpexLogMonth')}
   <div class="grid g2" style="margin-bottom:10px;"><div class="kpi"><div class="k">${zh?"本月笔数":"Records"}</div><div class="v sm">${rs.length}</div></div><div class="kpi"><div class="k">${zh?"本月开销总额":"Total"}</div><div class="v sm neg">${money(tot)}</div></div></div>
   <div class="card tbl"><table><thead><tr><th>${zh?"日期":"Date"}</th><th>${zh?"类别":"Category"}</th><th>Invoice No.</th><th>${zh?"金额":"Amount"}</th><th>${zh?"备注":"Note"}</th>${writable?'<th></th>':''}</tr></thead><tbody>
-  ${rs.map(r=>{const gi=x.opexLog.indexOf(r);return `<tr><td class="mini">${r.date}</td><td>${opexLogCatLabel(r.cat)}</td><td class="mini">${r.invoiceNo||'—'}</td><td class="neg">${money(r.amount)}</td><td class="mini">${r.note||''}</td>${writable?`<td style="white-space:nowrap;"><button class="ib" onclick="formOpexLog(${gi})">✏️</button> <button class="ib" onclick="delOpexLog(${gi})">🗑️</button></td>`:''}</tr>`;}).join('')||`<tr><td colspan="6" class="empty">${zh?"暂无记录":"None"}</td></tr>`}
+  ${rs.map(r=>{const gi=x.opexLog.indexOf(r);return `<tr><td class="mini">${r.date}</td><td>${opexLogCatLabel(r.cat)}</td><td class="mini">${oEsc(r.invoiceNo)||'—'}</td><td class="neg">${money(r.amount)}</td><td class="mini">${oEsc(r.note)}</td>${writable?`<td style="white-space:nowrap;"><button class="ib" onclick="formOpexLog(${gi})">✏️</button> <button class="ib" onclick="delOpexLog(${gi})">🗑️</button></td>`:''}</tr>`;}).join('')||`<tr><td colspan="6" class="empty">${zh?"暂无记录":"None"}</td></tr>`}
   </tbody><tfoot><tr style="background:#FAFBFC;font-weight:800;"><td colspan="3">${zh?"合计":"Total"}</td><td class="neg">${money(tot)}</td><td colspan="${writable?2:1}"></td></tr></tfoot></table></div>`;
 }
 function formOpexLog(editIdx){
@@ -3780,7 +3780,7 @@ function pgOffer(){
   ${logMonthTabs(months,cur,'setOfferMonth')}
   <div class="grid g2" style="margin-bottom:10px;"><div class="kpi"><div class="k">${LANG==="zh"?"本月招待笔数":"Records"}</div><div class="v sm">${rs.length}</div></div><div class="kpi"><div class="k">${LANG==="zh"?"本月招待总额":"Total"}</div><div class="v sm warnc">${money(tot)}</div></div></div>
   <div class="card tbl"><table><thead><tr><th>${LANG==="zh"?"日期":"Date"}</th><th>${LANG==="zh"?"收据号":"Receipt"}</th><th>${LANG==="zh"?"类别":"Type"}</th><th>${LANG==="zh"?"品项":"Item"}</th><th>${LANG==="zh"?"当事人":"P.I.C"}</th><th>${LANG==="zh"?"金额":"Amount"}</th><th>${LANG==="zh"?"原因":"Reason"}</th>${writable?'<th></th>':''}</tr></thead><tbody>
-  ${rs.map(r=>{const gi=x.offers.indexOf(r);return `<tr><td class="mini">${r.date}</td><td class="mini">${r.receipt||'—'}</td><td><span class="pill ${r.type==='ENT'?'p-a':'p-b'}">${r.type}</span></td><td><b>${r.item}</b></td><td>${r.person||'—'}</td><td>${money(r.total)}</td><td class="mini">${r.reason||r.note||''}</td>${writable?`<td style="white-space:nowrap;"><button class="ib" onclick="formOffer(${gi})">✏️</button> <button class="ib" onclick="delOffer(${gi})">🗑️</button></td>`:''}</tr>`;}).join('')||`<tr><td colspan="8" class="empty">${LANG==="zh"?"暂无招待":"None"}</td></tr>`}
+  ${rs.map(r=>{const gi=x.offers.indexOf(r);return `<tr><td class="mini">${r.date}</td><td class="mini">${oEsc(r.receipt)||'—'}</td><td><span class="pill ${r.type==='ENT'?'p-a':'p-b'}">${oEsc(r.type)}</span></td><td><b>${oEsc(r.item)}</b></td><td>${oEsc(r.person)||'—'}</td><td>${money(r.total)}</td><td class="mini">${oEsc(r.reason||r.note)}</td>${writable?`<td style="white-space:nowrap;"><button class="ib" onclick="formOffer(${gi})">✏️</button> <button class="ib" onclick="delOffer(${gi})">🗑️</button></td>`:''}</tr>`;}).join('')||`<tr><td colspan="8" class="empty">${LANG==="zh"?"暂无招待":"None"}</td></tr>`}
   </tbody><tfoot><tr style="background:#FAFBFC;font-weight:800;"><td colspan="5">${LANG==="zh"?"合计":"Total"}</td><td class="warnc">${money(tot)}</td><td colspan="${writable?2:1}"></td></tr></tfoot></table></div>`;
 }
 function formOffer(editIdx){
@@ -3964,7 +3964,7 @@ function payslipHTML(e,pageBreak){
       <div><div style="font-weight:800;font-size:16px;">${t2('appTitle')}</div><div class="mini">${nm(outletObj())} · ${zh?'薪资单 Payslip':'Payslip'}</div></div>
       <div style="text-align:right;"><div style="font-weight:800;">${monthLabel2(payrunMonth)}</div></div>
     </div>
-    <div style="margin:10px 0 8px;font-weight:800;">${e.name} <span class="mini" style="font-weight:600;">· ${e.empNo?e.empNo+' · ':''}${e.role}${e.nationality?' · '+e.nationality:''}</span></div>
+    <div style="margin:10px 0 8px;font-weight:800;">${oEsc(e.name)} <span class="mini" style="font-weight:600;">· ${e.empNo?oEsc(e.empNo)+' · ':''}${oEsc(e.role)}${e.nationality?' · '+oEsc(e.nationality):''}</span></div>
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;">
       <div><div style="font-weight:800;margin-bottom:4px;">${zh?'收入 Earnings':'Earnings'}</div>
         ${R(zh?'底薪 Basic':'Basic',c.basic)}${R(zh?'津贴 Allowance':'Allowance',c.allowance)}${R(zh?'奖励 Incentive':'Incentive',c.incentive)}${R((zh?'加班 OT':'OT')+' ('+num(c.otHours,1)+'h×'+c.otMult+')',c.otAmt)}
@@ -4015,7 +4015,7 @@ function pgPayrun(){
   const num2=payNum;
   const NI='style="width:66px;padding:6px 5px;border:1px solid var(--line);border-radius:6px;text-align:right;font-size:12.5px;"';
   const body=rows.map(({e,c})=>{const ov=run.ov[e.id]||{};const pcbShown=ov.pcb!=null?ov.pcb:c.pcbAuto;const RC=`payLiveRecalc(${e.id})`;return `<tr>
-    <td class="pstick" style="text-align:left;font-weight:700;min-width:130px;">${e.name}<br><span class="mini">${e.empNo?e.empNo+' · ':''}${e.role||''}</span></td>
+    <td class="pstick" style="text-align:left;font-weight:700;min-width:130px;">${oEsc(e.name)}<br><span class="mini">${e.empNo?oEsc(e.empNo)+' · ':''}${oEsc(e.role)||''}</span></td>
     <td style="text-align:right;">${num2(c.basic)}</td>
     <td><input id="pi-allow-${e.id}" ${NI} type="number" step="0.01" ${dis} value="${c.allowance}" oninput="${RC}"></td>
     <td><input id="pi-inc-${e.id}" ${NI} type="number" step="0.01" ${dis} value="${c.incentive}" oninput="${RC}"></td>
