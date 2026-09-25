@@ -2,7 +2,7 @@
 <html lang="zh">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
@@ -18,7 +18,7 @@
 <style>
   *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
   /* 手机流畅度/好点：按钮类元素去掉双击缩放的300ms延迟，滚动区域用惯性滑动 */
-  button,.btn,.ib,.lang,.menu-btn,select,.side button{touch-action:manipulation;}
+  button,.btn,.ib,.lang,.menu-btn,select,.side button,a,[onclick]{touch-action:manipulation;}
   .gwrap,.card.tbl,.m{-webkit-overflow-scrolling:touch;}
   :root{
     --ink:#12203A;--ink2:#3A4A66;--paper:#F5F6F4;--card:#FFFFFF;--line:#E1E5EC;
@@ -229,14 +229,14 @@
   /* form */
   .fr{margin-bottom:11px;}
   .fr label{display:block;font-size:11.5px;font-weight:700;color:var(--ink2);margin-bottom:5px;}
-  .fr input,.fr select,.fr textarea{width:100%;padding:9px 10px;border:1.5px solid var(--line);border-radius:8px;font-size:14px;font-family:inherit;background:#fff;color:var(--ink);}
+  .fr input,.fr select,.fr textarea{width:100%;padding:9px 10px;border:1.5px solid var(--line);border-radius:8px;font-size:16px;font-family:inherit;background:#fff;color:var(--ink);} /* 16px：iOS 输入框字体<16px会自动放大画面，字体一变输入框又跳回去，感觉一直在"卡"；改16px就不会再触发 */
   .fr input:focus,.fr select:focus,.fr textarea:focus{outline:none;border-color:var(--brand2);}
   .fg2{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
   .fg3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;}
   /* modal */
   .mbg{display:none;position:fixed;inset:0;background:rgba(15,25,45,.5);z-index:100;align-items:flex-end;justify-content:center;}
   .mbg.show{display:flex;}
-  .m{background:#fff;width:100%;max-width:560px;border-radius:18px 18px 0 0;padding:18px;max-height:92vh;overflow-y:auto;animation:su .22s;}
+  .m{background:#fff;width:100%;max-width:560px;border-radius:18px 18px 0 0;padding:18px calc(18px + env(safe-area-inset-right)) calc(18px + env(safe-area-inset-bottom)) calc(18px + env(safe-area-inset-left));max-height:92vh;overflow-y:auto;animation:su .22s;}
   .m.m-wide{max-width:min(1000px,96vw);}
   @media(min-width:640px){.m{border-radius:16px;margin:auto;}.mbg.show{align-items:center;}}
   .m h3{font-size:16px;color:var(--ink);margin-bottom:14px;display:flex;justify-content:space-between;align-items:center;}
@@ -252,8 +252,8 @@
   details.alertBox summary::marker{content:"";}
   .fb{display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:9px;flex-wrap:wrap;}
   /* sidebar */
-  .layout{display:flex;min-height:calc(100vh - 44px);}
-  .side{width:210px;flex-shrink:0;background:#0E1B30;color:#C7D0DE;overflow-y:auto;position:sticky;top:44px;height:calc(100vh - 44px);transition:width .2s;}
+  .layout{display:flex;min-height:calc(100vh - var(--topH, 44px));}
+  .side{width:210px;flex-shrink:0;background:#0E1B30;color:#C7D0DE;overflow-y:auto;position:sticky;top:var(--topH, 44px);height:calc(100vh - var(--topH, 44px));transition:width .2s;}
   .side .grp{font-size:10px;text-transform:uppercase;letter-spacing:.05em;color:#5E6E86;padding:14px 16px 5px;font-weight:700;}
   .side button{width:100%;background:none;border:none;color:#C7D0DE;text-align:left;padding:12px 16px;min-height:44px;font-size:13px;font-weight:600;cursor:pointer;display:flex;align-items:center;gap:9px;border-left:3px solid transparent;}
   .side button:hover{background:rgba(255,255,255,.05);}
@@ -264,15 +264,18 @@
   .main.wide{max-width:100%;}
   .menu-btn{display:none;background:none;border:1px solid rgba(255,255,255,.3);color:#fff;border-radius:7px;padding:6px 10px;font-size:15px;cursor:pointer;min-width:34px;min-height:34px;}
   @media(max-width:760px){
-    .side{position:fixed;left:0;top:44px;z-index:80;width:230px;box-shadow:2px 0 20px rgba(0,0,0,.3);transform:translateX(-100%);transition:transform .2s;}
+    /* 顶栏在窄手机上内容太多会自动换成2~3行、变高，侧边菜单/遮罩层原本写死从44px开始，
+       手机顶栏一变高就会把后面几行(角色/分店选单、登出按钮)盖住，完全点不到。
+       改用 --topH 这个变量(由 syncTopH() 量出顶栏实际高度写入)，永远从顶栏真正结束的地方开始。 */
+    .side{position:fixed;left:0;top:var(--topH, 44px);z-index:80;width:230px;box-shadow:2px 0 20px rgba(0,0,0,.3);transform:translateX(-100%);transition:transform .2s;}
     .side.open{transform:translateX(0);}
     .menu-btn{display:inline-block;}
     .main{padding:14px;}
-    .backdrop{display:none;position:fixed;inset:44px 0 0;background:rgba(0,0,0,.4);z-index:75;}
+    .backdrop{display:none;position:fixed;top:var(--topH, 44px);left:0;right:0;bottom:0;background:rgba(0,0,0,.4);z-index:75;}
     .backdrop.show{display:block;}
   }
   .disabled{opacity:.4;pointer-events:none;}
-  .ib{background:none;border:1px solid var(--line);border-radius:6px;padding:6px 8px;font-size:13px;cursor:pointer;line-height:1;min-width:30px;min-height:30px;display:inline-flex;align-items:center;justify-content:center;}
+  .ib{background:none;border:1px solid var(--line);border-radius:6px;padding:6px 8px;font-size:13px;cursor:pointer;line-height:1;min-width:34px;min-height:34px;display:inline-flex;align-items:center;justify-content:center;}
   .ib:active{transform:scale(.9);}
   .chart-wrap{background:var(--card);border:1px solid var(--line);border-radius:11px;padding:14px;margin-bottom:10px;}
   .bar-row{display:flex;align-items:center;gap:8px;margin:6px 0;font-size:12px;}
@@ -656,7 +659,7 @@ function statusOf(d){if(d<=14)return{t:"健康",e:"Fresh",c:"p-g"};if(d<=30)retu
 function stTxt(s){return LANG==="zh"?s.t:s.e;}
 
 /* ================= 数据种子 ================= */
-const BUILD="0925mk43";  // 版本标记：页面右上/网格提示可见，用来确认已载入最新版
+const BUILD="0925mk44";  // 版本标记：页面右上/网格提示可见，用来确认已载入最新版
 const SEED_VERSION="bh-master-2026-09-1";  // 版本变更→下次载入自动重置为最新主数据（仅本店云端）
 function seed(outletId){
   const isCK = outletId==="ck";
@@ -2422,7 +2425,7 @@ function notifyNewOrders(silent){
   if(silent)return; // 登录首次：只标记已有订单为已通知，不弹（避免刷屏）
   fresh.sort((a,b)=>a.ts-b.ts);const latest=fresh[fresh.length-1];
   playBeep();fireNotify(latest,fresh.length);
-  const bn=document.createElement('div');bn.className='al al-a';bn.style.cssText='position:fixed;right:16px;bottom:16px;max-width:320px;z-index:9999;box-shadow:0 6px 24px rgba(0,0,0,.2);cursor:pointer;';
+  const bn=document.createElement('div');bn.className='al al-a';bn.style.cssText='position:fixed;right:16px;bottom:calc(16px + env(safe-area-inset-bottom));max-width:320px;z-index:9999;box-shadow:0 6px 24px rgba(0,0,0,.2);cursor:pointer;';
   bn.innerHTML=`<div class="t">🔔 ${LANG==="zh"?"新订单":"New order"}${fresh.length>1?` ×${fresh.length}`:''}</div>${(latest.by&&latest.by.name||'')} · ${latest.supplier?oEsc(latest.supplier)+' · ':''}${latest.outletName}`;
   bn.onclick=()=>{openOrdersPanel();bn.remove();};document.body.appendChild(bn);setTimeout(()=>bn.remove(),9000);
 }
@@ -4095,9 +4098,22 @@ function pgPayrun(){
 /* 页面路由补充（ap/opex 不在底部tab，用函数导航） */
 const _pages={dash:pgDash,sales:pgSales,inv:pgInv,proc:pgProc,bom:pgBom,report:pgReport,settings:pgSettings,ap:pgAp,opex:pgOpex,opexm:pgOpexM,payroll:pgPayroll,payrun:pgPayrun,hr:pgHR,attend:pgAttend,schedule:pgSchedule,leave:pgLeave,ck:pgCK,stock:pgStock,
   purchase:pgPurchase,grn:pgGRN,transfer:pgTransfer,waste2:pgWaste2,offer:pgOffer,monthend:pgMonthEnd,monthly:pgMonthly,ordersheet:pgOrderSheet,orderinv:pgOrderInv,opexlog:pgOpexLog};
+/* 顶栏在窄手机上文字太多会自动换行、变高(实测 375px 宽的手机顶栏可以到 139px 高)；
+   量出顶栏"现在真正的高度"写进 --topH 这个 CSS 变量，侧边菜单/遮罩层跟着它定位，
+   永远从顶栏结束的地方开始，不会被拉高的顶栏盖住导致点不到。 */
+function syncTopH(){
+  const top=document.querySelector('.top');if(!top)return;
+  const h=Math.ceil(top.getBoundingClientRect().height)||44;
+  document.documentElement.style.setProperty('--topH',h+'px');
+}
+if(typeof window!=='undefined'){
+  window.addEventListener('resize',syncTopH);
+  window.addEventListener('orientationchange',()=>setTimeout(syncTopH,150));
+}
 function render(){
   if(!pageAllowed(curPage)){curPage=firstAllowedPage();selSupplier=null;} // 权限收紧后自动落到可访问页
   renderTop();renderSidebar();
+  syncTopH();
   if(isAgg())_aggCache=null; // 每次渲染刷新汇总，反映最新各店数据
   const banner=isAgg()?`<div class="al al-b" style="margin-bottom:10px;"><div class="t">📊 ${LANG==="zh"?"全部分店总和视图（只读）":"All-Branches Aggregate (read-only)"}</div>${LANG==="zh"?"这是 11 间分店数据的合计，仅供总览；要录入或修改请切换到个别分店。":"Totals of all branches. Switch to a branch to edit."}</div>`:'';
   const preview=isPreviewing()?`<div class="al al-a" style="margin-bottom:10px;display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap;"><div><div class="t">👁 ${LANG==="zh"?"岗位预览模式":"Role Preview"}</div>${LANG==="zh"?`你正在以「${ROLES[curRole].name}」身份查看界面（真实身份：${curUser.name} · 老板/管理员）。`:`Previewing as ${ROLES[curRole].en}.`}</div><button class="btn ghost sm" onclick="exitPreview()">↩︎ ${LANG==="zh"?"退出预览":"Exit"}</button></div>`:'';
