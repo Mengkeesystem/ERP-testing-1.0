@@ -656,7 +656,7 @@ function statusOf(d){if(d<=14)return{t:"健康",e:"Fresh",c:"p-g"};if(d<=30)retu
 function stTxt(s){return LANG==="zh"?s.t:s.e;}
 
 /* ================= 数据种子 ================= */
-const BUILD="0925mk41";  // 版本标记：页面右上/网格提示可见，用来确认已载入最新版
+const BUILD="0925mk42";  // 版本标记：页面右上/网格提示可见，用来确认已载入最新版
 const SEED_VERSION="bh-master-2026-09-1";  // 版本变更→下次载入自动重置为最新主数据（仅本店云端）
 function seed(outletId){
   const isCK = outletId==="ck";
@@ -4311,7 +4311,12 @@ function installApp(){
   try{window.addEventListener('beforeinstallprompt',function(e){e.preventDefault();_deferredPrompt=e;});}catch(e){}
   try{window.addEventListener('click',function(){if(typeof primeAudio==='function')primeAudio();},{once:true});}catch(e){}
   initCloud();
-  if(AUTH()){
+  // 点了"忘记密码"邮件连结回来时，网址会带 type=recovery；这时不能走正常登录流程直接放人进系统，
+  // 要先逼他设好新密码——用网址判断比等 onAuthStateChange 的事件更快，避免被 getSession() 抢先跳进系统。
+  const _pwRecovery=/type=recovery/.test(location.hash)||/type=recovery/.test(location.search);
+  if(AUTH()&&_pwRecovery){
+    showResetPassword();
+  }else if(AUTH()){
     try{const {data}=await _sb.auth.getSession();
       if(data&&data.session&&data.session.user){await afterAuth(data.session.user);}
       else{showAuthLogin();}
