@@ -650,7 +650,7 @@ function statusOf(d){if(d<=14)return{t:"健康",e:"Fresh",c:"p-g"};if(d<=30)retu
 function stTxt(s){return LANG==="zh"?s.t:s.e;}
 
 /* ================= 数据种子 ================= */
-const BUILD="0925mk37";  // 版本标记：页面右上/网格提示可见，用来确认已载入最新版
+const BUILD="0925mk38";  // 版本标记：页面右上/网格提示可见，用来确认已载入最新版
 const SEED_VERSION="bh-master-2026-09-1";  // 版本变更→下次载入自动重置为最新主数据（仅本店云端）
 function seed(outletId){
   const isCK = outletId==="ck";
@@ -3844,6 +3844,19 @@ async function addPayrunMonth(){
   const arr=ensurePayrunMonths();if(!arr.includes(m))arr.push(m);
   payrunMonth=m;payrunYearSel=m.slice(0,4);await save();render();
 }
+/* 删除月份：会连同该月已存的薪资发放记录(覆盖值/是否已确认发放)一起清掉，属于不可逆操作，
+   所以要求连续两次确认才真的删。当月是"今天所在的月份"的话不给删(它会自动一直存在，删了也马上又出现)。 */
+async function delPayrunMonth(m){
+  const zh=LANG==="zh";
+  if(m===TODAY.slice(0,7)){alert(zh?"当前月份不能删除（系统会自动保留）。":"Can't delete the current month.");return;}
+  if(!confirm(zh?`确定删除「${monthLabel2(m)}」？这会连同该月的薪资发放记录一起清掉，删掉后不能复原。`:`Delete ${monthLabel2(m)}? This also removes that month's saved payroll run.`))return;
+  if(!confirm(zh?`再次确认：真的要删除「${monthLabel2(m)}」吗？此操作无法撤销。`:`Confirm again: really delete ${monthLabel2(m)}? This cannot be undone.`))return;
+  const arr=ensurePayrunMonths();const i=arr.indexOf(m);if(i>=0)arr.splice(i,1);
+  if(d().payrollRuns&&d().payrollRuns[m])delete d().payrollRuns[m];
+  auditLog("删除薪资月份",monthLabel2(m),"","");
+  if(payrunMonth===m){payrunMonth=TODAY.slice(0,7);payrunYearSel=payrunMonth.slice(0,4);}
+  await save();render();
+}
 function payrunData(){const m=payrunMonth;d().payrollRuns=d().payrollRuns||{};if(!d().payrollRuns[m])d().payrollRuns[m]={finalized:false,ov:{}};if(!d().payrollRuns[m].ov)d().payrollRuns[m].ov={};return d().payrollRuns[m];}
 function payCfg(){if(!d().payrollCfg)d().payrollCfg={sl24j:'f1'};return d().payrollCfg;}
 const SL24J_RATE={f1:0.0075,f2:0.01,f3:0.0125};
@@ -4026,7 +4039,7 @@ function pgPayrun(){
   const dis=(!w||fin)?'disabled':'';
   const ci='style="width:66px;padding:6px 5px;border:1px solid var(--line);border-radius:6px;text-align:right;font-size:12.5px;"';
   const yearSeg=`<div class="seg" style="flex-wrap:wrap;margin-bottom:6px;">${years.map(y=>`<button class="${y===payrunYearSel?'active':''}" onclick="setPayrunYear('${y}')">${y}${zh?'年':''}</button>`).join('')}</div>`;
-  const monthSeg=`<div class="seg" style="flex-wrap:wrap;margin-bottom:8px;">${months.filter(m=>m.slice(0,4)===payrunYearSel).map(m=>`<button class="${m===payrunMonth?'active':''}" onclick="setPayrunMonth('${m}')">${monthLabel2(m)}${(d().payrollRuns[m]&&d().payrollRuns[m].finalized)?' ✅':''}</button>`).join('')}${w?`<button onclick="addPayrunMonth()">+ ${zh?"月份":"Month"}</button>`:''}</div>`;
+  const monthSeg=`<div class="seg" style="flex-wrap:wrap;margin-bottom:8px;">${months.filter(m=>m.slice(0,4)===payrunYearSel).map(m=>`<button class="${m===payrunMonth?'active':''}" onclick="setPayrunMonth('${m}')">${monthLabel2(m)}${(d().payrollRuns[m]&&d().payrollRuns[m].finalized)?' ✅':''}${w&&m!==TODAY.slice(0,7)?` <span class="ib" title="${zh?'删除月份':'Delete month'}" onclick="event.stopPropagation();delPayrunMonth('${m}')">×</span>`:''}</button>`).join('')}${w?`<button onclick="addPayrunMonth()">+ ${zh?"月份":"Month"}</button>`:''}</div>`;
   const num2=payNum;
   const NI='style="width:66px;padding:6px 5px;border:1px solid var(--line);border-radius:6px;text-align:right;font-size:12.5px;"';
   const body=rows.map(({e,c})=>{const ov=run.ov[e.id]||{};const pcbShown=ov.pcb!=null?ov.pcb:c.pcbAuto;const RC=`payLiveRecalc(${e.id})`;return `<tr>
