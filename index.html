@@ -650,7 +650,7 @@ function statusOf(d){if(d<=14)return{t:"健康",e:"Fresh",c:"p-g"};if(d<=30)retu
 function stTxt(s){return LANG==="zh"?s.t:s.e;}
 
 /* ================= 数据种子 ================= */
-const BUILD="0925mk36";  // 版本标记：页面右上/网格提示可见，用来确认已载入最新版
+const BUILD="0925mk37";  // 版本标记：页面右上/网格提示可见，用来确认已载入最新版
 const SEED_VERSION="bh-master-2026-09-1";  // 版本变更→下次载入自动重置为最新主数据（仅本店云端）
 function seed(outletId){
   const isCK = outletId==="ck";
@@ -3829,9 +3829,21 @@ function pgMonthEnd(){return pgLedger('monthend');}
    EPF 第三附表(band-upper 进位)、SOCSO/EIS 第二附表(费率×薪级中点，取整到5仙)、SL24J 员工承担(封顶RM6000)。
    PCB 为估算(按 MTD 年度投影，可手动改)，正式以 LHDN e-PCB 为准。 */
 let payrunMonth = TODAY.slice(0,7);
+let payrunYearSel = payrunMonth.slice(0,4); // 薪资发放：先选年份，再选月份
 let payslipMode = null;   // null=薪资表 | 'menu'=选择 | 'single'=勾选员工
 let payslipPick = {};
-function setPayrunMonth(m){payrunMonth=m;render();window.scrollTo(0,0);}
+function setPayrunMonth(m){payrunMonth=m;payrunYearSel=m.slice(0,4);render();window.scrollTo(0,0);}
+function setPayrunYear(y){payrunYearSel=y;render();}
+/* 薪资发放的月份列表：每个月自动新增（TODAY 一到新月份就自动出现），历史月份永远保留；
+   也可以用这个手动先建未来的月份(不用等到那天才出现)。 */
+function ensurePayrunMonths(){if(!Array.isArray(d().payrunMonths))d().payrunMonths=[];return d().payrunMonths;}
+async function addPayrunMonth(){
+  const def=(payrunYearSel&&/^\d{4}$/.test(payrunYearSel))?payrunYearSel+'-01':TODAY.slice(0,7);
+  const m=(prompt(LANG==="zh"?"添加月份 (YYYY-MM)：":"Add month (YYYY-MM):",def)||'').trim();
+  if(!/^\d{4}-\d{2}$/.test(m))return;
+  const arr=ensurePayrunMonths();if(!arr.includes(m))arr.push(m);
+  payrunMonth=m;payrunYearSel=m.slice(0,4);await save();render();
+}
 function payrunData(){const m=payrunMonth;d().payrollRuns=d().payrollRuns||{};if(!d().payrollRuns[m])d().payrollRuns[m]={finalized:false,ov:{}};if(!d().payrollRuns[m].ov)d().payrollRuns[m].ov={};return d().payrollRuns[m];}
 function payCfg(){if(!d().payrollCfg)d().payrollCfg={sl24j:'f1'};return d().payrollCfg;}
 const SL24J_RATE={f1:0.0075,f2:0.01,f3:0.0125};
@@ -4006,12 +4018,15 @@ function pgPayrun(){
       <button class="btn block brand" style="margin-top:8px;" onclick="openPayslipSelected()">✅ ${zh?'确认 · 下载/打印':'Confirm · Download/Print'}${n?(' ('+n+')'):''}</button>`;
   }
   // ---- 薪资表主视图 ----
-  const months=(function(){const s=new Set([payrunMonth,TODAY.slice(0,7)]);Object.keys(d().payrollRuns||{}).forEach(m=>s.add(m));return [...s].filter(Boolean).sort().reverse();})();
+  const months=(function(){const s=new Set([payrunMonth,TODAY.slice(0,7),...ensurePayrunMonths()]);Object.keys(d().payrollRuns||{}).forEach(m=>s.add(m));return [...s].filter(Boolean).sort().reverse();})();
+  const years=[...new Set(months.map(m=>m.slice(0,4)))].sort().reverse();
+  if(!years.includes(payrunYearSel))payrunYearSel=years[0]||TODAY.slice(0,4);
   const rows=staff.map(e=>({e,c:computeRow(e)}));
   const T=rows.reduce((a,{c})=>{a.gross+=c.gross;a.epfEe+=c.epf.ee;a.epfEr+=c.epf.er;a.socEe+=c.soc.ee;a.socEr+=c.soc.er;a.eisEe+=c.eis.ee;a.eisEr+=c.eis.er;a.sl+=c.sl;a.pcb+=c.pcb;a.net+=c.net;a.er+=c.erCost;return a;},{gross:0,epfEe:0,epfEr:0,socEe:0,socEr:0,eisEe:0,eisEr:0,sl:0,pcb:0,net:0,er:0});
   const dis=(!w||fin)?'disabled':'';
   const ci='style="width:66px;padding:6px 5px;border:1px solid var(--line);border-radius:6px;text-align:right;font-size:12.5px;"';
-  const monthSeg=`<div class="seg" style="flex-wrap:wrap;margin-bottom:8px;">${months.map(m=>`<button class="${m===payrunMonth?'active':''}" onclick="setPayrunMonth('${m}')">${monthLabel2(m)}${(d().payrollRuns[m]&&d().payrollRuns[m].finalized)?' ✅':''}</button>`).join('')}</div>`;
+  const yearSeg=`<div class="seg" style="flex-wrap:wrap;margin-bottom:6px;">${years.map(y=>`<button class="${y===payrunYearSel?'active':''}" onclick="setPayrunYear('${y}')">${y}${zh?'年':''}</button>`).join('')}</div>`;
+  const monthSeg=`<div class="seg" style="flex-wrap:wrap;margin-bottom:8px;">${months.filter(m=>m.slice(0,4)===payrunYearSel).map(m=>`<button class="${m===payrunMonth?'active':''}" onclick="setPayrunMonth('${m}')">${monthLabel2(m)}${(d().payrollRuns[m]&&d().payrollRuns[m].finalized)?' ✅':''}</button>`).join('')}${w?`<button onclick="addPayrunMonth()">+ ${zh?"月份":"Month"}</button>`:''}</div>`;
   const num2=payNum;
   const NI='style="width:66px;padding:6px 5px;border:1px solid var(--line);border-radius:6px;text-align:right;font-size:12.5px;"';
   const body=rows.map(({e,c})=>{const ov=run.ov[e.id]||{};const pcbShown=ov.pcb!=null?ov.pcb:c.pcbAuto;const RC=`payLiveRecalc(${e.id})`;return `<tr>
@@ -4041,8 +4056,9 @@ function pgPayrun(){
   const head=`<tr>${[zh?'员工':'Staff',zh?'底薪':'Basic',zh?'津贴':'Allow',zh?'奖励':'Incent','OT时','OT倍','OT额',zh?'应发':'Gross','EPF员','SOCSO员','EIS员'].map(t=>`<th style="padding:5px 6px;white-space:nowrap;">${t}</th>`).join('')}${thE('EPF雇')}${thE('SOCSO雇')}${thE('EIS雇')}${['SL24J',zh?'已婚':'Marr',zh?'孩':'Child','PCB',zh?'人头税':'Levy',zh?'实发':'Net'].map(t=>`<th style="padding:5px 6px;white-space:nowrap;">${t}</th>`).join('')}</tr>`;
   return `<div class="fb"><h2 class="h" style="margin:0;">🧮 ${zh?'薪资发放 Payroll':'Payroll Run'} <span class="tag">${monthLabel2(payrunMonth)}${fin?' 🔒':''}</span></h2>
     <span class="mini" style="opacity:.7;">SL24J ${zh?'按工龄自动 (0.75→1.0→1.25%)':'auto by tenure'}</span></div>
+  ${yearSeg}
   ${monthSeg}
-  <div class="hint">${zh?'底薪从『员工档案』自动带入；津贴/奖励/OT时数可改，一填数字即时结算。OT = 时数 × (底薪÷26÷8) × 倍数。EPF/SOCSO/EIS 按官方附表；SL24J 员工承担(按工龄自动)；PCB 为估算(可手改，留空=自动)，正式以 LHDN e-PCB 为准。人头税暂为 0。':'Basic auto from staff profile; edits settle instantly. Statutory per official schedules; PCB estimate.'}</div>
+  <div class="hint">${zh?'月份会跟着日期自动往前增加、历史月份都会保留；也可以按上面『+ 月份』先手动建未来的月份。底薪从『员工档案』自动带入；津贴/奖励/OT时数可改，一填数字即时结算。OT = 时数 × (底薪÷26÷8) × 倍数。EPF/SOCSO/EIS 按官方附表；SL24J 员工承担(按工龄自动)；PCB 为估算(可手改，留空=自动)，正式以 LHDN e-PCB 为准。人头税暂为 0。':'Basic auto from staff profile; edits settle instantly. Statutory per official schedules; PCB estimate.'}</div>
   <div class="gwrap" style="max-height:66vh;"><table class="gtbl ptbl" style="font-size:12.5px;"><thead>${head}</thead><tbody>${body}
     <tr class="gsum" style="font-weight:800;"><td class="pstick">${zh?'合计':'Total'}</td><td></td><td></td><td></td><td></td><td></td><td></td><td style="text-align:right;"><span id="pt-gross">${num2(T.gross)}</span></td><td style="text-align:right;"><span id="pt-epf">${num2(T.epfEe)}</span></td><td style="text-align:right;"><span id="pt-soc">${num2(T.socEe)}</span></td><td style="text-align:right;"><span id="pt-eis">${num2(T.eisEe)}</span></td><td style="text-align:right;background:#F3FAF7;"><span id="pt-epfer">${num2(T.epfEr)}</span></td><td style="text-align:right;background:#F3FAF7;"><span id="pt-socer">${num2(T.socEr)}</span></td><td style="text-align:right;background:#F3FAF7;"><span id="pt-eiser">${num2(T.eisEr)}</span></td><td style="text-align:right;"><span id="pt-sl">${num2(T.sl)}</span></td><td></td><td></td><td style="text-align:right;"><span id="pt-pcb">${num2(T.pcb)}</span></td><td></td><td class="pstickR" style="text-align:right;"><span id="pt-net">${num2(T.net)}</span></td></tr>
   </tbody></table></div>
