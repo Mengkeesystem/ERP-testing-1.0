@@ -659,7 +659,7 @@ function statusOf(d){if(d<=14)return{t:"健康",e:"Fresh",c:"p-g"};if(d<=30)retu
 function stTxt(s){return LANG==="zh"?s.t:s.e;}
 
 /* ================= 数据种子 ================= */
-const BUILD="0925mk44";  // 版本标记：页面右上/网格提示可见，用来确认已载入最新版
+const BUILD="0925mk45";  // 版本标记：页面右上/网格提示可见，用来确认已载入最新版
 const SEED_VERSION="bh-master-2026-09-1";  // 版本变更→下次载入自动重置为最新主数据（仅本店云端）
 function seed(outletId){
   const isCK = outletId==="ck";
@@ -3053,6 +3053,7 @@ function setV(id,val){const el=document.getElementById(id);if(el)el.value=val;}
 function setTitle(txt){const h=document.querySelector('#mbox h3');if(h)h.childNodes[0].textContent=txt+" ";}
 function closeM(){document.getElementById('mbg').classList.remove('show');_orderEditing=false;}
 document.getElementById('mbg').addEventListener('click',e=>{if(e.target.id==='mbg')closeM();});
+document.addEventListener('keydown',e=>{if(e.key==='Escape'){const mbg=document.getElementById('mbg');if(mbg&&mbg.classList.contains('show'))closeM();}});
 function poHint(){const s=document.getElementById('p_item');if(!s)return;const it=findItem(s.value);document.getElementById('poHint').innerHTML=it?`1 ${it.buyUnit} = ${it.conv} ${it.unit} · ${LANG==="zh"?"现价":"now"} ${money(it.cost)}/${it.unit}`:'';}
 function stTheory(){const s=document.getElementById('st_item');if(!s)return;const it=findItem(s.value);document.getElementById('st_theory').value=it?it.qty+' '+it.unit:'';}
 function sugList(){const list=d().items.filter(i=>i.qty<=i.par).map(i=>{const need=Math.max(0,Math.round(i.par*1.5-i.qty));return `<div class="pl"><div class="row"><span><b>${i.name}</b><br><span class="mini">${LANG==="zh"?"现有":"On-hand"} ${i.qty} · Par ${i.par}</span></span><b class="pos">${LANG==="zh"?"订":"Order"} ${need} ${i.unit}</b></div></div>`;}).join('');document.getElementById('sugList').innerHTML=list||`<div class="empty">✅ ${LANG==="zh"?"库存充足":"All stocked"}</div>`;}
@@ -3332,13 +3333,22 @@ function settleTxt(s){const m={"补货":"Restock","不收费":"No Charge","取�
 function modePill(m){return m==="transfer"?"p-b":m==="return"?"p-a":m==="loan"?"p-p":"p-n";}
 function modeTxt(m){const z={transfer:"直接调拨",return:"借用归还",loan:"借出支援"},e={transfer:"Transfer",return:"Return",loan:"Loan Out"};return LANG==="zh"?(z[m]||m):(e[m]||m);}
 function itemSelOpts(sel){return (d().items||[]).map(i=>`<option value="${i.name}" ${i.name===sel?'selected':''}>${i.name}</option>`).join('');}
-/* 报废损耗可选：库存食材 + 菜单成品(B1–D4)，可自行输入新名 */
-function wasteItemOpts(){
+/* 下拉选单(select)专用：跟物品调拨的品名选单同一种格式。
+   如果正在编辑的旧记录里的值不在清单内(比如清单后来改过、或是手动输入过的旧资料)，
+   会把这个值补一个选项放最前面并选中，不会因为改成下拉选单就把旧资料的值弄丢/改掉。 */
+function selOptsWithCurrent(list,sel){
+  const esc=s=>String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+  const has=sel!=null&&sel!==''&&list.includes(sel);
+  if(!sel)return `<option value="" selected disabled>${LANG==="zh"?"— 请选择 —":"— Select —"}</option>`+list.map(n=>`<option value="${esc(n)}">${esc(n)}</option>`).join('');
+  const extra=!has?`<option value="${esc(sel)}" selected>${esc(sel)}</option>`:'';
+  return extra+list.map(n=>`<option value="${esc(n)}" ${n===sel?'selected':''}>${esc(n)}</option>`).join('');
+}
+/* 报废损耗可选：库存食材 + 菜单成品(B1–D4) */
+function wasteItemList(){
   const w=(typeof WASTE_ITEMS!=='undefined')?WASTE_ITEMS:[];
   const dishes=(d().recipes||[]).map(r=>r.name);
   const items=(d().items||[]).map(i=>i.name);
-  const seen=new Set();const all=[...w,...dishes,...items].filter(n=>{if(!n||seen.has(n))return false;seen.add(n);return true;});
-  return all.map(n=>`<option value="${(n+'').replace(/"/g,'&quot;')}"></option>`).join('');
+  const seen=new Set();return [...w,...dishes,...items].filter(n=>{if(!n||seen.has(n))return false;seen.add(n);return true;});
 }
 function supplierSelOpts(sel){return supplierList().map(v=>`<option value="${v.name}" ${v.name===sel?'selected':''}>${v.name}</option>`).join('');}
 function outletNames(){return OUTLETS.filter(o=>!o.ck&&o.id!==curOutlet).map(o=>nm(o));}
@@ -3716,7 +3726,7 @@ function formWaste2(editIdx){
   const reasonOpts=reasons.map(x=>`<option ${r&&r.reason===x?'selected':''}>${x}</option>`).join('');
   openForm(`<h3>🗑 ${isEdit?(LANG==="zh"?"编辑报废":"Edit Wastage"):(LANG==="zh"?"新增报废":"New Wastage")} <span class="x" onclick="closeM()">×</span></h3>
     <div class="fg2"><div class="fr"><label>${LANG==="zh"?"日期":"Date"}</label><input id="w_date" type="date" value="${r?r.date:((wasteMonth&&wasteMonth!==TODAY.slice(0,7))?wasteMonth+'-01':TODAY)}"></div>
-      <div class="fr"><label>${LANG==="zh"?"物品名称 / 菜品(可输入)":"Item / Dish"}</label><input id="w_item" list="wItemList" onchange="wItemAuto()" value="${r?(r.item||''):''}" placeholder="${LANG==="zh"?"选或直接输入":"pick or type"}"><datalist id="wItemList">${wasteItemOpts()}</datalist></div></div>
+      <div class="fr"><label>${LANG==="zh"?"物品名称 / 菜品":"Item / Dish"}</label><select id="w_item" onchange="wItemAuto()">${selOptsWithCurrent(wasteItemList(),r?(r.item||''):'')}</select></div></div>
     <div class="fg3"><div class="fr"><label>Code</label><input id="w_code" value="${r?(r.code||''):''}"></div>
       <div class="fr"><label>${LANG==="zh"?"成本价RM":"Cost"}</label><input id="w_cost" type="number" step="0.01" value="${r?r.cost:''}"></div>
       <div class="fr"><label>${LANG==="zh"?"数量":"Qty"}</label><input id="w_qty" type="number" step="0.01" value="${r?r.qty:''}"></div></div>
@@ -3802,7 +3812,7 @@ function formOffer(editIdx){
     <div class="fg2"><div class="fr"><label>${LANG==="zh"?"日期 Date":"Date"}</label><input id="o_date" type="date" value="${r?r.date:((offerMonth&&offerMonth!==TODAY.slice(0,7))?offerMonth+'-01':TODAY)}"></div>
       <div class="fr"><label>${LANG==="zh"?"收据号码 Receipt No.":"Receipt No."}</label><input id="o_receipt" value="${r?(r.receipt||''):''}" placeholder="R-..."></div></div>
     <div class="fr"><label>${LANG==="zh"?"类别 Type":"Type"}</label><select id="o_type"><option value="ENT" ${r&&r.type==='ENT'?'selected':''}>ENT ${LANG==="zh"?"招待":""}</option><option value="Offer" ${r&&r.type==='Offer'?'selected':''}>Offer ${LANG==="zh"?"赠送":""}</option></select></div>
-    <div class="fr"><label>${LANG==="zh"?"品项 Item（选菜单或输入）":"Item"}</label><input id="o_item" list="entMenuList" placeholder="${LANG==="zh"?"点开选菜单，或直接输入":"pick or type"}" value="${r?(r.item||''):''}"><datalist id="entMenuList">${menu.map(m=>`<option value="${(m+'').replace(/"/g,'&quot;')}"></option>`).join('')}</datalist></div>
+    <div class="fr"><label>${LANG==="zh"?"品项 Item":"Item"}</label><select id="o_item">${selOptsWithCurrent(menu,r?(r.item||''):'')}</select></div>
     <div class="fg2"><div class="fr"><label>${LANG==="zh"?"当事人 P.I.C":"P.I.C"}</label><input id="o_person" value="${r?(r.person||''):''}"></div>
       <div class="fr"><label>${LANG==="zh"?"金额RM（含SST6%）":"Amount (incl SST)"}</label><input id="o_total" type="number" step="0.01" value="${r?r.total:''}"></div></div>
     <div class="fr"><label>${LANG==="zh"?"原因 Reason":"Reason"}</label><input id="o_reason" list="entReasonList" value="${r?((r.reason||r.note||'')+'').replace(/"/g,'&quot;'):''}" placeholder="${LANG==="zh"?"选或输入原因":"pick or type"}"><datalist id="entReasonList">${reasons.map(m=>`<option value="${m}"></option>`).join('')}</datalist></div>
