@@ -656,7 +656,7 @@ function statusOf(d){if(d<=14)return{t:"健康",e:"Fresh",c:"p-g"};if(d<=30)retu
 function stTxt(s){return LANG==="zh"?s.t:s.e;}
 
 /* ================= 数据种子 ================= */
-const BUILD="0925mk42";  // 版本标记：页面右上/网格提示可见，用来确认已载入最新版
+const BUILD="0925mk43";  // 版本标记：页面右上/网格提示可见，用来确认已载入最新版
 const SEED_VERSION="bh-master-2026-09-1";  // 版本变更→下次载入自动重置为最新主数据（仅本店云端）
 function seed(outletId){
   const isCK = outletId==="ck";
@@ -4154,8 +4154,13 @@ async function doForgotPassword(){
     if(m)m.innerHTML='✅ '+(zh?`重设密码邮件已发送到 ${email}，请查收邮箱（也看看垃圾邮件夹），点里面的连结设置新密码。`:`Reset link sent to ${email}. Check your inbox (and spam).`);
   }catch(e){if(m)m.innerHTML='❌ '+(e.message||e);}
 }
-/* 设置新密码页面：从"忘记密码"邮件连结点回来时会自动显示这个页面 */
+/* 设置新密码页面：从"忘记密码"邮件连结点回来时会自动显示这个页面。
+   _pwRecoveryActive 这个旗标一开就锁住："已经在设置新密码"的状态下，
+   就算开机流程那边的 getSession()/afterAuth() 比这个画面晚一步跑完，
+   也会被这个旗标挡住，不会把画面抢回去主系统(之前的 bug 就是这里)。 */
+let _pwRecoveryActive=false;
 function showResetPassword(){
+  _pwRecoveryActive=true;
   document.querySelector('.top').style.display='none';
   const sb=document.getElementById('sidebar');if(sb)sb.style.display='none';
   const zh=LANG==="zh";
@@ -4179,6 +4184,7 @@ async function doResetPassword(){
     const {error}=await _sb.auth.updateUser({password:pw1});
     if(error)throw error;
     try{await _sb.auth.signOut();}catch(e){}
+    _pwRecoveryActive=false;
     showAuthLogin(`<b>✅ ${zh?"密码已更新！请用新密码重新登录。":"Password updated! Please sign in again."}</b>`);
   }catch(e){if(m)m.innerHTML='❌ '+(e.message||e);}
 }
@@ -4227,6 +4233,7 @@ async function doAuthSignup(){
   }catch(e){if(m)m.innerHTML='❌ '+(e.message||e);}
 }
 async function afterAuth(user){
+  if(_pwRecoveryActive)return; // 正在走"设置新密码"流程，不能被登录检查抢回主系统画面
   // 已通过 Supabase 验证 → 白名单检查
   const r=await loadUsers();
   if(!r.ok){
