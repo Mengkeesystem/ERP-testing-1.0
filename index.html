@@ -656,7 +656,7 @@ function statusOf(d){if(d<=14)return{t:"健康",e:"Fresh",c:"p-g"};if(d<=30)retu
 function stTxt(s){return LANG==="zh"?s.t:s.e;}
 
 /* ================= 数据种子 ================= */
-const BUILD="0925mk40";  // 版本标记：页面右上/网格提示可见，用来确认已载入最新版
+const BUILD="0925mk41";  // 版本标记：页面右上/网格提示可见，用来确认已载入最新版
 const SEED_VERSION="bh-master-2026-09-1";  // 版本变更→下次载入自动重置为最新主数据（仅本店云端）
 function seed(outletId){
   const isCK = outletId==="ck";
@@ -751,6 +751,8 @@ function initCloud(){
     if(SUPABASE_URL&&SUPABASE_ANON_KEY&&window.supabase&&window.supabase.createClient){
       _sb=window.supabase.createClient(SUPABASE_URL,SUPABASE_ANON_KEY);
       CLOUD=true;
+      // 点了"忘记密码"邮件里的连结回到网站时，Supabase 会自动认出并发出这个事件 → 直接跳去"设置新密码"页面
+      try{_sb.auth.onAuthStateChange((event)=>{if(event==='PASSWORD_RECOVERY')showResetPassword();});}catch(e){}
     }
   }catch(e){CLOUD=false;}
   return CLOUD;
@@ -4129,12 +4131,56 @@ function showAuthLogin(msg){
     ${msg?`<div class="al al-r" style="text-align:left;">${msg}</div>`:''}
     <div class="fr" style="text-align:left;margin-bottom:8px;"><label>${LANG==="zh"?"邮箱":"Email"}</label><input id="au_email" type="email" placeholder="you@example.com" autocomplete="username"></div>
     <div class="fr" style="text-align:left;"><label>${LANG==="zh"?"密码":"Password"}</label><input id="au_pw" type="password" placeholder="••••••" autocomplete="current-password" onkeydown="if(event.key==='Enter')doAuthLogin()"></div>
+    <div style="text-align:right;margin:-2px 0 10px;"><a href="#" onclick="event.preventDefault();doForgotPassword()" style="font-size:12px;color:var(--brand2);">${LANG==="zh"?"忘记密码？":"Forgot password?"}</a></div>
     <div class="fr" style="text-align:left;margin-bottom:8px;"> <label>邀请码 / 口令 (仅首次注册需要)</label> <input id="au_code" type="text" placeholder="按职位填写邀请码，向管理员索取" autocomplete="off"> </div>
     <button class="btn block brand" style="margin-top:6px;" onclick="doAuthLogin()">🔓 ${LANG==="zh"?"登录":"Sign In"}</button>
     <button class="btn block ghost" style="margin-top:8px;" onclick="doAuthSignup()">🆕 ${LANG==="zh"?"首次使用？注册账号":"First time? Sign Up"}</button>
     <div id="au_msg" class="mini" style="margin-top:10px;min-height:16px;"></div>
     <div class="mini" style="margin-top:8px;line-height:1.5;">🔒 ${LANG==="zh"?"仅白名单邮箱可进入；未登录无法读取任何数据。岗位与分店由管理员分配。":"Whitelist-only. Role & branch assigned by admin."}</div>
   </div>`;
+}
+/* 忘记密码：填了邮箱的话直接用；没填就弹窗问。发一封 Supabase 的重设密码邮件，
+   点里面的连结回到本网站，会自动跳去下面的"设置新密码"页面。 */
+async function doForgotPassword(){
+  const zh=LANG==="zh";
+  let email=fv('au_email');
+  if(!email){email=(prompt(zh?"请输入你的登录邮箱，我们会发重设密码的连结给你：":"Enter your login email:")||'').trim();}
+  if(!email)return;
+  const m=document.getElementById('au_msg');
+  if(m)m.textContent=zh?"发送中…":"Sending…";
+  try{
+    const {error}=await _sb.auth.resetPasswordForEmail(email,{redirectTo:(location.origin+location.pathname)});
+    if(error)throw error;
+    if(m)m.innerHTML='✅ '+(zh?`重设密码邮件已发送到 ${email}，请查收邮箱（也看看垃圾邮件夹），点里面的连结设置新密码。`:`Reset link sent to ${email}. Check your inbox (and spam).`);
+  }catch(e){if(m)m.innerHTML='❌ '+(e.message||e);}
+}
+/* 设置新密码页面：从"忘记密码"邮件连结点回来时会自动显示这个页面 */
+function showResetPassword(){
+  document.querySelector('.top').style.display='none';
+  const sb=document.getElementById('sidebar');if(sb)sb.style.display='none';
+  const zh=LANG==="zh";
+  document.getElementById('pageHost').innerHTML=`
+  <div style="width:calc(100% - 32px);max-width:380px;position:fixed;left:50%;top:6vh;transform:translateX(-50%);max-height:88vh;overflow:auto;padding:28px 22px;background:#fff;border:1px solid var(--line);border-radius:16px;text-align:center;">
+    <div style="margin-bottom:10px;"><span class="bh-logo" style="width:118px;height:118px;border-radius:20px;"></span></div>
+    <div style="font-weight:800;font-size:19px;color:var(--ink);">🔑 ${zh?"设置新密码":"Set New Password"}</div>
+    <div class="mini" style="margin:4px 0 16px;">${zh?"请输入你的新密码（至少6位）":"Enter a new password (min 6 characters)"}</div>
+    <div class="fr" style="text-align:left;"><label>${zh?"新密码":"New Password"}</label><input id="rp_pw1" type="password" placeholder="••••••" autocomplete="new-password"></div>
+    <div class="fr" style="text-align:left;"><label>${zh?"再输入一次":"Confirm Password"}</label><input id="rp_pw2" type="password" placeholder="••••••" autocomplete="new-password" onkeydown="if(event.key==='Enter')doResetPassword()"></div>
+    <button class="btn block brand" style="margin-top:6px;" onclick="doResetPassword()">✅ ${zh?"确认更改":"Confirm"}</button>
+    <div id="rp_msg" class="mini" style="margin-top:10px;min-height:16px;"></div>
+  </div>`;
+}
+async function doResetPassword(){
+  const zh=LANG==="zh";const pw1=fv('rp_pw1'),pw2=fv('rp_pw2');const m=document.getElementById('rp_msg');
+  if(!pw1||pw1.length<6){if(m)m.innerHTML='⚠️ '+(zh?"密码至少6位":"Password must be ≥6 chars");return;}
+  if(pw1!==pw2){if(m)m.innerHTML='⚠️ '+(zh?"两次输入的密码不一样":"Passwords don't match");return;}
+  if(m)m.textContent=zh?"更新中…":"Updating…";
+  try{
+    const {error}=await _sb.auth.updateUser({password:pw1});
+    if(error)throw error;
+    try{await _sb.auth.signOut();}catch(e){}
+    showAuthLogin(`<b>✅ ${zh?"密码已更新！请用新密码重新登录。":"Password updated! Please sign in again."}</b>`);
+  }catch(e){if(m)m.innerHTML='❌ '+(e.message||e);}
 }
 async function doAuthLogin(){
   const email=fv('au_email'),pw=fv('au_pw');const m=document.getElementById('au_msg');
