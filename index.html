@@ -650,7 +650,7 @@ function statusOf(d){if(d<=14)return{t:"健康",e:"Fresh",c:"p-g"};if(d<=30)retu
 function stTxt(s){return LANG==="zh"?s.t:s.e;}
 
 /* ================= 数据种子 ================= */
-const BUILD="0924mk33";  // 版本标记：页面右上/网格提示可见，用来确认已载入最新版
+const BUILD="0925mk34";  // 版本标记：页面右上/网格提示可见，用来确认已载入最新版
 const SEED_VERSION="bh-master-2026-09-1";  // 版本变更→下次载入自动重置为最新主数据（仅本店云端）
 function seed(outletId){
   const isCK = outletId==="ck";
@@ -2171,15 +2171,17 @@ function visibleStaff(){
 function empById(id){return (d().staff||[]).find(e=>e.id===id);}
 
 /* 员工档案 */
+function hrEditable(){return canW('hr')&&hrScope()==="all";} // 员工档案的备注/更改/增加/删减 只交给 区域副经理/人事经理/老板(hrScope=all)；店面经理/店长/厨师长/中央/员工 只能查看，不能操作
 function pgHR(){
   const staff=visibleStaff();
   const selfOnly=hrScope()==="self";
-  return `<div class="fb"><h2 class="h" style="margin:0;">👤 ${LANG==="zh"?"员工档案":"Staff Profiles"} <span class="tag">${nm(outletObj())}</span></h2>${canW('hr')&&!selfOnly?`<button class="btn gold sm" onclick="openM('emp')">+ ${LANG==="zh"?"员工":"Staff"}</button>`:''}</div>
-  <div class="hint">${selfOnly?(LANG==="zh"?"你的角色只能查看自己的档案。":"You can view your own profile only."):(LANG==="zh"?"本店员工档案。点 ✏️ 编辑基本资料。":"Branch staff profiles.")}</div>
+  const w=hrEditable();
+  return `<div class="fb"><h2 class="h" style="margin:0;">👤 ${LANG==="zh"?"员工档案":"Staff Profiles"} <span class="tag">${nm(outletObj())}</span></h2>${w?`<button class="btn gold sm" onclick="openM('emp')">+ ${LANG==="zh"?"员工":"Staff"}</button>`:''}</div>
+  <div class="hint">${selfOnly?(LANG==="zh"?"你的角色只能查看自己的档案。":"You can view your own profile only."):(w?(LANG==="zh"?"本店员工档案。点 ✏️ 编辑基本资料。":"Branch staff profiles."):(LANG==="zh"?"只能查看，不能修改；如需更改/新增/删除员工档案，请联系区域副经理/人事经理/老板。":"View only — contact Area/HR Manager/Owner to edit."))}</div>
   ${staff.map(e=>`<div class="card" style="padding:13px;margin-bottom:9px;">
     <div style="display:flex;justify-content:space-between;align-items:flex-start;">
       <div><div style="font-weight:800;font-size:15px;">${e.name}</div><div class="mini">${e.empNo?e.empNo+' · ':''}${e.role}${e.nationality?' · '+e.nationality:''}</div></div>
-      ${canW('hr')&&!selfOnly?`<div><button class="ib" onclick="openM('emp',${e.id})">✏️</button> <button class="ib" onclick="delEmp(${e.id})">🗑️</button></div>`:''}
+      ${w?`<div><button class="ib" onclick="openM('emp',${e.id})">✏️</button> <button class="ib" onclick="delEmp(${e.id})">🗑️</button></div>`:''}
     </div>
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-top:9px;font-size:12px;">
       <div class="mini">🆔 ${e.ic||'—'}</div><div class="mini">📱 ${e.phone||'—'}</div>
@@ -3121,7 +3123,7 @@ async function saveStock(){
 }
 async function delItem(id){const it=d().items.find(i=>i.id===id);if(!it)return;if(!confirm((LANG==="zh"?"确定删除品项：":"Delete item: ")+it.name+"？"))return;d().items=d().items.filter(i=>i.id!==id);auditLog("删除品项",it.name,"","");await save();render();}
 async function delRecipe(id){const r=d().recipes.find(x=>x.id===id);if(!r)return;if(!confirm((LANG==="zh"?"确定删除配方：":"Delete recipe: ")+r.name+"？"))return;d().recipes=d().recipes.filter(x=>x.id!==id);auditLog("删除配方",r.name,"","");await save();render();}
-async function delEmp(id){const e=(d().staff||[]).find(x=>x.id===id);if(!e)return;if(!confirm((LANG==="zh"?"确定删除员工：":"Delete employee: ")+e.name+"？"))return;d().staff=d().staff.filter(x=>x.id!==id);auditLog("删除员工",e.name,"","");autoSyncLabour();await save();render();}
+async function delEmp(id){if(!hrEditable())return;const e=(d().staff||[]).find(x=>x.id===id);if(!e)return;if(!confirm((LANG==="zh"?"确定删除员工：":"Delete employee: ")+e.name+"？"))return;d().staff=d().staff.filter(x=>x.id!==id);auditLog("删除员工",e.name,"","");autoSyncLabour();await save();render();}
 async function delVendor(id){const v=d().vendors.find(x=>x.id===id);if(!v)return;if(!confirm((LANG==="zh"?"确定删除供应商：":"Delete vendor: ")+v.name+"？"))return;d().vendors=d().vendors.filter(x=>x.id!==id);auditLog("删除供应商",v.name,"","");await save();render();}
 async function delPayable(id){const p=d().payables.find(x=>x.id===id);if(!p)return;if(!confirm((LANG==="zh"?"确定删除应付账款？":"Delete payable?")))return;d().payables=d().payables.filter(x=>x.id!==id);auditLog("删除应付",p.vendor,"","");await save();render();}
 async function delMove(idx){if(!confirm(LANG==="zh"?"确定删除这笔记录？(不会自动还原库存)":"Delete this record?"))return;d().moves.splice(idx,1);auditLog("删除记录","作业记录","","");await save();render();}
@@ -3155,6 +3157,7 @@ async function saveRecipe(){
   await save();closeM();render();
 }
 async function saveEmp(){
+  if(!hrEditable())return;
   const gV=id=>{const el=document.getElementById(id);return el?el.value:'';};
   const n=gV('em_name').trim();if(!n)return alert(LANG==="zh"?"请输入姓名":"Name required");
   const basic=+gV('em_basic')||0;
