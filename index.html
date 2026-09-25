@@ -289,7 +289,7 @@
 </head>
 <body>
 <div class="top">
-  <div class="l"><button class="menu-btn" onclick="toggleSide()">☰</button><span class="brand-logo" title="明记家乡小食店"><svg width="34" height="34" viewBox="0 0 100 100" aria-label="明记" style="border-radius:7px;"><rect x="4" y="4" width="92" height="92" rx="16" fill="#7C1619"/><rect x="4" y="4" width="92" height="92" rx="16" fill="none" stroke="#F2B417" stroke-width="7"/><text x="50" y="33" text-anchor="middle" dominant-baseline="central" font-family="'Microsoft YaHei','PingFang SC',sans-serif" font-weight="800" font-size="40" fill="#F2B417">明</text><text x="50" y="70" text-anchor="middle" dominant-baseline="central" font-family="'Microsoft YaHei','PingFang SC',sans-serif" font-weight="800" font-size="40" fill="#F2B417">记</text></svg></span><h1 id="appTitle">明记家乡小食店</h1><span id="topBranchTag" style="margin-left:8px;font-size:10px;font-weight:700;color:var(--grey);background:var(--soft);padding:2px 7px;border-radius:5px;">-</span></div>
+  <div class="l"><button class="menu-btn" onclick="toggleSide()">☰</button><span class="brand-logo" title="明记家乡小食店"><svg width="34" height="34" viewBox="0 0 100 100" aria-label="明记" style="border-radius:7px;"><rect x="4" y="4" width="92" height="92" rx="16" fill="#7C1619"/><rect x="4" y="4" width="92" height="92" rx="16" fill="none" stroke="#F2B417" stroke-width="7"/><text x="50" y="33" text-anchor="middle" dominant-baseline="central" font-family="'Microsoft YaHei','PingFang SC',sans-serif" font-weight="800" font-size="40" fill="#F2B417">明</text><text x="50" y="70" text-anchor="middle" dominant-baseline="central" font-family="'Microsoft YaHei','PingFang SC',sans-serif" font-weight="800" font-size="40" fill="#F2B417">记</text></svg></span><h1 id="appTitle">明记家乡小食店</h1><span id="topBranchTag" style="margin-left:8px;font-size:10px;padding:2px 6px;border-radius:6px;background:#F2B417;color:#12203A;font-weight:800;">-</span></div>
   <div class="r">
     <button class="lang" id="installBtn" onclick="installApp()" title="安装为App Install">📲</button>
     <button class="lang" id="bellBtn" onclick="openOrdersPanel()" title="收到的订单 Orders" style="display:none;position:relative;">🔔<span id="bellCount" style="display:none;position:absolute;top:-4px;right:-4px;min-width:16px;height:16px;line-height:16px;padding:0 3px;border-radius:9px;background:#d92d20;color:#fff;font-size:10px;font-weight:800;text-align:center;">0</span></button>
@@ -659,7 +659,7 @@ function statusOf(d){if(d<=14)return{t:"健康",e:"Fresh",c:"p-g"};if(d<=30)retu
 function stTxt(s){return LANG==="zh"?s.t:s.e;}
 
 /* ================= 数据种子 ================= */
-const BUILD="0925mk47";  // 版本标记：页面右上/网格提示可见，用来确认已载入最新版
+const BUILD="0925mk48";  // 版本标记：页面右上/网格提示可见，用来确认已载入最新版
 const SEED_VERSION="bh-master-2026-09-1";  // 版本变更→下次载入自动重置为最新主数据（仅本店云端）
 function seed(outletId){
   const isCK = outletId==="ck";
@@ -1253,7 +1253,7 @@ function pgInv(){
           <div style="text-align:right;"><div style="font-weight:800;">${money(val)}</div><span class="mini">${zh?"库存值":"value"} ›</span></div>
         </div></div>`;
     }).join('')||`<div class="empty">${zh?"暂无品项，先在采购或此页导入。":"No items"}</div>`;
-    return `<div class="fb"><h2 class="h" style="margin:0;">📦 ${zh?"库存清单":"Inventory"} <span class="tag" style="background:#F2B417;color:#12203A;font-weight:800;">v${BUILD}</span></h2>${addBtns}</div>
+    return `<div class="fb"><h2 class="h" style="margin:0;">📦 ${zh?"库存清单":"Inventory"} <span class="tag">v${BUILD}</span></h2>${addBtns}</div>
       <div class="hint">${zh?"👉 功能：看每样食材还剩多少、值多少钱(按供应商分组)。进货会自动加、卖出/报废/调拨会自动减，剩太少会提醒你订货。":"See how much of each item is left & its value; auto-adjusts on purchase/sale/waste."}</div>
       ${(function(){const al=alertList();const n=al.length;return `<details class="alertBox"${n?'':' '} style="margin:2px 0 6px;">
         <summary style="cursor:pointer;list-style:none;display:flex;align-items:center;justify-content:space-between;gap:8px;padding:10px 12px;border:1.5px solid ${n?'var(--amber)':'var(--line)'};border-radius:10px;background:${n?'rgba(245,158,11,.08)':'#fff'};font-weight:800;font-size:14px;">
@@ -1291,7 +1291,7 @@ function pgProc(){
   if(can('opex'))cards.push(["opexlog","🧾",LANG==="zh"?"运营开销记录":"OpEx Log",LANG==="zh"?"营销/维修/杂费 · 按月流水账":"Marketing/Maintenance/Misc · monthly log",var_teal()]);
   // 月末盘点已移到侧栏「库存」组（原盘点位置），此处不再重复卡片
   return `
-  <h2 class="h" style="margin-top:2px;">🔄 ${LANG==="zh"?"进销存作业":"Operations"} <span class="tag" style="background:#F2B417;color:#12203A;font-weight:800;">v${BUILD}</span></h2>
+  <h2 class="h" style="margin-top:2px;">🔄 ${LANG==="zh"?"进销存作业":"Operations"} <span class="tag">v${BUILD}</span></h2>
   <div class="hint">${LANG==="zh"?"每个作业已拆分为独立界面，点选进入。":"Each operation now has its own dedicated page."}</div>
   <div class="grid g2" style="margin-bottom:12px;">
     ${cards.map(([k,ic,label,desc,color])=>`<button class="card" style="text-align:left;padding:14px;border-left:4px solid ${color};cursor:pointer;background:var(--card);" onclick="goProcSub('${k}')">
@@ -1438,7 +1438,7 @@ function pgAp(){
             ${apPaidBtn(s)}
           </div>
         </div></div>`;}).join('')||`<div class="empty">${zh?"暂无应付记录。请先在『采购进销 → 进货单』key in 货物，或在『订货单』下单并确认。":"No payables yet."}</div>`;
-    return `<div class="fb"><h2 class="h" style="margin:0;">💳 ${zh?"应付账款":"Payables"} <span class="tag" style="background:#F2B417;color:#12203A;font-weight:800;">v${BUILD}</span></h2><button class="btn ghost sm" onclick="nav('proc')">← ${zh?"返回":"Back"}</button></div>
+    return `<div class="fb"><h2 class="h" style="margin:0;">💳 ${zh?"应付账款":"Payables"} <span class="tag">v${BUILD}</span></h2><button class="btn ghost sm" onclick="nav('proc')">← ${zh?"返回":"Back"}</button></div>
       <div class="hint">${zh?"点『订单状态』→ 看该店的 Invoice → 逐项核对(✔/✗)→ 按『订单正确』；付款后按『未付款』改为已付款。":"Tap Status to reconcile; mark paid."}</div>
       ${shortN?`<div class="al al-r" style="margin-bottom:10px;"><div class="t">⚠️ ${zh?"有少付":"Underpaid"}</div>${zh?("共 "+shortN+" 家供应商现金少付，合计 RM"+num(shortTot,2)+"。红色卡片即是。"):(shortN+" vendors short, total RM"+num(shortTot,2))}</div>`:''}
       <div class="grid g2" style="margin-bottom:10px;">
@@ -1524,7 +1524,7 @@ function pgOrderInv(){
           <div class="mini">${ords.length} ${zh?"张 Invoice":"invoices"} · ${months.length} ${zh?"个月份":"months"}</div></div>
           <span class="mini">›</span>
         </div></div>`;}).join('')||`<div class="empty">${zh?"暂无 Invoice。请先在『采购进销 → 订货单』下单并确认生成 Invoice。":"No invoices yet."}</div>`;
-    return `<div class="fb"><h2 class="h" style="margin:0;">🧾 ${zh?"订单发票":"Order Invoices"} <span class="tag" style="background:#F2B417;color:#12203A;font-weight:800;">v${BUILD}</span></h2></div>
+    return `<div class="fb"><h2 class="h" style="margin:0;">🧾 ${zh?"订单发票":"Order Invoices"} <span class="tag">v${BUILD}</span></h2></div>
       <div class="hint">${zh?"订货单确认后生成的 Invoice 都在这里。点供应商 → 选月份 → 查看/打印。区域副经理及以上可删除。":"Invoices from confirmed order sheets. Supplier → month → view."}</div>
       ${cards}`;
   }
@@ -2003,7 +2003,7 @@ function pgPayroll(){
   if(scope==="self"){
     const me=empById(currentEmpId())||allStaff[0];
     if(!me)return `<h2 class="h">💴 ${LANG==="zh"?"我的薪资":"My Payslip"}</h2><div class="empty">—</div>`;
-    return `<h2 class="h" style="margin-top:2px;">💴 ${LANG==="zh"?"我的薪资单 Payslip":"My Payslip"} <span class="tag" style="background:#F2B417;color:#12203A;font-weight:800;">v${BUILD}</span></h2>
+    return `<h2 class="h" style="margin-top:2px;">💴 ${LANG==="zh"?"我的薪资单 Payslip":"My Payslip"} <span class="tag">v${BUILD}</span></h2>
     <div class="hint">${LANG==="zh"?"你的角色只能查看自己的薪资明细。":"You can view your own payslip only."}</div>
     <div class="card" style="padding:16px;">
       <div style="font-weight:800;font-size:16px;margin-bottom:2px;">${oEsc(me.name)}</div>
@@ -2023,7 +2023,7 @@ function pgPayroll(){
   }
   // total：区域副经理，只看总数
   if(scope==="total"){
-    return `<h2 class="h" style="margin-top:2px;">👥 ${LANG==="zh"?"人事薪资 Payroll":"Payroll"} <span class="tag" style="background:#F2B417;color:#12203A;font-weight:800;">v${BUILD}</span></h2>
+    return `<h2 class="h" style="margin-top:2px;">👥 ${LANG==="zh"?"人事薪资 Payroll":"Payroll"} <span class="tag">v${BUILD}</span></h2>
     <div class="al al-a"><div class="t">🔒 ${LANG==="zh"?"权限限制":"Restricted"}</div>${LANG==="zh"?"你的角色（区域副经理）只能查看薪资总额，无法查看每位员工的个人薪水明细。":"Totals only, no individual salaries."}</div>
     <div class="grid g2">
       <div class="kpi"><div class="k">${LANG==="zh"?"员工人数":"Headcount"}</div><div class="v">${headcount}</div></div>
@@ -2036,7 +2036,7 @@ function pgPayroll(){
   // full：老板/人事经理，看全部个人明细
   const staff=allStaff;const canSee=true;
   // 老板/人事经理/店长：看个人明细
-  return `<div class="fb"><h2 class="h" style="margin:0;">👥 ${LANG==="zh"?"人事薪资 Payroll":"Payroll"} <span class="tag" style="background:#F2B417;color:#12203A;font-weight:800;">v${BUILD}</span></h2>${canW('payroll')?`<button class="btn gold sm" onclick="openM('emp')">+ ${LANG==="zh"?"员工":"Staff"}</button>`:''}</div>
+  return `<div class="fb"><h2 class="h" style="margin:0;">👥 ${LANG==="zh"?"人事薪资 Payroll":"Payroll"} <span class="tag">v${BUILD}</span></h2>${canW('payroll')?`<button class="btn gold sm" onclick="openM('emp')">+ ${LANG==="zh"?"员工":"Staff"}</button>`:''}</div>
   <div class="hint">${LANG==="zh"?"每位员工的薪资明细（底薪+津贴+加班−EPF/SOCSO/EIS=实发）。EPF/SOCSO/EIS 依国籍与法定规则计算。":"Individual payslip breakdown."}</div>
   <div class="grid g3">
     <div class="kpi"><div class="k">${LANG==="zh"?"员工人数":"Headcount"}</div><div class="v sm">${headcount}</div></div>
@@ -2159,7 +2159,7 @@ function pgSales(){
   const totRev=rows.reduce((s,r)=>s+r.rev,0);
   const totCogs=rows.reduce((s,r)=>s+r.cogs,0);
   const totGp=totRev/1.06-totCogs;
-  return `<div class="fb"><h2 class="h" style="margin:0;">🧾 ${LANG==="zh"?"销售数据":"Sales"} <span class="tag" style="background:#F2B417;color:#12203A;font-weight:800;">v${BUILD}</span></h2>${canW('sales')?`<button class="btn gold sm" onclick="openM('sales')">✎ ${LANG==="zh"?"录入销量":"Edit Sales"}</button>`:''}</div>
+  return `<div class="fb"><h2 class="h" style="margin:0;">🧾 ${LANG==="zh"?"销售数据":"Sales"} <span class="tag">v${BUILD}</span></h2>${canW('sales')?`<button class="btn gold sm" onclick="openM('sales')">✎ ${LANG==="zh"?"录入销量":"Edit Sales"}</button>`:''}</div>
   <div class="hint">👉 ${LANG==="zh"?"功能：录入每道菜卖了几份，系统自动算营业额和毛利，直接连到利润大盘。以后接上 POS 机可自动同步。":"Enter qty sold per dish; revenue & profit auto-calculate into the dashboard."}</div>
   <div class="grid g3">
     <div class="kpi"><div class="k">${LANG==="zh"?"含税营业额":"Gross Sales"}</div><div class="v sm">${money(totRev)}</div></div>
@@ -2187,7 +2187,7 @@ function pgHR(){
   const staff=visibleStaff();
   const selfOnly=hrScope()==="self";
   const w=hrEditable();
-  return `<div class="fb"><h2 class="h" style="margin:0;">👤 ${LANG==="zh"?"员工档案":"Staff Profiles"} <span class="tag" style="background:#F2B417;color:#12203A;font-weight:800;">v${BUILD}</span></h2>${w?`<button class="btn gold sm" onclick="openM('emp')">+ ${LANG==="zh"?"员工":"Staff"}</button>`:''}</div>
+  return `<div class="fb"><h2 class="h" style="margin:0;">👤 ${LANG==="zh"?"员工档案":"Staff Profiles"} <span class="tag">v${BUILD}</span></h2>${w?`<button class="btn gold sm" onclick="openM('emp')">+ ${LANG==="zh"?"员工":"Staff"}</button>`:''}</div>
   <div class="hint">${selfOnly?(LANG==="zh"?"你的角色只能查看自己的档案。":"You can view your own profile only."):(w?(LANG==="zh"?"本店员工档案。点 ✏️ 编辑基本资料。":"Branch staff profiles."):(LANG==="zh"?"只能查看，不能修改；如需更改/新增/删除员工档案，请联系区域副经理/人事经理/老板。":"View only — contact Area/HR Manager/Owner to edit."))}</div>
   ${staff.map(e=>`<div class="card" style="padding:13px;margin-bottom:9px;">
     <div style="display:flex;justify-content:space-between;align-items:flex-start;">
@@ -2241,7 +2241,7 @@ function doClockIn(){
 /* 排班 */
 function pgSchedule(){
   const sch=(d().schedule||[]).filter(s=>hrScope()==="self"?s.empId===currentEmpId():true);
-  return `<div class="fb"><h2 class="h" style="margin:0;">📅 ${LANG==="zh"?"排班表":"Schedule"} <span class="tag" style="background:#F2B417;color:#12203A;font-weight:800;">v${BUILD}</span></h2>${canW('schedule')&&hrScope()!=="self"?`<button class="btn gold sm" onclick="openM('shift')">+ ${LANG==="zh"?"排班":"Shift"}</button>`:''}</div>
+  return `<div class="fb"><h2 class="h" style="margin:0;">📅 ${LANG==="zh"?"排班表":"Schedule"} <span class="tag">v${BUILD}</span></h2>${canW('schedule')&&hrScope()!=="self"?`<button class="btn gold sm" onclick="openM('shift')">+ ${LANG==="zh"?"排班":"Shift"}</button>`:''}</div>
   <div class="hint">${hrScope()==="self"?(LANG==="zh"?"你只能看自己的班表。":"Your shifts only."):(LANG==="zh"?"安排本店员工班次。":"Assign shifts.")}</div>
   <div class="card tbl"><table><thead><tr><th>${LANG==="zh"?"日期":"Date"}</th><th>${LANG==="zh"?"员工":"Staff"}</th><th>${LANG==="zh"?"班次":"Shift"}</th>${canW('schedule')&&hrScope()!=="self"?'<th></th>':''}</tr></thead><tbody>
   ${sch.map((s,i)=>{const e=empById(s.empId);return `<tr><td class="mini">${s.date.slice(5)}</td><td>${e?oEsc(e.name):oEsc(s.empId)}</td><td>${oEsc(s.shift)}</td>${canW('schedule')&&hrScope()!=="self"?`<td><button class="ib" onclick="delShift(${i})">🗑️</button></td>`:''}</tr>`;}).join('')||`<tr><td colspan="4" class="empty">${LANG==="zh"?"暂无排班":"No shifts"}</td></tr>`}
@@ -2253,7 +2253,7 @@ async function delShift(i){if(!confirm(LANG==="zh"?"删除此班次？":"Delete 
 function pgLeave(){
   const leaves=(d().leaves||[]).filter(l=>hrScope()==="self"?l.empId===currentEmpId():true);
   const canApprove=canApproveLeave();
-  return `<div class="fb"><h2 class="h" style="margin:0;">🌴 ${LANG==="zh"?"请假管理":"Leave"} <span class="tag" style="background:#F2B417;color:#12203A;font-weight:800;">v${BUILD}</span></h2><button class="btn gold sm" onclick="openM('leave')">+ ${LANG==="zh"?"申请请假":"Apply"}</button></div>
+  return `<div class="fb"><h2 class="h" style="margin:0;">🌴 ${LANG==="zh"?"请假管理":"Leave"} <span class="tag">v${BUILD}</span></h2><button class="btn gold sm" onclick="openM('leave')">+ ${LANG==="zh"?"申请请假":"Apply"}</button></div>
   <div class="hint">${canApprove?(LANG==="zh"?"你可以批准／拒绝本店请假申请。":"You can approve/reject."):(LANG==="zh"?"提交请假申请，等待上级批准。":"Submit and await approval.")}</div>
   <div class="card tbl"><table><thead><tr><th>${LANG==="zh"?"员工":"Staff"}</th><th>${LANG==="zh"?"类型":"Type"}</th><th>${LANG==="zh"?"日期":"Dates"}</th><th>${LANG==="zh"?"天":"Days"}</th><th>${LANG==="zh"?"状态":"Status"}</th>${canApprove?'<th></th>':''}</tr></thead><tbody>
   ${leaves.map(l=>{const e=empById(l.empId);const cls=l.status==="已批准"?"p-g":l.status==="已拒绝"?"p-r":"p-a";return `<tr><td>${e?oEsc(e.name):oEsc(l.empId)}</td><td>${oEsc(l.type)}</td><td class="mini">${l.from.slice(5)}~${l.to.slice(5)}</td><td>${l.days}</td><td><span class="pill ${cls}">${oEsc(l.status)}</span></td>${canApprove?`<td style="white-space:nowrap;">${l.status==="待批准"?`<button class="ib" onclick="approveLeave(${l.id},1)">✅</button> <button class="ib" onclick="approveLeave(${l.id},0)">❌</button>`:''}</td>`:''}</tr>`;}).join('')||`<tr><td colspan="6" class="empty">${LANG==="zh"?"暂无申请":"None"}</td></tr>`}
@@ -2659,7 +2659,7 @@ function pgOrderSheet(){
           <div style="white-space:nowrap;">${wSup?`<button class="ib" title="${LANG==="zh"?'改名':'Rename'}" onclick="event.stopPropagation();renameSupplier(${v.id})">✏️</button> <button class="ib" title="${LANG==="zh"?'删除':'Delete'}" onclick="event.stopPropagation();delSupplier(${v.id})">🗑️</button> `:''}<span class="mini">›</span></div>
         </div></div>`;
     }).join('')||`<div class="empty">${LANG==="zh"?"暂无供应商，点『+ 新增供应商』添加。":"No suppliers"}</div>`;
-    return `<div class="fb"><h2 class="h" style="margin:0;">🛒 ${LANG==="zh"?"订货单":"Order Sheet"} <span class="tag" style="background:#F2B417;color:#12203A;font-weight:800;">v${BUILD}</span></h2>${back}</div>
+    return `<div class="fb"><h2 class="h" style="margin:0;">🛒 ${LANG==="zh"?"订货单":"Order Sheet"} <span class="tag">v${BUILD}</span></h2>${back}</div>
       <div class="hint">${LANG==="zh"?"点选供应商 → 填数量 → 🛒下单（会通知老板与区域副经理）。中央厨房 (TCY OKR) 含图片版。":"Pick supplier → qty → order."}</div>
       ${wSup?`<div style="margin-bottom:9px;"><button class="btn gold sm" onclick="addSupplier()">+ ${LANG==="zh"?"新增供应商":"Add Supplier"}</button></div>`:''}
       ${cards}`;
@@ -2709,7 +2709,7 @@ function prodCostHTML(){
 }
 function pgCK(){
   const isCK=outletObj().ck;
-  const head=`<h2 class="h" style="margin-top:2px;">🏭 ${LANG==="zh"?"中央厨房 · 生产成本":"Central Kitchen · Production Cost"} <span class="tag" style="background:#F2B417;color:#12203A;font-weight:800;">v${BUILD}</span></h2>`;
+  const head=`<h2 class="h" style="margin-top:2px;">🏭 ${LANG==="zh"?"中央厨房 · 生产成本":"Central Kitchen · Production Cost"} <span class="tag">v${BUILD}</span></h2>`;
   if(!isCK)return head+`<div class="hint">⚠️ ${LANG==="zh"?"请先在右上角切换到「中央厨房」查看/录入生产成本。":"Switch to Central Kitchen first."}</div>`;
   return head+prodCostHTML();
 }
@@ -2717,7 +2717,7 @@ function pgCK(){
 /* 盘点（独立页）*/
 function pgStock(){
   const x=d();
-  return `<div class="fb"><h2 class="h" style="margin:0;">📋 ${LANG==="zh"?"实物盘点":"Stock Take"} <span class="tag" style="background:#F2B417;color:#12203A;font-weight:800;">v${BUILD}</span></h2>${canW('stock')?`<button class="btn gold sm" onclick="openM('stocktake')">+ ${LANG==="zh"?"盘点":"Count"}</button>`:''}</div>
+  return `<div class="fb"><h2 class="h" style="margin:0;">📋 ${LANG==="zh"?"实物盘点":"Stock Take"} <span class="tag">v${BUILD}</span></h2>${canW('stock')?`<button class="btn gold sm" onclick="openM('stocktake')">+ ${LANG==="zh"?"盘点":"Count"}</button>`:''}</div>
   <div class="hint">${LANG==="zh"?"👉 功能：月底(或定期)数一次实际库存填进来，系统自动算出账面 vs 实物差多少(＝隐性损耗/被偷被浪费)，也用来做月度实耗成本。":"Enter your physical count; system shows the shortfall vs book stock."}</div>
   <div class="card tbl"><table><thead><tr><th>${LANG==="zh"?"品项":"Item"}</th><th>${LANG==="zh"?"理论":"Theory"}</th><th>${LANG==="zh"?"实盘":"Actual"}</th><th>${LANG==="zh"?"盘差":"Var"}</th><th>${LANG==="zh"?"盘差额":"Val"}</th></tr></thead><tbody>
   ${x.stocktakes.map(s=>{const it=findItem(s.item);const v=s.theory-s.count;return `<tr><td>${oEsc(s.item)}</td><td>${num(s.theory)}</td><td>${num(s.count)}</td><td><span class="pill ${Math.abs(v)>0.4?'p-r':'p-g'}">${v>0?'+':''}${num(v)}</span></td><td class="${Math.abs(v)>0.4?'neg':''}">${money(Math.abs(v)*(it?it.cost:0))}</td></tr>`;}).join('')}
@@ -3546,7 +3546,7 @@ function pgLedger(mod){
           <div style="white-space:nowrap;">${writable?`<button class="ib" onclick="event.stopPropagation();renameSupplier(${v.id})">✏️</button> <button class="ib" onclick="event.stopPropagation();delSupplier(${v.id})">🗑️</button> `:''}<span class="mini">›</span></div></div>
         </div></div>`;
     }).join('')||`<div class="empty">${LANG==="zh"?"暂无供应商，点『新增供应商』开始添加。":"No suppliers — tap Add Supplier."}</div>`;
-    return `<div class="fb"><h2 class="h" style="margin:0;">${cfg.icon} ${cfg.title} <span class="tag" style="background:#F2B417;color:#12203A;font-weight:800;">v${BUILD}</span></h2>${back}</div>
+    return `<div class="fb"><h2 class="h" style="margin:0;">${cfg.icon} ${cfg.title} <span class="tag">v${BUILD}</span></h2>${back}</div>
       <div class="hint">${LANG==="zh"?"点选供应商 → 先看每月汇总，再点月份看该月每日明细。":"Tap a supplier → monthly breakdown → tap a month for its daily list."}</div>
       ${writable?`<div style="display:flex;gap:6px;margin-bottom:10px;flex-wrap:wrap;"><button class="btn gold sm" onclick="addSupplier()">+ ${LANG==="zh"?"新增供应商":"Add Supplier"}</button><button class="btn ghost sm" onclick="bulkAddForm('supplier')">📋 ${LANG==="zh"?"批量导入":"Bulk Import"}</button>${sups.length?`<button class="btn ghost sm" onclick="clearSuppliers()">🗑️ ${LANG==="zh"?"清空全部":"Clear All"}</button>`:''}</div>`:''}
       ${cards}`;
@@ -3649,7 +3649,7 @@ function pgTransfer(){
   const months=logMonths(allItems);const cur=(transferMonth&&months.includes(transferMonth))?transferMonth:months[0];
   const items=allItems.filter(r=>(r.date||'').slice(0,7)===cur).sort((a,b)=>(b.date||'').localeCompare(a.date||''));
   const back=`<button class="btn ghost sm" onclick="nav('proc')">← ${LANG==="zh"?"进销存作业":"Operations"}</button>`;
-  return `<div class="fb"><h2 class="h" style="margin:0;">🔁 ${LANG==="zh"?"跨店调拨":"Inter-Branch Transfer"} <span class="tag" style="background:#F2B417;color:#12203A;font-weight:800;">v${BUILD}</span></h2>${back}</div>
+  return `<div class="fb"><h2 class="h" style="margin:0;">🔁 ${LANG==="zh"?"跨店调拨":"Inter-Branch Transfer"} <span class="tag">v${BUILD}</span></h2>${back}</div>
   <div class="hint">${LANG==="zh"?"按月分开。记录物品被借走/直接调拨（标注归还或直接Transfer），以及人力资源借调其他店面。":"By month. Item transfers (return/direct) and staff loans."}</div>
   ${logMonthTabs(months,cur,'setTransferMonth')}
   <div class="fb"><h2 class="h" style="margin:0;">📦 ${LANG==="zh"?"物品调拨":"Item Transfer"}</h2>${writable?`<button class="btn gold sm" onclick="formTransferItem()">+ ${LANG==="zh"?"物品":"Item"}</button>`:''}</div>
@@ -3711,7 +3711,7 @@ function pgWaste2(){
   const months=logMonths(all);const cur=(wasteMonth&&months.includes(wasteMonth))?wasteMonth:months[0];
   const rs=all.filter(r=>(r.date||'').slice(0,7)===cur).sort((a,b)=>(b.date||'').localeCompare(a.date||''));
   const tot=rs.reduce((s,r)=>s+(+r.cost||0)*(+r.qty||0),0);
-  return `<div class="fb"><h2 class="h" style="margin:0;">🗑 ${LANG==="zh"?"报废损耗":"Wastage"} <span class="tag" style="background:#F2B417;color:#12203A;font-weight:800;">v${BUILD}</span></h2><button class="btn ghost sm" onclick="nav('proc')">← ${LANG==="zh"?"进销存作业":"Operations"}</button></div>
+  return `<div class="fb"><h2 class="h" style="margin:0;">🗑 ${LANG==="zh"?"报废损耗":"Wastage"} <span class="tag">v${BUILD}</span></h2><button class="btn ghost sm" onclick="nav('proc')">← ${LANG==="zh"?"进销存作业":"Operations"}</button></div>
   <div class="hint">${LANG==="zh"?"按月分开。记录 日期·物品·成本价·数量·总额·原因·备注。总额=成本价×数量。":"By month. Date, item, cost, qty, total, reason & note."}</div>
   ${writable?`<button class="btn brand sm" style="margin-bottom:8px;" onclick="formWaste2()">+ ${LANG==="zh"?"新增报废":"Add"}</button>`:''}
   ${logMonthTabs(months,cur,'setWasteMonth')}
@@ -3760,7 +3760,7 @@ function pgOpexLog(){
   const months=logMonths(all);const cur=(opexLogMonth&&months.includes(opexLogMonth))?opexLogMonth:months[0];
   const rs=all.filter(r=>(r.date||'').slice(0,7)===cur).sort((a,b)=>(b.date||'').localeCompare(a.date||''));
   const tot=rs.reduce((s,r)=>s+(+r.amount||0),0);
-  return `<div class="fb"><h2 class="h" style="margin:0;">🧾 ${zh?"运营开销记录":"OpEx Log"} <span class="tag" style="background:#F2B417;color:#12203A;font-weight:800;">v${BUILD}</span></h2><button class="btn ghost sm" onclick="nav('proc')">← ${zh?"进销存作业":"Operations"}</button></div>
+  return `<div class="fb"><h2 class="h" style="margin:0;">🧾 ${zh?"运营开销记录":"OpEx Log"} <span class="tag">v${BUILD}</span></h2><button class="btn ghost sm" onclick="nav('proc')">← ${zh?"进销存作业":"Operations"}</button></div>
   <div class="hint">${zh?"按月分开。记录 类别·日期·Invoice No.·金额·备注，跟「运营开销」预算表是两回事，这里是零散开销的流水账。":"By month. Category, date, invoice no., amount & note — a running log, separate from the OpEx budget sheet."}</div>
   ${writable?`<button class="btn brand sm" style="margin-bottom:8px;" onclick="formOpexLog()">+ ${zh?"新增开销":"Add"}</button>`:''}
   ${logMonthTabs(months,cur,'setOpexLogMonth')}
@@ -3795,7 +3795,7 @@ function pgOffer(){
   const months=logMonths(all);const cur=(offerMonth&&months.includes(offerMonth))?offerMonth:months[0];
   const rs=all.filter(r=>(r.date||'').slice(0,7)===cur).sort((a,b)=>(b.date||'').localeCompare(a.date||''));
   const tot=rs.reduce((s,r)=>s+(+r.total||0),0);
-  return `<div class="fb"><h2 class="h" style="margin:0;">🎁 ${LANG==="zh"?"招待 / 赠送":"Offers / ENT"} <span class="tag" style="background:#F2B417;color:#12203A;font-weight:800;">v${BUILD}</span></h2><button class="btn ghost sm" onclick="nav('proc')">← ${LANG==="zh"?"进销存作业":"Operations"}</button></div>
+  return `<div class="fb"><h2 class="h" style="margin:0;">🎁 ${LANG==="zh"?"招待 / 赠送":"Offers / ENT"} <span class="tag">v${BUILD}</span></h2><button class="btn ghost sm" onclick="nav('proc')">← ${LANG==="zh"?"进销存作业":"Operations"}</button></div>
   <div class="hint">${LANG==="zh"?"按月分开。日期 · 收据号码 · 类别(ENT/Offer) · 品项 · 当事人 · 金额(含SST6%) · 原因（跟随明记 ENT/Offer 表）。":"By month. Date · Receipt · Type · Item · P.I.C · Amount · Reason."}</div>
   ${writable?`<button class="btn brand sm" style="margin-bottom:8px;" onclick="formOffer()">+ ${LANG==="zh"?"新增招待":"Add"}</button>`:''}
   ${logMonthTabs(months,cur,'setOfferMonth')}
@@ -3835,7 +3835,7 @@ function pgGRN(){
   const months=logMonths(all);const cur=(grnMonth&&months.includes(grnMonth))?grnMonth:months[0];
   const rs=all.filter(r=>(r.date||'').slice(0,7)===cur).sort((a,b)=>(b.date||'').localeCompare(a.date||''));
   const tot=rs.reduce((s,r)=>s+(+r.price||0),0);const nRet=rs.filter(r=>r.settle!=='补货').length,nRes=rs.filter(r=>r.settle==='补货').length;
-  return `<div class="fb"><h2 class="h" style="margin:0;">🔁 ${LANG==="zh"?"退货 / 补货":"Returns / Restock"} <span class="tag" style="background:#F2B417;color:#12203A;font-weight:800;">v${BUILD}</span></h2><button class="btn ghost sm" onclick="nav('proc')">← ${LANG==="zh"?"进销存作业":"Operations"}</button></div>
+  return `<div class="fb"><h2 class="h" style="margin:0;">🔁 ${LANG==="zh"?"退货 / 补货":"Returns / Restock"} <span class="tag">v${BUILD}</span></h2><button class="btn ghost sm" onclick="nav('proc')">← ${LANG==="zh"?"进销存作业":"Operations"}</button></div>
   <div class="hint">${LANG==="zh"?"按月分开。点『+ 新增』→ 选供应商 → 选该供应商的品项 → 选 退货/补货。":"By month. Add → pick supplier → item → Return/Restock."}</div>
   ${writable?`<button class="btn brand sm" style="margin-bottom:8px;" onclick="formGRN()">+ ${LANG==="zh"?"新增退货/补货":"Add"}</button>`:''}
   ${logMonthTabs(months,cur,'setGrnMonth')}
