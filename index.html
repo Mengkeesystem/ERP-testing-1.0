@@ -659,7 +659,7 @@ function statusOf(d){if(d<=14)return{t:"健康",e:"Fresh",c:"p-g"};if(d<=30)retu
 function stTxt(s){return LANG==="zh"?s.t:s.e;}
 
 /* ================= 数据种子 ================= */
-const BUILD="0926mk50";  // 版本标记：页面右上/网格提示可见，用来确认已载入最新版
+const BUILD="0926mk51";  // 版本标记：页面右上/网格提示可见，用来确认已载入最新版
 const SEED_VERSION="bh-master-2026-09-1";  // 版本变更→下次载入自动重置为最新主数据（仅本店云端）
 function seed(outletId){
   const isCK = outletId==="ck";
@@ -4379,14 +4379,22 @@ async function checkForUpdate(){
   }catch(e){/* 离线或网络问题就算了，下次再试 */}
   _updChecking=false;
 }
+/* 强制更新：屏幕正中间弹一个盖住全屏的提示，只有一个"确认更新"按钮，
+   没有关闭/点旁边取消的办法，逼着一定要更新到最新版才能继续用系统
+   (避免有人一直用旧版本操作，数据结构/功能跟别人对不上)。 */
 function showUpdateBanner(newBuild){
   if(_updShown)return;_updShown=true;
   const zh=LANG==="zh";
-  const bn=document.createElement('div');
-  bn.style.cssText='position:fixed;left:50%;top:calc(10px + env(safe-area-inset-top));transform:translateX(-50%);z-index:99999;background:#12203A;color:#fff;padding:10px 16px;border-radius:999px;box-shadow:0 6px 20px rgba(0,0,0,.3);font-size:13px;font-weight:700;display:flex;align-items:center;gap:8px;cursor:pointer;';
-  bn.innerHTML=`🔄 ${zh?`有新版本 ${newBuild}，点击更新`:`Update ${newBuild} available — tap to refresh`}`;
-  bn.onclick=()=>{location.href=location.pathname+'?_ts='+Date.now();};
-  document.body.appendChild(bn);
+  const ov=document.createElement('div');
+  ov.style.cssText='position:fixed;inset:0;z-index:99999;background:rgba(15,25,45,.72);display:flex;align-items:center;justify-content:center;padding:20px;';
+  ov.innerHTML=`<div style="background:#fff;border-radius:16px;padding:26px 22px;max-width:340px;width:100%;text-align:center;box-shadow:0 10px 40px rgba(0,0,0,.35);">
+    <div style="font-size:36px;margin-bottom:10px;">🔄</div>
+    <div style="font-weight:800;font-size:17px;color:var(--ink);margin-bottom:8px;">${zh?"有新版本可用":"New Version Available"}</div>
+    <div class="mini" style="margin-bottom:18px;line-height:1.6;">${zh?`系统已更新到 <b>${newBuild}</b>，请更新后才能继续使用，避免跟其他人使用的版本不一致。`:`The app was updated to <b>${newBuild}</b>. Please update to continue.`}</div>
+    <button class="btn block brand" id="forceUpdBtn">✅ ${zh?"确认更新":"Update Now"}</button>
+  </div>`;
+  document.body.appendChild(ov);
+  document.getElementById('forceUpdBtn').onclick=()=>{location.href=location.pathname+'?_ts='+Date.now();};
 }
 function startUpdateCheck(){
   checkForUpdate();
