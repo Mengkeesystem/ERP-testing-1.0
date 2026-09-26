@@ -293,6 +293,7 @@
   <div class="r">
     <button class="lang" id="installBtn" onclick="installApp()" title="安装为App Install">📲</button>
     <button class="lang" id="bellBtn" onclick="openOrdersPanel()" title="收到的订单 Orders" style="display:none;position:relative;">🔔<span id="bellCount" style="display:none;position:absolute;top:-4px;right:-4px;min-width:16px;height:16px;line-height:16px;padding:0 3px;border-radius:9px;background:#d92d20;color:#fff;font-size:10px;font-weight:800;text-align:center;">0</span></button>
+    <button class="lang" id="updBellBtn" onclick="openUpdatePanel()" title="版本更新通知 Version updates" style="position:relative;">🛎️<span id="updBellCount" style="display:none;position:absolute;top:-4px;right:-4px;min-width:16px;height:16px;line-height:16px;padding:0 3px;border-radius:9px;background:#0891B2;color:#fff;font-size:10px;font-weight:800;text-align:center;">1</span></button>
     <button class="lang" onclick="toggleLang()" id="langBtn">EN</button>
     <select class="sel" id="roleSel" onchange="switchRole()"></select>
     <select class="sel" id="outletSel" onchange="switchOutlet()"></select>
@@ -659,7 +660,7 @@ function statusOf(d){if(d<=14)return{t:"健康",e:"Fresh",c:"p-g"};if(d<=30)retu
 function stTxt(s){return LANG==="zh"?s.t:s.e;}
 
 /* ================= 数据种子 ================= */
-const BUILD="0926mk53";  // 版本标记：页面右上/网格提示可见，用来确认已载入最新版
+const BUILD="0926mk54";  // 版本标记：页面右上/网格提示可见，用来确认已载入最新版
 const SEED_VERSION="bh-master-2026-09-1";  // 版本变更→下次载入自动重置为最新主数据（仅本店云端）
 function seed(outletId){
   const isCK = outletId==="ck";
@@ -2880,6 +2881,11 @@ function pgSettings(){
     <div class="mini">${Object.entries(ROLES).map(([k,v])=>`<div style="padding:4px 0;">${k===curRole?'▶ ':''}<b>${LANG==="zh"?v.name:v.en}</b>：${v.can.length} ${LANG==="zh"?"个模块":"modules"}</div>`).join('')}</div></div>
     <div class="mini">${LANG==="zh"?"切换角色请用右上角选单。老板/人事经理：全权含个人薪资。区域副经理：全权但薪资只看总数、不看个人。店长：本店采购/盘点/损耗/OpEx+报表。厨师长：生产/成品入库/配送调拨。员工：打卡/请假/查看自己薪资。":"Switch role top-right."}</div>
   </div>
+  ${settingsPanel('📦 '+(LANG==="zh"?"版本更新":"App Version"),`
+    <div class="mini">${LANG==="zh"?"当前版本":"Current version"}：<b>v${BUILD}</b></div>
+    <div class="mini" style="margin-top:6px;">${LANG==="zh"?"系统每隔几分钟、或从背景切回前台时会自动检查新版本；侦测到时所有账号都会响铃+跳出强制更新窗，必须按确认更新才能继续使用。":"Auto-checks every few minutes and on resume; when found, all accounts get a chime + forced update prompt."}</div>
+    <button class="btn ghost sm" style="margin-top:8px;" onclick="checkForUpdate(true)">🔄 ${LANG==="zh"?"手动检查更新":"Check now"}</button>
+  `)}
   ${accountPermsSection()}
   ${whitelistHTML()}
   ${auditMonitorHTML()}
@@ -4376,24 +4382,49 @@ function installApp(){
    这里加一个小提示条：每隔几分钟、或从背景切回前台时，去服务器抓一次最新
    HTML 的 BUILD 版本号，发现比手上这份新，就跳一个"有新版本"的小条，
    点一下才刷新(不会没提示就自己重刷，打字打到一半不会被打断)。 */
-let _updChecking=false,_updShown=false;
-async function checkForUpdate(){
-  if(_updChecking||_updShown)return;_updChecking=true;
+let _updChecking=false,_updShown=false,_updPending=false,_updPendingVer='';
+async function checkForUpdate(manual){
+  if(_updChecking||_updShown){if(manual)alert(LANG==="zh"?"已经在检查/已经有更新待处理。":"Already checking / update pending.");return;}
+  _updChecking=true;
   try{
     const res=await fetch(location.pathname+'?_ts='+Date.now(),{cache:'no-store'});
     if(res.ok){
       const txt=await res.text();
       const m=txt.match(/const BUILD\s*=\s*"([^"]+)"/);
-      if(m&&m[1]&&m[1]!==BUILD)showUpdateBanner(m[1]);
+      if(m&&m[1]&&m[1]!==BUILD){showUpdateBanner(m[1]);}
+      else if(manual){alert(LANG==="zh"?`当前版本 v${BUILD}，已是最新版。`:`v${BUILD} — already up to date.`);}
     }
-  }catch(e){/* 离线或网络问题就算了，下次再试 */}
+  }catch(e){if(manual)alert(LANG==="zh"?"检查更新失败，请稍后再试。":"Check failed, try again later.");}
   _updChecking=false;
+}
+/* 版本更新提示音：高低两声"叮-咚"，刻意跟订单提示音(三音齐响)不一样，
+   一听就知道是"系统更新"还是"新订单"，不会搞混。 */
+function playUpdateChime(){
+  try{primeAudio();if(!_audioCtx)return;const ctx=_audioCtx;
+    [[1568,0],[1046,0.32]].forEach(([f,delay])=>{
+      const now=ctx.currentTime+delay;const g=ctx.createGain();g.connect(ctx.destination);
+      g.gain.setValueAtTime(0.0001,now);g.gain.exponentialRampToValueAtTime(0.8,now+0.015);g.gain.exponentialRampToValueAtTime(0.0001,now+0.6);
+      const o=ctx.createOscillator();o.type='sine';o.frequency.value=f;o.connect(g);o.start(now);o.stop(now+0.65);
+    });
+    try{if(navigator.vibrate)navigator.vibrate([200,100,200]);}catch(e){}
+  }catch(e){}
+}
+function updBellRefresh(){const bc=document.getElementById('updBellCount');if(bc)bc.style.display=_updPending?'':'none';}
+/* 铃铛点开：有更新待处理就重新弹出强制更新窗(避免不小心被切走/看不到)；
+   没有的话就只是显示目前版本号，给所有账号都能查。 */
+function openUpdatePanel(){
+  if(_updPending){_updShown=false;showUpdateBanner(_updPendingVer);return;}
+  alert(LANG==="zh"?`🛎️ 版本更新通知\n\n当前版本：v${BUILD}\n已是最新版，一旦有更新会自动跳出提醒+响铃。`:`Current version: v${BUILD} — up to date.`);
 }
 /* 强制更新：屏幕正中间弹一个盖住全屏的提示，只有一个"确认更新"按钮，
    没有关闭/点旁边取消的办法，逼着一定要更新到最新版才能继续用系统
-   (避免有人一直用旧版本操作，数据结构/功能跟别人对不上)。 */
+   (避免有人一直用旧版本操作，数据结构/功能跟别人对不上)。
+   所有账号(不分职位)都会收到这个提醒+专属提示音；区域副经理以下账号
+   本来就看不到订单铃铛(bellBtn)，只会看到这个版本更新铃铛。 */
 function showUpdateBanner(newBuild){
+  _updPending=true;_updPendingVer=newBuild;updBellRefresh();
   if(_updShown)return;_updShown=true;
+  playUpdateChime();
   const zh=LANG==="zh";
   const ov=document.createElement('div');
   ov.style.cssText='position:fixed;inset:0;z-index:99999;background:rgba(15,25,45,.72);display:flex;align-items:center;justify-content:center;padding:20px;';
