@@ -4,9 +4,9 @@
    要最新的 index.html，不会死抱着旧的缓存不放；只有离线的时候才退回
    用缓存(离线也能打开，不会白屏)。缓存名字带版本号，每次改版跟着
    index.html 的 BUILD 一起手动升级，旧版本缓存会在 activate 时自动清掉。 */
-const SW_VERSION = '0926mk56'; // ⚠️ 跟 index.html 的 BUILD 一起手动升级，保持一致
+const SW_VERSION = '0926mk57'; // ⚠️ 跟 index.html 的 BUILD 一起手动升级，保持一致
 const CACHE_NAME = 'mengkee-erp-' + SW_VERSION;
-const CORE_ASSETS = ['./', './index.html', './order-data.js', './manifest.webmanifest', './icon-192.png', './icon-512.png', './apple-touch-icon.png'];
+const CORE_ASSETS = ['./', './index.html', './order-data.js', './manifest.webmanifest', './icon-192.png', './icon-512.png', './apple-touch-icon.png', './icon-update.png'];
 
 self.addEventListener('install', e => {
   self.skipWaiting(); // 新版本装好立刻生效，不等旧分页全部关掉
