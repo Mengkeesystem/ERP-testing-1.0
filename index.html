@@ -659,7 +659,7 @@ function statusOf(d){if(d<=14)return{t:"健康",e:"Fresh",c:"p-g"};if(d<=30)retu
 function stTxt(s){return LANG==="zh"?s.t:s.e;}
 
 /* ================= 数据种子 ================= */
-const BUILD="0925mk48";  // 版本标记：页面右上/网格提示可见，用来确认已载入最新版
+const BUILD="0926mk49";  // 版本标记：页面右上/网格提示可见，用来确认已载入最新版
 const SEED_VERSION="bh-master-2026-09-1";  // 版本变更→下次载入自动重置为最新主数据（仅本店云端）
 function seed(outletId){
   const isCK = outletId==="ck";
@@ -4357,8 +4357,42 @@ function installApp(){
   }else{
     await loadDB();await loadRolePerms();showLogin();
   }
+  startUpdateCheck();
 })();
-
+/* ================= 自动检查新版本（不用删除重装 App）=================
+   PWA 装到手机主屏幕后，网页本身没有做任何离线缓存(sw.js 没拦截 fetch)，
+   所以内容更新其实早就是"打开就是最新的"，不用重装——唯独图标变更是
+   手机系统自己缓存的，那个没办法用网页技术解决，只有那种情况才需要重装。
+   这里加一个小提示条：每隔几分钟、或从背景切回前台时，去服务器抓一次最新
+   HTML 的 BUILD 版本号，发现比手上这份新，就跳一个"有新版本"的小条，
+   点一下才刷新(不会没提示就自己重刷，打字打到一半不会被打断)。 */
+let _updChecking=false,_updShown=false;
+async function checkForUpdate(){
+  if(_updChecking||_updShown)return;_updChecking=true;
+  try{
+    const res=await fetch(location.pathname+'?_ts='+Date.now(),{cache:'no-store'});
+    if(res.ok){
+      const txt=await res.text();
+      const m=txt.match(/const BUILD\s*=\s*"([^"]+)"/);
+      if(m&&m[1]&&m[1]!==BUILD)showUpdateBanner(m[1]);
+    }
+  }catch(e){/* 离线或网络问题就算了，下次再试 */}
+  _updChecking=false;
+}
+function showUpdateBanner(newBuild){
+  if(_updShown)return;_updShown=true;
+  const zh=LANG==="zh";
+  const bn=document.createElement('div');
+  bn.style.cssText='position:fixed;left:50%;top:calc(10px + env(safe-area-inset-top));transform:translateX(-50%);z-index:99999;background:#12203A;color:#fff;padding:10px 16px;border-radius:999px;box-shadow:0 6px 20px rgba(0,0,0,.3);font-size:13px;font-weight:700;display:flex;align-items:center;gap:8px;cursor:pointer;';
+  bn.innerHTML=`🔄 ${zh?`有新版本 ${newBuild}，点击更新`:`Update ${newBuild} available — tap to refresh`}`;
+  bn.onclick=()=>{location.href=location.pathname+'?_ts='+Date.now();};
+  document.body.appendChild(bn);
+}
+function startUpdateCheck(){
+  checkForUpdate();
+  setInterval(checkForUpdate,5*60*1000); // 每5分钟查一次
+  document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible')checkForUpdate();}); // 从背景切回前台也查一次
+}
 </script>
 </body>
 </html>
