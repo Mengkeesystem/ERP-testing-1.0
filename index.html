@@ -659,7 +659,7 @@ function statusOf(d){if(d<=14)return{t:"健康",e:"Fresh",c:"p-g"};if(d<=30)retu
 function stTxt(s){return LANG==="zh"?s.t:s.e;}
 
 /* ================= 数据种子 ================= */
-const BUILD="0926mk52";  // 版本标记：页面右上/网格提示可见，用来确认已载入最新版
+const BUILD="0926mk53";  // 版本标记：页面右上/网格提示可见，用来确认已载入最新版
 const SEED_VERSION="bh-master-2026-09-1";  // 版本变更→下次载入自动重置为最新主数据（仅本店云端）
 function seed(outletId){
   const isCK = outletId==="ck";
@@ -4340,7 +4340,17 @@ function installApp(){
     :(iOS?"iOS: Share → Add to Home Screen":"Android: Menu (⋮) → Install app / Add to Home Screen"));
 }
 (async()=>{
-  if('serviceWorker'in navigator){navigator.serviceWorker.register('sw.js').then(r=>{_swReg=r;}).catch(()=>{});}
+  if('serviceWorker'in navigator){
+    navigator.serviceWorker.register('sw.js').then(r=>{
+      _swReg=r;
+      // 有新版本的 sw.js 装好待命时(装好=网络已经拿到新版本)，立刻查一次版本号跳强制更新窗，
+      // 不用等5分钟那个定时检查，网络够快的话几乎是开App当下就会侦测到。
+      r.addEventListener('updatefound',()=>{
+        const nw=r.installing;if(!nw)return;
+        nw.addEventListener('statechange',()=>{if(nw.state==='installed'&&navigator.serviceWorker.controller)checkForUpdate();});
+      });
+    }).catch(()=>{});
+  }
   try{window.addEventListener('beforeinstallprompt',function(e){e.preventDefault();_deferredPrompt=e;});}catch(e){}
   try{window.addEventListener('click',function(){if(typeof primeAudio==='function')primeAudio();},{once:true});}catch(e){}
   initCloud();
@@ -4398,8 +4408,8 @@ function showUpdateBanner(newBuild){
 }
 function startUpdateCheck(){
   checkForUpdate();
-  setInterval(checkForUpdate,5*60*1000); // 每5分钟查一次
-  document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible')checkForUpdate();}); // 从背景切回前台也查一次
+  setInterval(()=>{checkForUpdate();if(_swReg)_swReg.update().catch(()=>{});},5*60*1000); // 每5分钟查一次，顺便叫 sw.js 也主动check
+  document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible'){checkForUpdate();if(_swReg)_swReg.update().catch(()=>{});}}); // 从背景切回前台也查一次
 }
 </script>
 </body>
