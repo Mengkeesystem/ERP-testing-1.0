@@ -660,7 +660,7 @@ function statusOf(d){if(d<=14)return{t:"健康",e:"Fresh",c:"p-g"};if(d<=30)retu
 function stTxt(s){return LANG==="zh"?s.t:s.e;}
 
 /* ================= 数据种子 ================= */
-const BUILD="0926mk57";  // 版本标记：页面右上/网格提示可见，用来确认已载入最新版
+const BUILD="0926mk58";  // 版本标记：页面右上/网格提示可见，用来确认已载入最新版
 const SEED_VERSION="bh-master-2026-09-1";  // 版本变更→下次载入自动重置为最新主数据（仅本店云端）
 function seed(outletId){
   const isCK = outletId==="ck";
@@ -3057,7 +3057,7 @@ function prefill(type,id){
 }
 function setV(id,val){const el=document.getElementById(id);if(el)el.value=val;}
 function setTitle(txt){const h=document.querySelector('#mbox h3');if(h)h.childNodes[0].textContent=txt+" ";}
-function closeM(){document.getElementById('mbg').classList.remove('show');_orderEditing=false;}
+function closeM(){document.getElementById('mbg').classList.remove('show');_orderEditing=false;if(_updPending&&typeof tryShowForcedUpdate==='function')tryShowForcedUpdate();}
 document.getElementById('mbg').addEventListener('click',e=>{if(e.target.id==='mbg')closeM();});
 document.addEventListener('keydown',e=>{if(e.key==='Escape'){const mbg=document.getElementById('mbg');if(mbg&&mbg.classList.contains('show'))closeM();}});
 function poHint(){const s=document.getElementById('p_item');if(!s)return;const it=findItem(s.value);document.getElementById('poHint').innerHTML=it?`1 ${it.buyUnit} = ${it.conv} ${it.unit} · ${LANG==="zh"?"现价":"now"} ${money(it.cost)}/${it.unit}`:'';}
@@ -4421,11 +4421,27 @@ function openUpdatePanel(){
    (避免有人一直用旧版本操作，数据结构/功能跟别人对不上)。
    所有账号(不分职位)都会收到这个提醒+专属提示音；区域副经理以下账号
    本来就看不到订单铃铛(bellBtn)，只会看到这个版本更新铃铛。 */
-function showUpdateBanner(newBuild){
-  _updPending=true;_updPendingVer=newBuild;updBellRefresh();
-  if(_updShown)return;_updShown=true;
-  playUpdateChime();
-  const zh=LANG==="zh";
+/* 正在填表单/正在打字的时候，绝对不能突然跳出强制更新窗把画面锁住——
+   还没按『保存』的资料只存在画面上，还没写进系统，一被切页/刷新就没了。
+   所以：侦测到新版本先只响铃+跳红点(不打断)，真正的强制更新窗要等
+   "表单弹窗关掉、且当下没有任何输入框在打字" 才会跳出来；关表单/
+   打字告一段落后，这里会自动每1.5秒检查一次，一safe就立刻跳出来。 */
+function isBusyEditing(){
+  const mbg=document.getElementById('mbg');
+  if(mbg&&mbg.classList.contains('show'))return true; // 新增/编辑表单开着
+  const ae=document.activeElement;
+  if(ae&&/^(INPUT|TEXTAREA|SELECT)$/.test(ae.tagName))return true; // 正在某个输入框里打字/选择(如採购网格逐格输入)
+  return false;
+}
+let _updWaitT=null;
+function tryShowForcedUpdate(){
+  if(_updShown||!_updPending)return;
+  if(isBusyEditing()){
+    if(!_updWaitT)_updWaitT=setInterval(()=>{if(!isBusyEditing()){clearInterval(_updWaitT);_updWaitT=null;tryShowForcedUpdate();}},1500);
+    return;
+  }
+  _updShown=true;
+  const zh=LANG==="zh";const newBuild=_updPendingVer;
   const ov=document.createElement('div');
   ov.style.cssText='position:fixed;inset:0;z-index:99999;background:rgba(15,25,45,.72);display:flex;align-items:center;justify-content:center;padding:20px;';
   ov.innerHTML=`<div style="background:#fff;border-radius:16px;padding:26px 22px;max-width:340px;width:100%;text-align:center;box-shadow:0 10px 40px rgba(0,0,0,.35);">
@@ -4436,6 +4452,12 @@ function showUpdateBanner(newBuild){
   </div>`;
   document.body.appendChild(ov);
   document.getElementById('forceUpdBtn').onclick=()=>{location.href=location.pathname+'?_ts='+Date.now();};
+}
+function showUpdateBanner(newBuild){
+  const already=_updPending;
+  _updPending=true;_updPendingVer=newBuild;updBellRefresh();
+  if(!already)playUpdateChime(); // 只响一次铃，不会因为每次检查都重复响
+  tryShowForcedUpdate();
 }
 function startUpdateCheck(){
   checkForUpdate();
