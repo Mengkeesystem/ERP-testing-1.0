@@ -660,7 +660,7 @@ function statusOf(d){if(d<=14)return{t:"健康",e:"Fresh",c:"p-g"};if(d<=30)retu
 function stTxt(s){return LANG==="zh"?s.t:s.e;}
 
 /* ================= 数据种子 ================= */
-const BUILD="0928mk60";  // 版本标记：页面右上/网格提示可见，用来确认已载入最新版
+const BUILD="0928mk61";  // 版本标记：页面右上/网格提示可见，用来确认已载入最新版
 const SEED_VERSION="bh-master-2026-09-1";  // 版本变更→下次载入自动重置为最新主数据（仅本店云端）
 function seed(outletId){
   const isCK = outletId==="ck";
@@ -2377,15 +2377,20 @@ function setNotified(m){try{localStorage.setItem(ordNotifKey(),JSON.stringify(m)
 function orderUnreadCount(){if(!['owner','area','hrmgr'].includes(curRole))return 0;const seen=+(localStorage.getItem(ordSeenKey())||0);return ORDERS.filter(o=>o.ts>seen).length;}
 function markOrdersSeen(){const latest=ORDERS.reduce((m,o)=>Math.max(m,o.ts),0);localStorage.setItem(ordSeenKey(),String(latest));updateBell();}
 function updateBell(){const bell=document.getElementById('bellBtn');if(!bell)return;const show=['owner','area','hrmgr'].includes(curRole);bell.style.display=show?'':'none';const n=orderUnreadCount();const bc=document.getElementById('bellCount');if(bc){bc.style.display=n?'':'none';bc.textContent=n>99?'99+':n;}}
-/* 提示音：一声“叮”，响亮 + 约2秒余音（像手机信息提示，WebAudio，无需音频文件）*/
+/* 新订单提示音：模仿 iPhone 内建「Note」提示音的两声清脆上扬叮铃(E6→G6)，
+   WebAudio 原创合成(不是抓 Apple 音频档，那是苹果版权音效)——两声上扬跟版本
+   更新的三声上扬「Tri-tone」风格区分开，听声音就知道是新订单还是系统更新。 */
 function primeAudio(){try{_audioCtx=_audioCtx||new (window.AudioContext||window.webkitAudioContext)();if(_audioCtx.state==='suspended')_audioCtx.resume();}catch(e){}}
 function playBeep(){
   try{primeAudio();if(!_audioCtx)return;const ctx=_audioCtx,now=ctx.currentTime;
-    const master=ctx.createGain();master.connect(ctx.destination);
-    master.gain.setValueAtTime(0.0001,now);
-    master.gain.exponentialRampToValueAtTime(0.85,now+0.015);   // 响亮起音
-    master.gain.exponentialRampToValueAtTime(0.0001,now+2.0);   // 约2秒余音
-    [[988,1],[1319,0.55],[1976,0.28]].forEach(([f,v])=>{const o=ctx.createOscillator(),g=ctx.createGain();o.type='sine';o.frequency.value=f;g.gain.value=v;o.connect(g);g.connect(master);o.start(now);o.stop(now+2.05);});
+    [[1318.51,0],[1567.98,0.12]].forEach(([f,delay])=>{
+      const t=now+delay;
+      const master=ctx.createGain();master.connect(ctx.destination);
+      master.gain.setValueAtTime(0.0001,t);
+      master.gain.exponentialRampToValueAtTime(0.9,t+0.008);   // 清脆快起音
+      master.gain.exponentialRampToValueAtTime(0.0001,t+0.5);
+      [[f,1],[f*2,0.35],[f*3,0.12]].forEach(([freq,v])=>{const o=ctx.createOscillator(),g=ctx.createGain();o.type='sine';o.frequency.value=freq;g.gain.value=v;o.connect(g);g.connect(master);o.start(t);o.stop(t+0.55);});
+    });
     try{if(navigator.vibrate)navigator.vibrate([300,120,300]);}catch(e){}
   }catch(e){}
 }
@@ -4445,16 +4450,21 @@ async function checkForUpdate(manual){
   }catch(e){if(manual)alert(LANG==="zh"?"检查更新失败，请稍后再试。":"Check failed, try again later.");}
   _updChecking=false;
 }
-/* 版本更新提示音：高低两声"叮-咚"，刻意跟订单提示音(三音齐响)不一样，
-   一听就知道是"系统更新"还是"新订单"，不会搞混。 */
+/* 版本更新提示音：模仿 iPhone 内建「Tri-tone」提示音的三声上扬琶音风格
+   (G5→C6→E6，一声接一声往上扬)，用 WebAudio 原创合成、不是抓 Apple 的音频档
+   (那是苹果的版权音效，没办法直接内嵌)——但节奏/音符数刻意做成"三音上扬"，
+   一听就有"Tri-tone"那种熟悉的辨识度，也跟新订单的两声"Note"风格铃声区分开。 */
 function playUpdateChime(){
-  try{primeAudio();if(!_audioCtx)return;const ctx=_audioCtx;
-    [[1568,0],[1046,0.32]].forEach(([f,delay])=>{
-      const now=ctx.currentTime+delay;const g=ctx.createGain();g.connect(ctx.destination);
-      g.gain.setValueAtTime(0.0001,now);g.gain.exponentialRampToValueAtTime(0.8,now+0.015);g.gain.exponentialRampToValueAtTime(0.0001,now+0.6);
-      const o=ctx.createOscillator();o.type='sine';o.frequency.value=f;o.connect(g);o.start(now);o.stop(now+0.65);
+  try{primeAudio();if(!_audioCtx)return;const ctx=_audioCtx,now=ctx.currentTime;
+    [[783.99,0],[1046.50,0.14],[1318.51,0.28]].forEach(([f,delay])=>{
+      const t=now+delay;
+      const master=ctx.createGain();master.connect(ctx.destination);
+      master.gain.setValueAtTime(0.0001,t);
+      master.gain.exponentialRampToValueAtTime(0.85,t+0.01);
+      master.gain.exponentialRampToValueAtTime(0.0001,t+0.5);
+      [[f,1],[f*2,0.3]].forEach(([freq,v])=>{const o=ctx.createOscillator(),g=ctx.createGain();o.type='sine';o.frequency.value=freq;g.gain.value=v;o.connect(g);g.connect(master);o.start(t);o.stop(t+0.55);});
     });
-    try{if(navigator.vibrate)navigator.vibrate([200,100,200]);}catch(e){}
+    try{if(navigator.vibrate)navigator.vibrate([150,80,150,80,150]);}catch(e){}
   }catch(e){}
 }
 function updBellRefresh(){const bc=document.getElementById('updBellCount');if(bc)bc.style.display=_updPending?'':'none';}
