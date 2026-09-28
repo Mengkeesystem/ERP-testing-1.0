@@ -660,7 +660,7 @@ function statusOf(d){if(d<=14)return{t:"健康",e:"Fresh",c:"p-g"};if(d<=30)retu
 function stTxt(s){return LANG==="zh"?s.t:s.e;}
 
 /* ================= 数据种子 ================= */
-const BUILD="0928mk59";  // 版本标记：页面右上/网格提示可见，用来确认已载入最新版
+const BUILD="0928mk60";  // 版本标记：页面右上/网格提示可见，用来确认已载入最新版
 const SEED_VERSION="bh-master-2026-09-1";  // 版本变更→下次载入自动重置为最新主数据（仅本店云端）
 function seed(outletId){
   const isCK = outletId==="ck";
@@ -4304,25 +4304,52 @@ async function afterAuth(user){
   try{startOrderPoll();notifyNewOrders(true);enablePushSub();}catch(e){}
   markActivity(); // 登录当下重新起算闲置时间，避免登入前累积的闲置时间被算进去
 }
-async function authLogout(idleReason){try{if(AUTH())await _sb.auth.signOut();}catch(e){}curUser=null;showAuthLogin(idleReason?`<b>${LANG==="zh"?"⏱️ 长时间未操作，已自动登出，请重新登录。":"Logged out due to inactivity. Please sign in again."}</b>`:undefined);}
-/* ================= 闲置自动登出(仅限 区域副经理以下) =================
-   老板/区域副经理/人事经理常常需要长时间开着看大盘、不方便被强制踢出，
-   所以不受限制；店长/店面经理/厨师长/员工 这些比较基层、共用设备
-   机会较高的角色，30分钟没有任何点击/打字/滑动就自动登出，要求重新
-   输入密码登录，比较安全。正在填表单(弹窗开着)时不计入闲置，避免
-   资料还没保存就被强制登出弄丢。 */
+async function authLogout(idleReason){if(typeof dismissIdleWarn==='function')dismissIdleWarn();try{if(AUTH())await _sb.auth.signOut();}catch(e){}curUser=null;showAuthLogin(idleReason?`<b>${LANG==="zh"?"⏱️ 长时间未操作，已自动登出，请重新登录。":"Logged out due to inactivity. Please sign in again."}</b>`:undefined);}
+/* ================= 闲置自动登出(仅限 店长/厨师长/员工/中央经理/中央员工) =================
+   老板/区域副经理/人事经理/店面经理常常需要长时间开着看大盘、不方便被强制踢出，
+   所以不受影响；店长/厨师长/员工/中央经理/中央员工 这五个比较基层、共用设备
+   机会较高的角色，闲置满29分钟会先跳出「闲置超时提醒」卡片、倒数60秒，
+   这60秒内只要有任何操作(按继续、或单纯滑动/打字)提示就会取消、正常
+   继续用；倒数真的归零都没反应，才在满30分钟那一刻强制登出，要求
+   重新输入密码。正在填表单(弹窗开着)时一律当作有在用，不计闲置、
+   也不会跳提醒，避免资料还没保存就被强制登出弄丢。 */
 const IDLE_LIMIT_MS=30*60*1000;
+const IDLE_WARN_MS=60*1000; // 最后60秒先提醒
+const IDLE_ROLES=['manager','headchef','staff','ckmgr','ckstaff'];
 let _lastActivity=Date.now();
-function markActivity(){_lastActivity=Date.now();}
+let _idleWarnShown=false,_idleWarnEl=null,_idleWarnTick=null;
+function dismissIdleWarn(){
+  _idleWarnShown=false;
+  if(_idleWarnTick){clearInterval(_idleWarnTick);_idleWarnTick=null;}
+  if(_idleWarnEl){_idleWarnEl.remove();_idleWarnEl=null;}
+}
+function markActivity(){_lastActivity=Date.now();if(_idleWarnShown)dismissIdleWarn();}
+function showIdleWarn(){
+  if(_idleWarnShown)return;_idleWarnShown=true;
+  const zh=LANG==="zh";let remain=60;
+  const el=document.createElement('div');
+  el.style.cssText='position:fixed;left:50%;bottom:calc(20px + env(safe-area-inset-bottom));transform:translateX(-50%);z-index:99998;background:#12203A;color:#fff;padding:14px 18px;border-radius:14px;box-shadow:0 8px 30px rgba(0,0,0,.35);max-width:320px;width:calc(100% - 32px);text-align:center;';
+  el.innerHTML=`<div style="font-weight:800;margin-bottom:6px;">⏰ ${zh?"闲置超时提醒":"Idle Timeout Warning"}</div>
+    <div class="mini" style="margin-bottom:10px;color:#C7D0DE;">${zh?"即将自动登出，剩余":"Auto logout in"} <b id="idleWarnSec">60</b> ${zh?"秒":"s"}</div>
+    <button class="btn block brand" id="idleWarnBtn">✅ ${zh?"继续使用":"Keep me logged in"}</button>`;
+  document.body.appendChild(el);_idleWarnEl=el;
+  document.getElementById('idleWarnBtn').onclick=()=>markActivity();
+  _idleWarnTick=setInterval(()=>{
+    remain--;
+    const s=document.getElementById('idleWarnSec');if(s)s.textContent=remain;
+    if(remain<=0){clearInterval(_idleWarnTick);_idleWarnTick=null;authLogout(true);}
+  },1000);
+}
 function startIdleWatch(){
   ['click','keydown','touchstart','mousemove','scroll','wheel'].forEach(ev=>document.addEventListener(ev,markActivity,{passive:true}));
   setInterval(()=>{
     if(!curUser||!AUTH())return; // 未登录/demo模式不管
-    if(['owner','area','hrmgr'].includes(curRole))return; // 区域副经理以上不受限制
+    if(!IDLE_ROLES.includes(curRole))return; // 只对这五个角色生效
     const mbg=document.getElementById('mbg');
     if(mbg&&mbg.classList.contains('show')){markActivity();return;} // 表单开着算作有在用，不计闲置
-    if(Date.now()-_lastActivity>=IDLE_LIMIT_MS)authLogout(true);
-  },30*1000);
+    const elapsed=Date.now()-_lastActivity;
+    if(elapsed>=IDLE_LIMIT_MS-IDLE_WARN_MS&&elapsed<IDLE_LIMIT_MS)showIdleWarn();
+  },5*1000);
 }
 
 /* ================= 演示登录（无云端时回退）================= */
