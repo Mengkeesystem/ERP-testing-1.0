@@ -616,8 +616,13 @@ function canSeeSalary(){return ROLES[curRole].salaryView==="full";}
 function salaryScope(){return ROLES[curRole].salaryView;}
 function hrScope(){return ROLES[curRole].hrScope;} // all/branch/self
 function canApproveLeave(){return ROLES[curRole].approveLeave;}
-// 模拟「当前登录的员工」是谁（用于 self 范围）——示范用第一位
-function currentEmpId(){return 1;}
+// 「当前登录的员工」是谁（用于 self 范围）：按登录邮箱在员工档案里查，找不到就没有(不再乱抓第一位)
+function currentEmpId(){
+  const email=curUser&&curUser.email?curUser.email.toLowerCase().trim():'';
+  if(!email)return null;
+  const e=(d().staff||[]).find(x=>(x.email||'').toLowerCase().trim()===email);
+  return e?e.id:null;
+}
 const TODAY=new Date().toLocaleDateString('en-CA');  // 真实当天日期（YYYY-MM-DD），供到期提醒/月度/考勤使用
 let curOutlet="b1", curRole="owner", LANG="zh", moveFilter="all", curPage="dash";
 let curUser=null;   // 真实登录用户 {email,name,role,outlet}；演示模式为 null
@@ -660,7 +665,7 @@ function statusOf(d){if(d<=14)return{t:"健康",e:"Fresh",c:"p-g"};if(d<=30)retu
 function stTxt(s){return LANG==="zh"?s.t:s.e;}
 
 /* ================= 数据种子 ================= */
-const BUILD="0930mk63";  // 版本标记：页面右上/网格提示可见，用来确认已载入最新版
+const BUILD="0930mk64";  // 版本标记：页面右上/网格提示可见，用来确认已载入最新版
 const SEED_VERSION="bh-master-2026-09-1";  // 版本变更→下次载入自动重置为最新主数据（仅本店云端）
 function seed(outletId){
   const isCK = outletId==="ck";
@@ -2002,8 +2007,8 @@ function pgPayroll(){
   const headcount=allStaff.length;
   // self：只看自己的薪资与 payslip（厨师长、员工、店长）
   if(scope==="self"){
-    const me=empById(currentEmpId())||allStaff[0];
-    if(!me)return `<h2 class="h">💴 ${LANG==="zh"?"我的薪资":"My Payslip"}</h2><div class="empty">—</div>`;
+    const me=empById(currentEmpId());
+    if(!me)return `<h2 class="h">💴 ${LANG==="zh"?"我的薪资":"My Payslip"}</h2><div class="empty">${LANG==="zh"?"你的账号尚未绑定员工档案，无法查看薪资。请联系管理员在「员工档案」里填入你的登入邮箱。":"Your account isn't linked to an employee record yet. Ask an admin to set your login email in Employee Profile."}</div>`;
     return `<h2 class="h" style="margin-top:2px;">💴 ${LANG==="zh"?"我的薪资单 Payslip":"My Payslip"} <span class="tag">v${BUILD}</span></h2>
     <div class="hint">${LANG==="zh"?"你的角色只能查看自己的薪资明细。":"You can view your own payslip only."}</div>
     <div class="card" style="padding:16px;">
@@ -2222,6 +2227,7 @@ function pgAttend(){
 function doClockIn(){
   const st=document.getElementById('gpsStatus');
   const o=outletObj();
+  if(!currentEmpId()){st.innerHTML="⚠️ "+(LANG==="zh"?"你的账号尚未绑定员工档案，无法打卡。请联系管理员在「员工档案」里填入你的登入邮箱。":"Account not linked to an employee record. Ask an admin to set your login email in Employee Profile.");return;}
   if(!navigator.geolocation){st.innerHTML="⚠️ "+(LANG==="zh"?"此设备不支持定位":"No geolocation");return;}
   st.innerHTML=(LANG==="zh"?"定位中…":"Locating…");
   navigator.geolocation.getCurrentPosition(async pos=>{
@@ -3017,6 +3023,7 @@ function openM(type,editId){
     emp:`<h3>+ ${LANG==="zh"?"新增员工":"New Employee"} <span class="x" onclick="closeM()">×</span></h3>
       <div class="fg2"><div class="fr"><label>${LANG==="zh"?"员工号":"Emp No."}</label><input id="em_no" placeholder="${nextEmpNo()}"></div>
       <div class="fr"><label>${LANG==="zh"?"姓名":"Name"}</label><input id="em_name" placeholder="陈志强 Tan CK"></div></div>
+      <div class="fr"><label>${LANG==="zh"?"登入邮箱（可留空，用于本人自助查看考勤/薪资）":"Login Email (optional, links self-service views)"}</label><input id="em_email" type="email" placeholder="staff@example.com"></div>
       <div class="fg2"><div class="fr"><label>${LANG==="zh"?"职位":"Position"} <span onclick="openListMgr('positions')" style="cursor:pointer;color:var(--gold);font-weight:800;" title="${LANG==="zh"?'管理职位':'Manage'}">⚙</span></label><select id="em_role">${empPositions().map(p=>`<option value="${p.replace(/"/g,'&quot;')}">${p}</option>`).join('')}</select></div>
       <div class="fr"><label>${LANG==="zh"?"国籍":"Nationality"} <span onclick="openListMgr('nationalities')" style="cursor:pointer;color:var(--gold);font-weight:800;" title="${LANG==="zh"?'管理国籍':'Manage'}">⚙</span></label><select id="em_nat">${empNats().map(p=>`<option value="${p.replace(/"/g,'&quot;')}">${p}</option>`).join('')}</select></div></div>
       <div class="fg2"><div class="fr"><label>${LANG==="zh"?"身份证/护照":"IC/Passport"}</label><input id="em_ic"></div>
@@ -3057,7 +3064,7 @@ function prefill(type,id){
   if(type==='emp'){const e=(d().staff||[]).find(x=>x.id===id);if(!e)return;
     const injOpt=(selId,val)=>{const s=document.getElementById(selId);if(s&&val&&![...s.options].some(o=>o.value===val)){const o=document.createElement('option');o.value=val;o.textContent=val;s.appendChild(o);}};
     injOpt('em_role',e.role);injOpt('em_nat',e.nationality||(e.local===false?'缅甸':'马来西亚'));
-    setV('em_no',e.empNo||'');setV('em_name',e.name);setV('em_role',e.role);setV('em_nat',e.nationality||(e.local===false?'缅甸':'马来西亚'));setV('em_ic',e.ic||'');setV('em_phone',e.phone||'');setV('em_addr',e.address||'');setV('em_emerg',e.emergency||'');setV('em_joined',e.joined||'');setV('em_marital',e.marital||(e.married?'married':'single'));setV('em_basic',e.basic);setV('em_allow',e.allowance);setV('em_children',+e.children||0);setV('em_bankname',e.bankName||'');setV('em_bankacc',e.bankAcc||'');
+    setV('em_no',e.empNo||'');setV('em_name',e.name);setV('em_email',e.email||'');setV('em_role',e.role);setV('em_nat',e.nationality||(e.local===false?'缅甸':'马来西亚'));setV('em_ic',e.ic||'');setV('em_phone',e.phone||'');setV('em_addr',e.address||'');setV('em_emerg',e.emergency||'');setV('em_joined',e.joined||'');setV('em_marital',e.marital||(e.married?'married':'single'));setV('em_basic',e.basic);setV('em_allow',e.allowance);setV('em_children',+e.children||0);setV('em_bankname',e.bankName||'');setV('em_bankacc',e.bankAcc||'');
     setTitle(LANG==="zh"?"编辑员工":"Edit Employee");}
   if(type==='vendor'){const v=d().vendors.find(x=>x.id===id);if(!v)return;
     setV('v_name',v.name);setV('v_terms',v.terms);setTitle(LANG==="zh"?"编辑供应商":"Edit Vendor");}
@@ -3189,7 +3196,7 @@ async function saveEmp(){
   const nationality=gV('em_nat')||'马来西亚';const local=isLocalNat(nationality);
   const marital=gV('em_marital')||'single';
   const empNo=gV('em_no').trim()||nextEmpNo();
-  const obj={empNo,name:n,role:gV('em_role')||"—",nationality,local,ic:gV('em_ic').trim(),phone:gV('em_phone').trim(),address:gV('em_addr').trim(),emergency:gV('em_emerg').trim(),joined:gV('em_joined')||'',marital,married:marital==='married',children:+gV('em_children')||0,bankName:gV('em_bankname').trim(),bankAcc:gV('em_bankacc').trim(),
+  const obj={empNo,name:n,email:gV('em_email').trim().toLowerCase(),role:gV('em_role')||"—",nationality,local,ic:gV('em_ic').trim(),phone:gV('em_phone').trim(),address:gV('em_addr').trim(),emergency:gV('em_emerg').trim(),joined:gV('em_joined')||'',marital,married:marital==='married',children:+gV('em_children')||0,bankName:gV('em_bankname').trim(),bankAcc:gV('em_bankacc').trim(),
     basic,allowance:+gV('em_allow')||0,
     epf:local?Math.round(basic*0.11):0,socso:+(basic*0.005).toFixed(2),eis:local?+(basic*0.002).toFixed(2):0,levy:0};
   if(!d().staff)d().staff=[];
