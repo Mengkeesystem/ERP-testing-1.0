@@ -665,7 +665,7 @@ function statusOf(d){if(d<=14)return{t:"健康",e:"Fresh",c:"p-g"};if(d<=30)retu
 function stTxt(s){return LANG==="zh"?s.t:s.e;}
 
 /* ================= 数据种子 ================= */
-const BUILD="0930mk64";  // 版本标记：页面右上/网格提示可见，用来确认已载入最新版
+const BUILD="0930mk65";  // 版本标记：页面右上/网格提示可见，用来确认已载入最新版
 const SEED_VERSION="bh-master-2026-09-1";  // 版本变更→下次载入自动重置为最新主数据（仅本店云端）
 function seed(outletId){
   const isCK = outletId==="ck";
@@ -3196,7 +3196,9 @@ async function saveEmp(){
   const nationality=gV('em_nat')||'马来西亚';const local=isLocalNat(nationality);
   const marital=gV('em_marital')||'single';
   const empNo=gV('em_no').trim()||nextEmpNo();
-  const obj={empNo,name:n,email:gV('em_email').trim().toLowerCase(),role:gV('em_role')||"—",nationality,local,ic:gV('em_ic').trim(),phone:gV('em_phone').trim(),address:gV('em_addr').trim(),emergency:gV('em_emerg').trim(),joined:gV('em_joined')||'',marital,married:marital==='married',children:+gV('em_children')||0,bankName:gV('em_bankname').trim(),bankAcc:gV('em_bankacc').trim(),
+  const email=gV('em_email').trim().toLowerCase();
+  if(email&&(d().staff||[]).some(x=>x.id!==_editId&&(x.email||'').toLowerCase()===email))return alert(LANG==="zh"?"这个登入邮箱已经绑定给另一位员工，一个邮箱只能绑一位员工。":"This login email is already linked to another employee.");
+  const obj={empNo,name:n,email,role:gV('em_role')||"—",nationality,local,ic:gV('em_ic').trim(),phone:gV('em_phone').trim(),address:gV('em_addr').trim(),emergency:gV('em_emerg').trim(),joined:gV('em_joined')||'',marital,married:marital==='married',children:+gV('em_children')||0,bankName:gV('em_bankname').trim(),bankAcc:gV('em_bankacc').trim(),
     basic,allowance:+gV('em_allow')||0,
     epf:local?Math.round(basic*0.11):0,socso:+(basic*0.005).toFixed(2),eis:local?+(basic*0.002).toFixed(2):0,levy:0};
   if(!d().staff)d().staff=[];
