@@ -97,6 +97,10 @@ $$;
 -- ========== 第 3 部分：erp_users 白名单表 —— 重新收紧 ==========
 drop policy if exists "erp_users authed read" on public.erp_users;
 drop policy if exists "erp_users authed write" on public.erp_users;
+drop policy if exists "erp_users select self or admin" on public.erp_users;
+drop policy if exists "erp_users insert self via invite or admin" on public.erp_users;
+drop policy if exists "erp_users update admin only" on public.erp_users;
+drop policy if exists "erp_users delete admin only" on public.erp_users;
 
 -- 读：自己一定能读到自己那一行(登录要用)；老板/区域副经理能读全部(管理面板要用)。
 create policy "erp_users select self or admin"
@@ -155,12 +159,38 @@ create policy "erp_users delete admin only"
 -- ========== 第 4 部分：erp_store 业务数据 —— 白名单以外的人一律不能碰 ==========
 drop policy if exists "erp_store authed full access" on public.erp_store;
 drop policy if exists "erp_store authed access" on public.erp_store;
+-- 薪资 key(erpv2:payroll:*) 额外上锁，规则见 payroll-lock.sql；其余 key 仍是「白名单内的人」
+create or replace function public.erp_key_ok(k text, writing boolean)
+returns boolean
+language plpgsql
+security definer set search_path = public
+stable
+as $$
+declare
+  r text;
+  o text;
+begin
+  if k is null or k not like 'erpv2:payroll:%' then
+    return true;                       -- 不是薪资 key：沿用原本的规则
+  end if;
+  select u.role, u.outlet into r, o
+    from public.erp_users u
+   where u.email = public.my_email() and u.active = true;
+  if r is null then return false; end if;
+  if r in ('owner','hrmgr') then return true; end if;
+  if writing then return false; end if;
+  return r = 'outletmgr' and k = 'erpv2:payroll:' || o;   -- 备份 key(erpv2:payroll:bak:…)不会等于这个，所以店面经理读不到
+end;
+$$;
 
-create policy "erp_store whitelisted only"
+drop policy if exists "erp_store whitelisted only" on public.erp_store;
+drop policy if exists "erp_store whitelisted payroll-locked" on public.erp_store;
+create policy "erp_store whitelisted payroll-locked"
   on public.erp_store for all
   to authenticated
-  using (is_whitelisted())
-  with check (is_whitelisted());
+  using (public.is_whitelisted() and public.erp_key_ok(key, false))
+  with check (public.is_whitelisted() and public.erp_key_ok(key, true));
+
 
 -- ========== 第 5 部分：推送订阅表 —— 同样收紧 ==========
 -- 用 DO 块包一层：如果你还没跑过 push-schema.sql 建这张表，就自动跳过，不会报错。

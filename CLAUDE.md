@@ -17,10 +17,11 @@
 
 ### 这是什么
 - 单文件 HTML ERP（`index.html` 约 4600 行，**没有构建步骤**）+ `sw.js`（Service Worker，PWA）+ `order-data.js`（中央厨房订货数据，含图片）+ `manifest.webmanifest` + 图标 + `supabase-schema.sql` / `security-hardening.sql` / `push-schema.sql` + `supabase/functions/send-order-push`（手机推送）。
-- **当前版本：`BUILD="1102mk67"`**（`index.html` 约 668 行），`sw.js` 的 `SW_VERSION` 要**同步改成一样**（每次改动两处一起 +1，右上角版本角标和强制更新弹窗靠它）。版本号格式 `MMDDmkNN`（mk = 明记）。最后一次提交 2026-09-30。
+- **当前版本：`BUILD="1102mk68"`**（`index.html` 约 668 行），`sw.js` 的 `SW_VERSION` 要**同步改成一样**（每次改动两处一起 +1，右上角版本角标和强制更新弹窗靠它）。版本号格式 `MMDDmkNN`（mk = 明记）。最后一次提交 2026-09-30。
 - 部署：GitHub Pages，**直接推 `main` 就上线**（不开分支、不开 PR），网址 `https://mengkeesystem.github.io/ERP-testing-1.0/`。业主要求跟牛室一样：改完测完直接推。
 - 后端 Supabase 项目网址 `https://kmcdokwiyetlmsrdlgqw.supabase.co`；`SUPABASE_ANON_KEY` 是 publishable key（前端公开的，没问题）。**私钥类（service_role、VAPID 私钥）绝对不写进代码/文档**，只放 Supabase Secrets。
 - 数据存哪：登录后用 Supabase（`Store.get/set` → `erp_store` 表，key 是 `erpv2:<分店id>`、`erpv2:roleperms`、`erpv2:orders`）；没登录（演示模式）用浏览器本机。代码改了**不会动到数据**（数据在 Supabase，不在 `index.html` 里）。
+- **薪资数据单独存放（BUILD 1102mk68 起）**：底薪/津贴/加班/EPF/SOCSO/EIS/人头税/银行资料（`PAY_FIELDS`）+ 薪资发放记录（`payrollRuns`/`payrollCfg`/`payrunMonths`，`PAY_TOP`）不再放在分店整包 `erpv2:<店>`，改存 `erpv2:payroll:<店>`（迁移前的备份在 `erpv2:payroll:bak:<店>`）。数据库规则见 `payroll-lock.sql`（也已并入 `security-hardening.sql` 第 4 部分）：**owner/hrmgr 读写全部，outletmgr 只读本店，其余角色（含 area）读不到也写不进**。网页载入时（`attachPayroll`）把薪资合并回内存的 `staff[]`/`payrollRuns`，所以薪资页面的算法没改；存档时（`save`）再拆开，并由有权限的人算出一份只含总数的 `labourSum` 放在分店整包里，**区域副经理的「薪资总数」就读这份**。老数据由老板/人事经理第一次登录时自动迁移（先备份、确认云端写成功才剥离）。⚠️ 读取薪资失败（断网等）时 `PAY_LOADED` 不会设置：薪资页显示「没有载入」，绝不会把空数据写回去；`autoSyncLabour` 也因此不会把人工成本写成 0。⚠️ 员工自助「我的薪资单」目前暂停（员工读不到薪资，页面提示向人事索取 Payslip；原本也还没人填登入邮箱）。区域副经理在员工档案里改不到薪资/银行栏位（弹窗会隐藏）。
 - 公司：明记有 11 间分店 + 中央厨房（`OUTLETS`：`ck`、`b1`~`b11`，b1 OKR、b2 PAPA、b3 PJ、b4 Cheras、b5 Kajang、b6 Puchong、b7 Subang、b8 Klang、b9 Bukit Rimau、b10 Setia Alam、b11 Seremban 2）。⚠️ **ERP 的 b2「PAPA店」和官网的「OKR (Scott Garden 对面)」、b3「PJ店」和官网的「Kelana Jaya (PJ)」应该是同一间店，但名字/顺序不一样**（官网分店序号是官网自己 `config.js` 的顺序，跟 ERP 的 `b1…b11` 没有对应关系）；以后要把官网订单接进 ERP 时要先问业主确认对照表。`OUTLETS` 里的经纬度是示意值，打卡 GPS 围栏用，不是精确位置。
 
 ### 怎么跟业主合作（很重要）
@@ -33,7 +34,7 @@
 ### ⚠️ 这个仓库有「两个会话同时在推 main」
 **牛室那边的 Claude 会话也有权限直接推这个仓库的 `main`**（功能经常同步），不会提前打招呼：`git log` 可能看到不是你推的 commit；不先 `git fetch` 比对就推，可能用旧的 BUILD 号覆盖/冲突。
 1. 每次改 `index.html`/`sw.js` 前先 `git fetch origin main`，远端比本地新就先看远端改了什么（尤其 `BUILD`/`SW_VERSION`）再合并，不要盲目覆盖。
-2. `BUILD` 和 `SW_VERSION` 必须**同步手动升级**（格式 `MMDDmkNN`，例如 `1102mk67`），推送前确认两边一致、且比远端当前值大。
+2. `BUILD` 和 `SW_VERSION` 必须**同步手动升级**（格式 `MMDDmkNN`，例如 `1102mk68`），推送前确认两边一致、且比远端当前值大。
 3. 如果被分配了任务分支，要知道 GitHub Pages 只认 `main`；历史上本项目一直是直接 `git push origin main`，没有走 PR，没出过问题。新会话如被分配不同分支，先跟业主确认部署策略。
 4. 看到自己没做过的 commit，大概率是牛室会话推的（例如提示音），先 `git log` 看内容，别当成 bug。
 
@@ -51,7 +52,8 @@ node -e "const fs=require('fs');const html=fs.readFileSync('index.html','utf8');
 3. `push-schema.sql`：`erp_push_subs`（手机推送订阅）——**业主已跑过**（一开始没建表导致「开启通知」一直失败）。`PUSH_SETUP_MENGKEE.md` 是推送设定步骤；Edge Function `send-order-push` **业主已在 Supabase 网页控制台手动部署**（Secrets 先设 `VAPID_PUBLIC`/`VAPID_PRIVATE`/`VAPID_SUBJECT`，再贴代码，并**关掉「Verify JWT」**——没部署/没关就是浏览器 F12 CORS 报错的根因，不是代码问题，也不影响下单）。
 4. `STORAGE_SETUP_MENGKEE.md`：付款收据储存桶 `receipts`（私人，白名单可读写）。
 5. Supabase 后台手动：Authentication → Providers → Email → **打开「Confirm email」**（SQL 做不到）。
-- 邀请码机制（2026-11-02 BUILD 1102mk67 起改版）：**码不再写在网页/仓库里**，存在 Supabase 私有表 `erp_invite_codes`（`code`/`role`/`outlet`，开 RLS 且无策略，网页读不到整张表）。网页注册时调用 `rpc('invite_info')`（`inviteLookup()`）查 {role,outlet}；数据库的 `erp_users` 插入策略用 `invite_role()`/`invite_outlet()`（`security-hardening.sql` 第 1 部分，security definer）核对。**换码 = 在 SQL Editor 对 `erp_invite_codes` 做 delete + insert，不用改代码、不用推送**。每个码是 10 位随机字符，一码一用途：区域副经理/中央经理/中央员工各 1 个，11 间分店各 4 个（店面经理 `outletmgr`/店长 `manager`/厨师长 `headchef`/员工 `staff`）。**码本身绝不写进仓库/文档**，完整清单由业主自己保管（需要时可重新生成一批并给业主 SQL）。`NO_CODE_EMAIL`（`index.html` 约 640 行）= 业主本人的救援邮箱，注册免邀请码、直接给老板角色；`security-hardening.sql` 里也有同样的邮箱，两边要对得上。
+6. **`payroll-lock.sql`（BUILD 1102mk68 起要跑）**：给 `erp_store` 里 `erpv2:payroll:*` 的薪资记录上锁（函数 `erp_key_ok` + 策略 `erp_store whitelisted payroll-locked`）；可重复运行，文件末尾有还原语句。分店之间的隔离还没做（下一步）。
+- 邀请码机制（2026-11-02 BUILD 1102mk68 起改版）：**码不再写在网页/仓库里**，存在 Supabase 私有表 `erp_invite_codes`（`code`/`role`/`outlet`，开 RLS 且无策略，网页读不到整张表）。网页注册时调用 `rpc('invite_info')`（`inviteLookup()`）查 {role,outlet}；数据库的 `erp_users` 插入策略用 `invite_role()`/`invite_outlet()`（`security-hardening.sql` 第 1 部分，security definer）核对。**换码 = 在 SQL Editor 对 `erp_invite_codes` 做 delete + insert，不用改代码、不用推送**。每个码是 10 位随机字符，一码一用途：区域副经理/中央经理/中央员工各 1 个，11 间分店各 4 个（店面经理 `outletmgr`/店长 `manager`/厨师长 `headchef`/员工 `staff`）。**码本身绝不写进仓库/文档**，完整清单由业主自己保管（需要时可重新生成一批并给业主 SQL）。`NO_CODE_EMAIL`（`index.html` 约 640 行）= 业主本人的救援邮箱，注册免邀请码、直接给老板角色；`security-hardening.sql` 里也有同样的邮箱，两边要对得上。
 - 登录：邮箱+密码（Supabase Auth）；已有「忘记密码」（寄重设链接 → `PASSWORD_RECOVERY` → 设新密码页 → 改完回登录页）；Supabase 后台 Authentication → URL Configuration 的 Redirect URLs 要包含 ERP 的网址。
 
 ### 角色和权限（`ROLES`，`index.html` 约 579 行；⚠️ 角色代号跟牛室不一样）
@@ -102,10 +104,10 @@ node -e "const fs=require('fs');const html=fs.readFileSync('index.html','utf8');
 7. `canRunPayroll` 式的更细薪资权限、`pageAllowed('payrun')` 的收紧——明记已有 `salaryLock` 做同样的事，不必搬。
 
 ### ⚠️ 安全待办（2026-11-02 复查发现，**业主还没处理**）
-1. ✅ **已处理（BUILD 1102mk67）**：已换新 VAPID 密钥对，仓库里只剩公钥；新私钥只在业主手上/Supabase Secrets（业主需手动更新 Secret 并让大家重新「开启通知」，见下）。原问题：`PUSH_SETUP_MENGKEE.md` 把 `VAPID_PRIVATE`（手机推送的私钥）明文写在公开仓库里**（牛室的 `PUSH_SETUP.md` 同样）。要**换一组新的 VAPID 密钥**：生成新密钥对 → 新私钥只放 Supabase Function Secrets → 新公钥更新 `index.html` 的 `VAPID_PUBLIC` → 把文档里的私钥删掉 → 所有人重新点「开启通知」。（git 历史里旧私钥洗不掉，所以必须换。）
-2. ✅ **已处理（BUILD 1102mk67）**：邀请码改成存数据库私有表、随机新码，仓库里不再有任何码。旧码已作废（旧码仍在 git 历史里，但数据库不认了）。业主需在 SQL Editor 执行换码 SQL（见上「邀请码机制」）。
+1. ✅ **已处理（BUILD 1102mk68）**：已换新 VAPID 密钥对，仓库里只剩公钥；新私钥只在业主手上/Supabase Secrets（业主需手动更新 Secret 并让大家重新「开启通知」，见下）。原问题：`PUSH_SETUP_MENGKEE.md` 把 `VAPID_PRIVATE`（手机推送的私钥）明文写在公开仓库里**（牛室的 `PUSH_SETUP.md` 同样）。要**换一组新的 VAPID 密钥**：生成新密钥对 → 新私钥只放 Supabase Function Secrets → 新公钥更新 `index.html` 的 `VAPID_PUBLIC` → 把文档里的私钥删掉 → 所有人重新点「开启通知」。（git 历史里旧私钥洗不掉，所以必须换。）
+2. ✅ **已处理（BUILD 1102mk68）**：邀请码改成存数据库私有表、随机新码，仓库里不再有任何码。旧码已作废（旧码仍在 git 历史里，但数据库不认了）。业主需在 SQL Editor 执行换码 SQL（见上「邀请码机制」）。
 3. 记得确认 Supabase 的「Confirm email」是开着的。
-4. 明记的 `erp_store` 没有按分店隔离、薪资没有单独上锁（见上面第 4 项），懂技术的员工账号理论上能用浏览器直接读到别店/薪资数据。
+4. 🔶 **部分处理（BUILD 1102mk68）**：薪资已拆出去并上锁（见上「薪资数据单独存放」；业主要跑 `payroll-lock.sql`）。**分店之间的数据隔离还没做**（第 2 步）：白名单里的账号仍能直接读到别店的整包（库存/销售等，已不含薪资）。做第 2 步要注意：`loadDB` 现在会抓全部 12 条记录，读不到时会当成空数据重新初始化；跨店调拨（`saveTransfer`）会直接改对方分店的整包，需改成调拨单。
 
 ### 搬功能时「必须保留明记自己的」（逐行核对，别照抄牛室）
 1. `SUPABASE_URL`（约 746 行，`https://kmcdokwiyetlmsrdlgqw.supabase.co`）= 明记项目；`SUPABASE_ANON_KEY` = 明记的 publishable key；**绝不能出现牛室的项目网址/key**。只放 publishable key，**绝不放 service_role**。

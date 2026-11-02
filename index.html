@@ -656,7 +656,7 @@ function statusOf(d){if(d<=14)return{t:"健康",e:"Fresh",c:"p-g"};if(d<=30)retu
 function stTxt(s){return LANG==="zh"?s.t:s.e;}
 
 /* ================= 数据种子 ================= */
-const BUILD="1102mk67";  // 版本标记：页面右上/网格提示可见，用来确认已载入最新版
+const BUILD="1102mk68";  // 版本标记：页面右上/网格提示可见，用来确认已载入最新版
 const SEED_VERSION="bh-master-2026-09-1";  // 版本变更→下次载入自动重置为最新主数据（仅本店云端）
 function seed(outletId){
   const isCK = outletId==="ck";
@@ -833,17 +833,102 @@ function ensureCatalogSeed(data,oid){
   });
   return ch;
 }
+/* ===== 薪资数据拆分存放（BUILD 1102mk68）=====
+   底薪/津贴/加班/EPF/SOCSO/EIS/人头税/银行资料（PAY_FIELDS）+ 薪资发放记录（PAY_TOP）不再放在分店整包 erpv2:<店> 里，
+   改存 erpv2:payroll:<店>。数据库 RLS（payroll-lock.sql）只让 老板/人事经理 读写，店面经理只读本店，其余角色（含区域副经理）读不到。
+   内存里仍合并回 staff[]/payrollRuns，所以薪资页面的算法不用动；存档时（save）再拆开。
+   区域副经理只看总数 → 分店整包里放一份只有总数的 labourSum（由有权限的人存档时算出）。 */
+const PAY_FIELDS=['basic','allowance','ot','epf','socso','eis','levy','bankName','bankAcc'];
+const PAY_TOP=['payrollRuns','payrollCfg','payrunMonths'];
+const PAY_LOADED=new Set();  // 这间店的薪资数据已成功载入内存
+const PAY_STRIP=new Set();   // 这间店存档时要把薪资拆出去（确认薪资记录已安全存放后才加入）
+function payKey(oid){return 'erpv2:payroll:'+oid;}
+function realRole(){return curUser?curUser.role:curRole;}
+function payWriter(){const r=realRole();return r==='owner'||r==='hrmgr';}
+function payReader(oid){const r=realRole();if(r==='owner'||r==='hrmgr')return true;return r==='outletmgr'&&!!curUser&&curUser.outlet===oid;}
+async function payFetch(key){ // {ok,val}：ok:false = 网络/权限出错，绝不能当成「没有数据」
+  if(CLOUD&&_sb){
+    try{const {data,error}=await _sb.from(CLOUD_TABLE).select('value').eq('key',key).maybeSingle();
+      if(error)return {ok:false};
+      if(data){try{localStorage.setItem(key,JSON.stringify(data.value));}catch(_){}return {ok:true,val:data.value};}
+      return {ok:true,val:null};
+    }catch(e){return {ok:false};}
+  }
+  try{const v=localStorage.getItem(key);return {ok:true,val:v?JSON.parse(v):null};}catch(e){return {ok:true,val:null};}
+}
+async function payWriteNow(key,obj){ // 迁移用：云端确认写成功才算数
+  try{localStorage.setItem(key,JSON.stringify(obj));}catch(e){}
+  if(CLOUD&&_sb){try{const {error}=await _sb.from(CLOUD_TABLE).upsert({key,value:obj,updated_at:new Date().toISOString()},{onConflict:'key'});return !error;}catch(e){return false;}}
+  return true;
+}
+function hasLegacyPay(db){return PAY_TOP.some(k=>db[k]!=null)||(db.staff||[]).some(e=>PAY_FIELDS.some(f=>e[f]!==undefined));}
+function buildPay(db){
+  const staff={};(db.staff||[]).forEach(e=>{const o={};PAY_FIELDS.forEach(k=>{if(e[k]!==undefined)o[k]=e[k];});if(Object.keys(o).length)staff[e.id]=o;});
+  const pay={v:1,at:new Date().toISOString(),staff};PAY_TOP.forEach(k=>{if(db[k]!=null)pay[k]=db[k];});return pay;
+}
+function calcLabourSum(db){
+  const st=db.staff||[];const n=x=>+x||0;
+  return {at:new Date().toISOString(),headcount:st.length,
+    gross:st.reduce((s,e)=>s+n(e.basic)+n(e.allowance)+n(e.ot),0),
+    epfEr:st.reduce((s,e)=>s+(e.local?Math.round(n(e.basic)*0.13):0),0),
+    levy:st.reduce((s,e)=>s+n(e.levy),0)};
+}
+/* 把薪资记录合并回内存里的这间店；老板/人事经理第一次载入时，把旧的「薪资混在整包里」搬出去（先备份、确认写成功才剥离）。回传 true = 需要重新存一次整包。 */
+async function attachPayroll(oid){
+  const db=DB[oid];PAY_LOADED.delete(oid);PAY_STRIP.delete(oid);
+  if(!db||!payReader(oid))return false;
+  const f=await payFetch(payKey(oid));
+  if(!f.ok)return false;
+  let pay=f.val;const legacy=hasLegacyPay(db);let changed=false;
+  if(legacy&&payWriter()){
+    const bak=buildPay(db);bak.backupOf='legacy';
+    if(!(await payWriteNow('erpv2:payroll:bak:'+oid,bak)))return false;
+    pay=pay||{v:1,staff:{}};pay.staff=pay.staff||{};
+    (db.staff||[]).forEach(e=>{const cur=pay.staff[e.id]||(pay.staff[e.id]={});PAY_FIELDS.forEach(k=>{if(e[k]!==undefined&&cur[k]===undefined)cur[k]=e[k];});if(!Object.keys(cur).length)delete pay.staff[e.id];});
+    if(db.payrollRuns!=null)pay.payrollRuns=Object.assign({},db.payrollRuns,pay.payrollRuns||{});
+    if(db.payrunMonths!=null)pay.payrunMonths=[...new Set([...(pay.payrunMonths||[]),...db.payrunMonths])];
+    if(db.payrollCfg!=null&&pay.payrollCfg==null)pay.payrollCfg=db.payrollCfg;
+    if(!(await payWriteNow(payKey(oid),pay)))return false; // 写不成功：不剥离、数据留在原处
+    changed=true;
+  }
+  if(pay){
+    (db.staff||[]).forEach(e=>{const p=pay.staff&&pay.staff[e.id];if(p)Object.assign(e,p);});
+    PAY_TOP.forEach(k=>{if(pay[k]!=null)db[k]=pay[k];});
+  }
+  PAY_LOADED.add(oid);
+  if(payWriter()||!legacy)PAY_STRIP.add(oid);
+  return changed;
+}
 async function loadDB(){
   try{if(typeof loadOrders==='function')await loadOrders();}catch(e){}
+  const dirty=new Set();
   for(const o of OUTLETS){
     let data=null;
     try{const r=await Store.get('erpv2:'+o.id);data=r?JSON.parse(r.value):null;}catch(e){data=null;}
-    if(!data || data._sv!==SEED_VERSION){ data=seed(o.id); DB[o.id]=data; syncMenuPrices(data); ensureDishCosts(data); ensureCatalogSeed(data,o.id); try{await save(o.id);}catch(e){} }
-    else { DB[o.id]=data; let ch=syncMenuPrices(data); if(ensureDishCosts(data))ch=true; if(ensureCatalogSeed(data,o.id))ch=true; if(ch){try{await save(o.id);}catch(e){}} }
+    if(!data || data._sv!==SEED_VERSION){ data=seed(o.id); DB[o.id]=data; syncMenuPrices(data); ensureDishCosts(data); ensureCatalogSeed(data,o.id); dirty.add(o.id); }
+    else { DB[o.id]=data; let ch=syncMenuPrices(data); if(ensureDishCosts(data))ch=true; if(ensureCatalogSeed(data,o.id))ch=true; if(ch)dirty.add(o.id); }
   }
+  // 薪资记录（有权限的角色才会真的去读）：合并回内存；旧数据第一次迁移时顺带重存整包
+  const res=await Promise.all(OUTLETS.map(o=>attachPayroll(o.id).catch(()=>false)));
+  OUTLETS.forEach((o,i)=>{if(res[i])dirty.add(o.id);});
+  for(const id of dirty){try{await save(id);}catch(e){}}
 }
-async function save(oid){try{await Store.set('erpv2:'+(oid||curOutlet),JSON.stringify(DB[oid||curOutlet]));}catch(e){}}
-async function reloadOutlet(oid){try{const r=await Store.get('erpv2:'+oid);if(r)DB[oid]=JSON.parse(r.value);}catch(e){}}
+async function save(oid){
+  try{
+    oid=oid||curOutlet;const db=DB[oid];if(!db)return;
+    let main=db;
+    if(PAY_STRIP.has(oid)){ // 薪资拆出去：整包里不留薪资，另存 erpv2:payroll:<店>
+      main={...db};PAY_TOP.forEach(k=>delete main[k]);
+      main.staff=(db.staff||[]).map(e=>{const c={...e};PAY_FIELDS.forEach(k=>delete c[k]);return c;});
+      if(payWriter()&&PAY_LOADED.has(oid)){
+        main.labourSum=db.labourSum=calcLabourSum(db);
+        await Store.set(payKey(oid),JSON.stringify(buildPay(db)));
+      }
+    }
+    await Store.set('erpv2:'+oid,JSON.stringify(main));
+  }catch(e){}
+}
+async function reloadOutlet(oid){try{const r=await Store.get('erpv2:'+oid);if(r){DB[oid]=JSON.parse(r.value);if(await attachPayroll(oid))await save(oid);}}catch(e){}}
 /* ---- 角色权限：全局配置，持久化到云端/本地，所有分店同步 ---- */
 const ROLE_DEFAULTS=Object.fromEntries(Object.keys(ROLES).map(k=>[k,ROLES[k].can.slice()]));
 async function loadRolePerms(){
@@ -1977,13 +2062,15 @@ function materializeOpex(month){ // 首次编辑某月→从"≤当月的最近�
 function opexTotal(month){const o=curOpex(month)||{};return Object.keys(o).reduce((s,k)=>s+opexEffective(o,month,k),0);}
 const LABOUR_KEYS=["salaries","ot","epf","socso","eis","levy"];
 function applyLabour(o,pl){o.salaries=pl.salaries;o.ot=pl.ot;o.epf=pl.epf;o.socso=pl.socso;o.eis=pl.eis;o.levy=pl.levy;}
-function autoSyncLabour(){ // 员工薪资变动→自动更新「默认模板 + 当前未锁定月」的人工成本（其他手动项与其它月不动）
+function autoSyncLabour(){ if(!PAY_LOADED.has(curOutlet))return; // 没有薪资数据(或没权限)时绝不能同步，否则会把人工成本写成 0
+  // 员工薪资变动→自动更新「默认模板 + 当前未锁定月」的人工成本（其他手动项与其它月不动）
   const pl=payrollLabour();
   applyLabour(opexTemplate(),pl);
   const bm=d().opexByMonth;
   if(bm&&bm[costMonth]&&!monthLocked(costMonth))applyLabour(bm[costMonth],pl);
 }
 async function syncOpexFromPayroll(){
+  if(!PAY_LOADED.has(curOutlet))return alert(LANG==="zh"?"薪资数据未载入（没有权限或网络出错），不能同步人工成本。":"Payroll data not loaded.");
   if(monthLocked(costMonth))return alert(LANG==="zh"?"本月已月末锁定，请先解锁再同步。":"Month is locked.");
   if(!confirm(LANG==="zh"?("用人事薪资的实际数据填入【"+monthLabel2(costMonth)+"】运营开销的人工成本（薪资/EPF/SOCSO/EIS/人头税/OT）？之后仍可手动微调。"):"Fill labour OpEx from payroll?"))return;
   const pl=payrollLabour();const o=materializeOpex(costMonth);applyLabour(o,pl);applyLabour(opexTemplate(),pl);
@@ -1999,6 +2086,7 @@ function pgPayroll(){
   // self：只看自己的薪资与 payslip（厨师长、员工、店长）
   if(scope==="self"){
     const me=empById(currentEmpId());
+    if(me&&me.basic===undefined)return `<h2 class="h">💴 ${LANG==="zh"?"我的薪资":"My Payslip"}</h2><div class="empty">${LANG==="zh"?"薪资数据已加上权限保护，这个页面暂时不能直接查看。请向人事索取你的 Payslip。":"Payroll data is now access-protected. Please ask HR for your payslip."}</div>`;
     if(!me)return `<h2 class="h">💴 ${LANG==="zh"?"我的薪资":"My Payslip"}</h2><div class="empty">${LANG==="zh"?"你的账号尚未绑定员工档案，无法查看薪资。请联系管理员在「员工档案」里填入你的登入邮箱。":"Your account isn't linked to an employee record yet. Ask an admin to set your login email in Employee Profile."}</div>`;
     return `<h2 class="h" style="margin-top:2px;">💴 ${LANG==="zh"?"我的薪资单 Payslip":"My Payslip"} <span class="tag">v${BUILD}</span></h2>
     <div class="hint">${LANG==="zh"?"你的角色只能查看自己的薪资明细。":"You can view your own payslip only."}</div>
@@ -2020,6 +2108,10 @@ function pgPayroll(){
   }
   // total：区域副经理，只看总数
   if(scope==="total"){
+    // 区域副经理读不到个人薪资：总数来自各分店整包里的 labourSum（老板/人事经理存档时算好）
+    const sums=(isAgg()?branchIds():[curOutlet]).map(id=>(DB[id]||{}).labourSum).filter(Boolean);
+    const sm=k=>sums.reduce((s,x)=>s+(+x[k]||0),0);
+    const totGross=sm('gross'),totEpfEr=sm('epfEr'),totLevy=sm('levy');
     return `<h2 class="h" style="margin-top:2px;">👥 ${LANG==="zh"?"人事薪资 Payroll":"Payroll"} <span class="tag">v${BUILD}</span></h2>
     <div class="al al-a"><div class="t">🔒 ${LANG==="zh"?"权限限制":"Restricted"}</div>${LANG==="zh"?"你的角色（区域副经理）只能查看薪资总额，无法查看每位员工的个人薪水明细。":"Totals only, no individual salaries."}</div>
     <div class="grid g2">
@@ -2031,6 +2123,7 @@ function pgPayroll(){
     <div class="pl" style="margin-top:12px;"><div class="row tot"><span>${LANG==="zh"?"人工成本总额":"Total Labour Cost"}</span><span>${money(totGross+totEpfEr+totLevy)}</span></div></div>`;
   }
   // full：老板/人事经理，看全部个人明细
+  if(!isAgg()&&!PAY_LOADED.has(curOutlet))return `<h2 class="h">👥 ${LANG==="zh"?"人事薪资 Payroll":"Payroll"}</h2><div class="al al-a"><div class="t">⚠️ ${LANG==="zh"?"薪资数据没有载入":"Payroll data not loaded"}</div>${LANG==="zh"?"可能是网络出错或没有权限，请刷新后再试。为了安全，这时候不会显示（也不会修改）任何薪资。":"Network error or no permission. Reload and try again."}</div>`;
   const staff=allStaff;const canSee=true;
   // 老板/人事经理/店长：看个人明细
   return `<div class="fb"><h2 class="h" style="margin:0;">👥 ${LANG==="zh"?"人事薪资 Payroll":"Payroll"} <span class="tag">v${BUILD}</span></h2>${canW('payroll')?`<button class="btn gold sm" onclick="openM('emp')">+ ${LANG==="zh"?"员工":"Staff"}</button>`:''}</div>
@@ -3023,10 +3116,10 @@ function openM(type,editId){
       <div class="fr"><label>${LANG==="zh"?"紧急联络人":"Emergency Contact"}</label><input id="em_emerg" placeholder="${LANG==="zh"?'姓名 + 电话':'Name + phone'}"></div>
       <div class="fg2"><div class="fr"><label>${LANG==="zh"?"入职日期":"Joined"}</label><input id="em_joined" type="date"></div>
       <div class="fr"><label>${LANG==="zh"?"婚姻":"Marital"}</label><select id="em_marital"><option value="single">${LANG==="zh"?"未婚":"Single"}</option><option value="married">${LANG==="zh"?"已婚":"Married"}</option><option value="divorced">${LANG==="zh"?"离婚":"Divorced"}</option></select></div></div>
-      <div class="fg3"><div class="fr"><label>${LANG==="zh"?"底薪":"Basic"}</label><input id="em_basic" type="number"></div>
-      <div class="fr"><label>${LANG==="zh"?"津贴":"Allow"}</label><input id="em_allow" type="number" value="0"></div>
+      <div class="fg3"><div class="fr"${canSeeSalary()?'':' style="display:none"'}><label>${LANG==="zh"?"底薪":"Basic"}</label><input id="em_basic" type="number"></div>
+      <div class="fr"${canSeeSalary()?'':' style="display:none"'}><label>${LANG==="zh"?"津贴":"Allow"}</label><input id="em_allow" type="number" value="0"></div>
       <div class="fr"><label>${LANG==="zh"?"孩子数":"Children"}</label><input id="em_children" type="number" value="0" min="0"></div></div>
-      <div class="fg2"><div class="fr"><label>${LANG==="zh"?"银行名称":"Bank Name"}</label><input id="em_bankname" placeholder="Maybank / CIMB / Public Bank..."></div>
+      <div class="fg2"${canSeeSalary()?'':' style="display:none"'}><div class="fr"><label>${LANG==="zh"?"银行名称":"Bank Name"}</label><input id="em_bankname" placeholder="Maybank / CIMB / Public Bank..."></div>
       <div class="fr"><label>${LANG==="zh"?"银行账号":"Bank Account No."}</label><input id="em_bankacc" placeholder="1234567890"></div></div>
       <div class="hint">${LANG==="zh"?"银行资料用于「薪资代发银行文件」导出；法定扣除(EPF/SOCSO/EIS/SL24J/PCB)在『薪资发放 Payroll』按马来西亚公式自动算。EPF 依国籍自动判定（马来西亚籍有 EPF）。":"Bank details used for the salary bank file export. Statutory deductions auto-calculated in Payroll Run."}</div>
       <button class="btn block brand" onclick="saveEmp()">${LANG==="zh"?"保存员工":"Save"}</button>`,
@@ -3183,18 +3276,19 @@ async function saveEmp(){
   if(!hrEditable())return;
   const gV=id=>{const el=document.getElementById(id);return el?el.value:'';};
   const n=gV('em_name').trim();if(!n)return alert(LANG==="zh"?"请输入姓名":"Name required");
-  const basic=+gV('em_basic')||0;
+  const canPay=canSeeSalary(); // 老板/人事经理才碰得到薪资字段；区域副经理只改基本资料
+  const basic=canPay?(+gV('em_basic')||0):0;
   const nationality=gV('em_nat')||'马来西亚';const local=isLocalNat(nationality);
   const marital=gV('em_marital')||'single';
   const empNo=gV('em_no').trim()||nextEmpNo();
   const email=gV('em_email').trim().toLowerCase();
   if(email&&(d().staff||[]).some(x=>x.id!==_editId&&(x.email||'').toLowerCase()===email))return alert(LANG==="zh"?"这个登入邮箱已经绑定给另一位员工，一个邮箱只能绑一位员工。":"This login email is already linked to another employee.");
-  const obj={empNo,name:n,email,role:gV('em_role')||"—",nationality,local,ic:gV('em_ic').trim(),phone:gV('em_phone').trim(),address:gV('em_addr').trim(),emergency:gV('em_emerg').trim(),joined:gV('em_joined')||'',marital,married:marital==='married',children:+gV('em_children')||0,bankName:gV('em_bankname').trim(),bankAcc:gV('em_bankacc').trim(),
-    basic,allowance:+gV('em_allow')||0,
-    epf:local?Math.round(basic*0.11):0,socso:+(basic*0.005).toFixed(2),eis:local?+(basic*0.002).toFixed(2):0,levy:0};
+  const obj={empNo,name:n,email,role:gV('em_role')||"—",nationality,local,ic:gV('em_ic').trim(),phone:gV('em_phone').trim(),address:gV('em_addr').trim(),emergency:gV('em_emerg').trim(),joined:gV('em_joined')||'',marital,married:marital==='married',children:+gV('em_children')||0};
+  if(canPay)Object.assign(obj,{bankName:gV('em_bankname').trim(),bankAcc:gV('em_bankacc').trim(),basic,allowance:+gV('em_allow')||0,
+    epf:local?Math.round(basic*0.11):0,socso:+(basic*0.005).toFixed(2),eis:local?+(basic*0.002).toFixed(2):0,levy:0});
   if(!d().staff)d().staff=[];
-  if(_editId){const e=d().staff.find(x=>x.id===_editId);if(e){if(e.ot==null)obj.ot=0;Object.assign(e,obj);auditLog("编辑员工",n,"","");}}
-  else{d().staff.push({id:Date.now(),ot:0,...obj});auditLog("新增员工",empNo+" "+n+" "+money(basic),"","");}
+  if(_editId){const e=d().staff.find(x=>x.id===_editId);if(e){if(canPay&&e.ot==null)obj.ot=0;Object.assign(e,obj);auditLog("编辑员工",n,"","");}}
+  else{d().staff.push({id:Date.now(),...(canPay?{ot:0}:{}),...obj});auditLog("新增员工",empNo+" "+n+(canPay?" "+money(basic):""),"","");}
   autoSyncLabour(); // 薪资变动→自动联动当月运营开销的人工成本
   await save();closeM();render();
 }
@@ -4136,6 +4230,7 @@ function togglePayslipPick(id){payslipPick[id]=!payslipPick[id];render();}
 function pgPayrun(){
   const zh=LANG==="zh";const w=canW('payroll')&&canSeeSalary();const staff=(d().staff||[]);
   if(!canSeeSalary())return `<h2 class="h">🧮 ${zh?'薪资发放 Payroll':'Payroll Run'}</h2><div class="al al-a"><div class="t">🔒 ${zh?'权限限制':'Restricted'}</div>${zh?'只有老板 / 人事经理(HR)可以查看与编辑薪资发放。':'Only Owner/HR can access Payroll.'}</div>`;
+  if(!isAgg()&&!PAY_LOADED.has(curOutlet))return `<h2 class="h">🧮 ${zh?'薪资发放 Payroll':'Payroll Run'}</h2><div class="al al-a"><div class="t">⚠️ ${zh?'薪资数据没有载入':'Payroll data not loaded'}</div>${zh?'可能是网络出错或没有权限，请刷新后再试。为了安全，这时候不会显示（也不会修改）任何薪资。':'Network error or no permission. Reload and try again.'}</div>`;
   const run=payrunData();const fin=run.finalized;const cfg=payCfg();
   // ---- Payslip：选择模式 ----
   if(payslipMode==='menu'){
