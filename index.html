@@ -292,6 +292,7 @@
   <div class="l"><button class="menu-btn" onclick="toggleSide()">☰</button><span class="brand-logo" title="明记家乡小食店"><svg width="34" height="34" viewBox="0 0 100 100" aria-label="明记" style="border-radius:7px;"><rect x="4" y="4" width="92" height="92" rx="16" fill="#7C1619"/><rect x="4" y="4" width="92" height="92" rx="16" fill="none" stroke="#F2B417" stroke-width="7"/><text x="50" y="33" text-anchor="middle" dominant-baseline="central" font-family="'Microsoft YaHei','PingFang SC',sans-serif" font-weight="800" font-size="40" fill="#F2B417">明</text><text x="50" y="70" text-anchor="middle" dominant-baseline="central" font-family="'Microsoft YaHei','PingFang SC',sans-serif" font-weight="800" font-size="40" fill="#F2B417">记</text></svg></span><h1 id="appTitle">明记家乡小食店</h1><span id="topBranchTag" style="margin-left:8px;font-size:10px;padding:2px 6px;border-radius:6px;background:#F2B417;color:#12203A;font-weight:800;">-</span></div>
   <div class="r">
     <button class="lang" id="installBtn" onclick="installApp()" title="安装为App Install">📲</button>
+    <button class="lang" id="xferBellBtn" onclick="openXferInbox()" title="跨店调拨申请 Transfer requests" style="display:none;position:relative;">🔁<span id="xferBellCount" style="display:none;position:absolute;top:-4px;right:-4px;min-width:16px;height:16px;line-height:16px;padding:0 3px;border-radius:9px;background:#d92d20;color:#fff;font-size:10px;font-weight:700;text-align:center;">0</span></button>
     <button class="lang" id="bellBtn" onclick="openOrdersPanel()" title="收到的订单 Orders" style="display:none;position:relative;">🔔<span id="bellCount" style="display:none;position:absolute;top:-4px;right:-4px;min-width:16px;height:16px;line-height:16px;padding:0 3px;border-radius:9px;background:#d92d20;color:#fff;font-size:10px;font-weight:800;text-align:center;">0</span></button>
     <button class="lang" id="updBellBtn" onclick="openUpdatePanel()" title="版本更新通知 Version updates" style="position:relative;"><img src="icon-update.png" alt="update" style="width:16px;height:16px;vertical-align:-3px;"><span id="updBellCount" style="display:none;position:absolute;top:-4px;right:-4px;min-width:16px;height:16px;line-height:16px;padding:0 3px;border-radius:9px;background:#0891B2;color:#fff;font-size:10px;font-weight:800;text-align:center;">1</span></button>
     <button class="lang" onclick="toggleLang()" id="langBtn">EN</button>
@@ -656,7 +657,7 @@ function statusOf(d){if(d<=14)return{t:"健康",e:"Fresh",c:"p-g"};if(d<=30)retu
 function stTxt(s){return LANG==="zh"?s.t:s.e;}
 
 /* ================= 数据种子 ================= */
-const BUILD="1102mk69";  // 版本标记：页面右上/网格提示可见，用来确认已载入最新版
+const BUILD="1102mk70";  // 版本标记：页面右上/网格提示可见，用来确认已载入最新版
 const SEED_VERSION="bh-master-2026-09-1";  // 版本变更→下次载入自动重置为最新主数据（仅本店云端）
 function seed(outletId){
   const isCK = outletId==="ck";
@@ -905,7 +906,7 @@ async function attachPayroll(oid){
    读不到的绝不会被当成「空数据」去重新初始化。
    两处原本会跨店改别人整包的地方改成：
    ① 订货表(orderList)从中央厨房整包拆到共用 key erpv2:ckorder（所有人可读写）；
-   ② 跨店调拨改成「调拨单」：发出方只写自己的 erpv2:xfer:<发出>:<收到>，收到方登录/刷新时自己入库（xferApplied 防重复）。 */
+   ② 跨店调拨改成「申请 → 对方批准」：申请存成独立记录 erpv2:req:<发起店>:<被申请店>:<编号>（见下方「跨店调拨申请」）。 */
 const cloudFetch=payFetch, cloudWriteNow=payWriteNow;
 function canWriteOutlet(oid){
   if(!curUser)return true; // 演示模式（没登录）不限制
@@ -938,40 +939,216 @@ async function saveCkOrder(){
   if(CKO_FAILED)return;
   try{await Store.set('erpv2:ckorder',JSON.stringify({v:1,orderList:CKO.orderList,at:new Date().toISOString()}));}catch(e){}
 }
-async function xferPush(from,to,rec){ // 调拨单：追加到「发出方→收到方」专用 key；失败就抛错（库存不动）
-  const key='erpv2:xfer:'+from+':'+to;
-  const f=await cloudFetch(key);if(!f.ok)throw new Error('xfer read');
-  const arr=(Array.isArray(f.val)?f.val:[]).concat([rec]).slice(-200);
-  if(!(await cloudWriteNow(key,arr)))throw new Error('xfer write');
-}
-async function xferFetchFor(oid){
-  if(CLOUD&&_sb){
-    try{const {data,error}=await _sb.from(CLOUD_TABLE).select('key,value').like('key','erpv2:xfer:%:'+oid);
-      if(error)return [];return (data||[]).map(r=>({key:r.key,arr:Array.isArray(r.value)?r.value:[]}));}catch(e){return [];}
-  }
-  const out=[];try{for(let i=0;i<localStorage.length;i++){const k=localStorage.key(i);if(k&&k.indexOf('erpv2:xfer:')===0&&k.slice(-(oid.length+1))===':'+oid){const v=JSON.parse(localStorage.getItem(k));out.push({key:k,arr:Array.isArray(v)?v:[]});}}}catch(e){}
-  return out;
-}
-async function applyIncoming(oid){ // 把别店发来、还没入库的调拨单入库；回传 true = 这间店的整包要重新存
-  const db=DB[oid];if(!db||!canWriteOutlet(oid))return false;
-  const rows=await xferFetchFor(oid);if(!rows.length)return false;
-  const done=new Set(db.xferApplied||[]);const todo=[];
-  rows.forEach(r=>r.arr.forEach(x=>{if(x&&x.id&&!done.has(x.id))todo.push(x);}));
-  if(!todo.length)return false;
-  todo.sort((a,b)=>String(a.id)<String(b.id)?-1:1);
-  db.items=db.items||[];db.moves=db.moves||[];
-  todo.forEach((r,i)=>{
-    const di=db.items.find(x=>x.name===r.item);
-    if(di)di.qty+=r.qty;else db.items.push({id:Date.now()+i,name:r.item,cat:r.cat||'其他',unit:r.unit,buyUnit:r.buyUnit||'unit',conv:r.conv||1,qty:r.qty,cost:r.cost,par:0,yield:r.yield||100,batches:[{qty:r.qty,exp:"2027-01-01",in:r.date}]});
-    db.moves.unshift({date:r.date,type:'in',item:r.item,qty:r.qty,unit:r.unit,amt:r.qty*r.cost,note:(LANG==="zh"?"调入":"Transfer in")+(r.fromName?" ← "+r.fromName:"")});
-    done.add(r.id);
-  });
-  db.xferApplied=[...done].slice(-1000);
+/* ===== 跨店调拨申请（BUILD 1102mk70）=====
+   「跨店调拨」页原本只是在自己店里记一笔流水账，对方店完全不知情。现在改成：
+   发起店送出申请 → 被申请店收到通知 → 被申请店「批准」后，双方店的调拨记录里才会出现、库存同时增减；
+   没处理 = 待批准(Pending)；拒绝 = 被拒绝（附原因）。物品：调出方扣库存、调入方加库存；人力借调只记录，不移动员工档案。
+   每张申请是 erp_store 里的一条记录：erpv2:req:<发起店>:<被申请店>:<编号>。双方都能读，数据库触发器
+   erp_req_guard 保证：新申请只能是 pending、只有被申请店（或老板/人事经理/区域副经理）能批准/拒绝、批准后不能再改。 */
+const XFER_APPROVE_ROLES=['owner','hrmgr','area','outletmgr','manager','headchef','ckmgr'];
+const XFER_ROLES=XFER_APPROVE_ROLES.concat(['ckstaff']);
+let XREQ=[], _xreqPollT=null, _xreqSig='', _xferInboxOpen=false, _xferSyncing=false;
+function xferActive(){return XFER_ROLES.includes(realRole());}
+function xferKey(r){return 'erpv2:req:'+r.reqBy+':'+r.counter+':'+r.id;}
+function withOutlet(oid,fn){const prev=curOutlet;curOutlet=oid;try{return fn();}finally{curOutlet=prev;}}
+function oidName(id){const o=OUTLETS.find(x=>x.id===id);return o?nm(o):(id||'—');}
+function xferCanApprove(r){return !!r&&r.status==='pending'&&!isAgg()&&r.counter===curOutlet&&canWriteOutlet(curOutlet)&&XFER_APPROVE_ROLES.includes(realRole());}
+function xferCanWithdraw(r){return !!r&&(r.status==='pending'||r.status==='rejected')&&!isAgg()&&r.reqBy===curOutlet&&canWriteOutlet(curOutlet)&&xferActive();}
+function xferPendingForMe(){return isAgg()?[]:XREQ.filter(r=>r.status==='pending'&&r.counter===curOutlet);}
+async function cloudDeleteNow(key){
+  try{localStorage.removeItem(key);}catch(e){}
+  if(CLOUD&&_sb){try{const {error}=await _sb.from(CLOUD_TABLE).delete().eq('key',key);return !error;}catch(e){return false;}}
   return true;
 }
+async function loadXreqs(){ // 读我有权限看到的所有调拨申请；失败回 false（保持原样，不当成「没有」）
+  let rows=[];
+  if(CLOUD&&_sb){
+    try{const {data,error}=await _sb.from(CLOUD_TABLE).select('key,value').like('key','erpv2:req:%');if(error)return false;rows=(data||[]).map(r=>r.value);}catch(e){return false;}
+  }else{
+    try{for(let i=0;i<localStorage.length;i++){const k=localStorage.key(i);if(k&&k.indexOf('erpv2:req:')===0){try{rows.push(JSON.parse(localStorage.getItem(k)));}catch(_){}}}}catch(e){}
+  }
+  XREQ=rows.filter(r=>r&&r.id&&r.reqBy&&r.counter&&r.status).sort((a,b)=>String(a.createdAt||'')<String(b.createdAt||'')?-1:1);
+  return true;
+}
+function applyApprovedFor(oid){ // 把「已批准」的申请记进这间店（扣/加库存 + 调拨记录）；回传 true = 整包要重新存
+  const db=DB[oid];if(!db||!canWriteOutlet(oid))return false;
+  const done=new Set(db.xferApplied||[]);let ch=false;
+  XREQ.filter(r=>r.status==='approved'&&(r.from===oid||r.to===oid)&&!done.has(r.id)).forEach(r=>{
+    withOutlet(oid,()=>{
+      const out=(r.from===oid);const peer=out?(r.toName||oidName(r.to)):(r.fromName||oidName(r.from));
+      if(r.kind==='item'){
+        if(out)invReduce(r.item,r.qty);else invReceive(r.item,r.qty,null,r.unit);
+        (db.transfers=db.transfers||[]).unshift({date:r.date,item:r.item,code:r.code||'',qty:+r.qty||0,unit:r.unit||'',to:peer,mode:r.mode||'transfer',amt:+r.amt||0,note:r.note||'',dir:out?'out':'in',reqId:r.id});
+        auditLog("跨店调拨(已批准)",r.item+" "+num(r.qty)+(r.unit||'')+(out?" →":" ←")+peer,"",modeTxt(r.mode||'transfer'));
+      }else{
+        (db.staffLoans=db.staffLoans||[]).unshift({date:r.date,staff:r.staff,role:r.role||'',to:peer,mode:r.mode||'loan',note:r.note||'',dir:out?'out':'in',reqId:r.id});
+        auditLog("人力借调(已批准)",r.staff+(out?" →":" ←")+peer,"",modeTxt(r.mode||'loan'));
+      }
+    });
+    done.add(r.id);ch=true;
+  });
+  if(ch)db.xferApplied=[...done].slice(-1000);
+  return ch;
+}
+async function xferSync(first){ // 重新读申请 → 记进我有权写的店 → 更新铃铛/提示
+  if(_xferSyncing)return;_xferSyncing=true;
+  try{
+    if(!(await loadXreqs()))return;
+    const dirty=[];for(const o of myOutlets()){if(DB[o.id]&&applyApprovedFor(o.id))dirty.push(o.id);}
+    for(const id of dirty){await save(id);}
+    xferCheck(!!first);
+    const sig=XREQ.map(r=>r.id+':'+r.status).join(',');const changed=sig!==_xreqSig;_xreqSig=sig;
+    if(!first&&changed){
+      if(_xferInboxOpen)openXferInbox();
+      else if(curPage==='transfer'&&!isBusyEditing())render();
+    }
+  }finally{_xferSyncing=false;}
+}
+function startXferPoll(){
+  if(_xreqPollT)clearInterval(_xreqPollT);
+  if(!CLOUD||!xferActive())return;
+  _xreqPollT=setInterval(()=>{if(document.visibilityState==='visible')xferSync(false);},30000);
+}
+function xferSeenKey(){return 'xferSeen:'+((curUser&&curUser.email)||'demo');}
+function xferSeen(){try{return JSON.parse(localStorage.getItem(xferSeenKey())||'{}');}catch(e){return {};}}
+function xferToast(title,body){
+  const bn=document.createElement('div');bn.className='al al-a';bn.style.cssText='position:fixed;right:16px;bottom:calc(16px + env(safe-area-inset-bottom));max-width:320px;z-index:9999;box-shadow:0 6px 24px rgba(0,0,0,.2);cursor:pointer;';
+  bn.innerHTML=`<div class="t">${oEsc(title)}</div>${oEsc(body||'')}`;
+  bn.onclick=()=>{openXferInbox();bn.remove();};document.body.appendChild(bn);setTimeout(()=>bn.remove(),9000);
+}
+function fireXferNotify(title,body){
+  if(!('Notification'in window)||Notification.permission!=='granted')return;
+  const opt={body,tag:'xfer-'+Date.now(),renotify:true,vibrate:[200,100,200]};if(typeof BH_ICON!=='undefined'&&BH_ICON){opt.icon=BH_ICON;opt.badge=BH_ICON;}
+  try{if(_swReg&&_swReg.showNotification)_swReg.showNotification(title,opt);else new Notification(title,opt);}catch(e){}
+}
+function xferDesc(r){return r.kind==='item'?(r.item+' '+num(r.qty)+(r.unit||'')):('🧑‍🍳 '+r.staff);}
+function xferCheck(first){ // 新的待批准 / 我发起的申请有了结果 → 响铃 + 弹提示
+  updateXferBell();
+  if(!xferActive()||isAgg())return;
+  const seen=xferSeen();const zh=LANG==="zh";const fresh=[];
+  xferPendingForMe().forEach(r=>{const k='p:'+r.id;if(!seen[k]){seen[k]=1;fresh.push({t:zh?'🔁 新的调拨申请':'🔁 New transfer request',b:(r.reqByName||oidName(r.reqBy))+' · '+xferDesc(r)});}});
+  XREQ.filter(r=>r.reqBy===curOutlet&&(r.status==='approved'||r.status==='rejected')).forEach(r=>{const k='r:'+r.id+':'+r.status;if(!seen[k]){seen[k]=1;fresh.push({t:r.status==='approved'?(zh?'✅ 调拨申请已批准':'✅ Request approved'):(zh?'❌ 调拨申请被拒绝':'❌ Request rejected'),b:(r.counterName||oidName(r.counter))+' · '+xferDesc(r)});}});
+  try{const ks=Object.keys(seen);if(ks.length>600)ks.slice(0,ks.length-400).forEach(k=>delete seen[k]);localStorage.setItem(xferSeenKey(),JSON.stringify(seen));}catch(e){}
+  if(first){const n=xferPendingForMe().length;if(n>0)xferToast(zh?('🔁 有 '+n+' 张调拨申请等你批准'):('🔁 '+n+' transfer request(s) waiting'),zh?'点这里查看':'Tap to view');return;}
+  if(!fresh.length)return;
+  try{primeAudio();playBeep();}catch(e){}
+  const f=fresh[fresh.length-1];xferToast(f.t+(fresh.length>1?' ×'+fresh.length:''),f.b);fireXferNotify(f.t,f.b);
+}
+function updateXferBell(){
+  const b=document.getElementById('xferBellBtn');if(!b)return;
+  b.style.display=xferActive()?'':'none';
+  const n=xferPendingForMe().length;const c=document.getElementById('xferBellCount');
+  if(c){c.textContent=n>9?'9+':String(n);c.style.display=n>0?'':'none';}
+}
+function xferStatusPill(r){
+  const zh=LANG==="zh";
+  if(r.status==='pending')return `<span class="pill p-a">⏳ ${zh?'待批准 Pending':'Pending'}</span>`;
+  if(r.status==='rejected')return `<span class="pill p-r">❌ ${zh?'被拒绝':'Rejected'}</span>${r.rejectReason?`<div class="mini">${oEsc(r.rejectReason)}</div>`:''}`;
+  return `<span class="pill p-g">✅ ${zh?'已批准':'Approved'}</span>`;
+}
+function xferCardHtml(){ // 待批准 / 被拒绝 / 已批准但还没记进本店 的申请
+  const zh=LANG==="zh";
+  const done=new Set((DB[curOutlet]&&DB[curOutlet].xferApplied)||[]);
+  const list=(isAgg()?XREQ:XREQ.filter(r=>r.reqBy===curOutlet||r.counter===curOutlet)).filter(r=>r.status!=='approved'||!done.has(r.id)).slice().reverse();
+  const rows=list.map(r=>{
+    const mine=r.reqBy===curOutlet;
+    const act=(xferCanApprove(r)?`<button class="btn gold sm" onclick="decideXreq('${r.id}','approved')">${zh?'批准':'Approve'}</button> <button class="btn ghost sm" onclick="decideXreq('${r.id}','rejected')">${zh?'拒绝':'Reject'}</button>`:'')+(xferCanWithdraw(r)?` <button class="btn ghost sm" onclick="withdrawXreq('${r.id}')">${r.status==='pending'?(zh?'撤回':'Withdraw'):(zh?'移除':'Remove')}</button>`:'');
+    return `<tr><td class="mini">${oEsc((r.date||'').slice(5))}</td><td>${r.kind==='item'?'📦':'🧑‍🍳'} <b>${oEsc(r.kind==='item'?(r.item+' '+num(r.qty)+(r.unit||'')):r.staff)}</b>${r.kind==='staff'&&r.role?` <span class="mini">${oEsc(r.role)}</span>`:''}<div class="mini">${oEsc(modeTxt(r.mode||(r.kind==='item'?'transfer':'loan')))}${r.note?' · '+oEsc(r.note):''}</div></td>
+      <td class="mini">${mine?(zh?'我方发起':'Mine'):oEsc(r.reqByName||oidName(r.reqBy))+(zh?' 发起':'')}<br>${oEsc(r.fromName||oidName(r.from))} → ${oEsc(r.toName||oidName(r.to))}</td><td>${xferStatusPill(r)}</td><td style="white-space:nowrap;">${act}</td></tr>`;
+  }).join('');
+  return `<div class="card tbl" style="margin-bottom:12px;"><table><thead><tr><th>${zh?'日期':'Date'}</th><th>${zh?'内容':'Request'}</th><th>${zh?'发起 / 调出→调入':'From → To'}</th><th>${zh?'状态':'Status'}</th><th></th></tr></thead><tbody>${rows||`<tr><td colspan="5" class="empty">${zh?'没有待处理的调拨申请':'No pending requests'}</td></tr>`}</tbody></table></div>`;
+}
+function openXferInbox(){
+  _xferInboxOpen=true;const zh=LANG==="zh";
+  openForm(`<h3>🔁 ${zh?'跨店调拨申请':'Transfer requests'} <span class="x" onclick="closeM()">×</span></h3>${isAgg()?`<div class="hint">${zh?'请先切换到某一间店，才能批准或发起申请。':'Switch to a branch first.'}</div>`:''}${xferCardHtml()}
+    <div style="display:flex;gap:8px;flex-wrap:wrap;"><button class="btn ghost sm" onclick="reqNotify()">📲 ${zh?'开启本机通知':'Enable notifications'}</button>${can('transfer')?`<button class="btn ghost sm" onclick="closeM();nav('transfer')">${zh?'打开调拨页':'Open page'}</button>`:''}</div>`);
+  const mb=document.getElementById('mbox');if(mb)mb.classList.add('m-wide');
+}
+function sendXferPush(outlet,title,body){
+  try{
+    if(!PUSH_FN_URL||!AUTH())return;
+    (async()=>{let token=SUPABASE_ANON_KEY;
+      try{const {data}=await _sb.auth.getSession();if(data&&data.session&&data.session.access_token)token=data.session.access_token;}catch(e){}
+      await fetch(PUSH_FN_URL,{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+token,'apikey':SUPABASE_ANON_KEY},body:JSON.stringify({title,body,icon:(typeof BH_ICON!=='undefined'?BH_ICON:''),outlet})});
+    })().catch(()=>{});
+  }catch(e){}
+}
+function formXferNew(kind){
+  if(isAgg())return alert(LANG==="zh"?"请先切换到某一间店再发起申请。":"Switch to a branch first.");
+  const zh=LANG==="zh";
+  const toOpts=OUTLETS.filter(o=>o.id!==curOutlet&&!o.ck).map(o=>`<option value="${o.id}">${oEsc(nm(o))}</option>`).join('');
+  const dirOpts=kind==='item'
+    ?`<option value="in">📥 ${zh?'向对方调入（对方发货给我）':'Request from them (they send to me)'}</option><option value="out">📤 ${zh?'调出给对方（我发货给对方）':'Send to them (I send)'}</option>`
+    :`<option value="in">📥 ${zh?'借入对方人力（对方员工来支援我）':'Borrow their staff'}</option><option value="out">📤 ${zh?'借出我的员工（去支援对方）':'Lend my staff'}</option>`;
+  const dl=kind==='item'?(d().items||[]).map(i=>`<option value="${oEsc(i.name)}">`).join(''):(d().staff||[]).map(e=>`<option value="${oEsc(e.name)}">`).join('');
+  const body=kind==='item'
+    ?`<div class="fg2"><div class="fr"><label>${zh?'品名':'Item'}</label><input id="x_item" list="x_dl" oninput="xItemAuto()" placeholder="${zh?'输入或选择':'type or pick'}"><datalist id="x_dl">${dl}</datalist></div>
+      <div class="fr"><label>Code</label><input id="x_code" placeholder="TOF-01"></div></div>
+      <div class="fg3"><div class="fr"><label>${zh?'数量':'Qty'}</label><input id="x_qty" type="number" step="0.01"></div>
+      <div class="fr"><label>${zh?'单位':'Unit'}</label><input id="x_unit" placeholder="pcs"></div>
+      <div class="fr"><label>${zh?'金额RM':'Amount'}</label><input id="x_amt" type="number" step="0.01"></div></div>
+      <div class="fr"><label>${zh?'方式':'Mode'}</label><select id="x_mode"><option value="transfer">${zh?'直接调拨 Transfer':'Direct Transfer'}</option><option value="return">${zh?'借用归还 Return':'Borrow/Return'}</option></select></div>`
+    :`<div class="fg2"><div class="fr"><label>${zh?'员工 / 需要的人力':'Staff / needed'}</label><input id="x_staff" list="x_dl" oninput="xStaffAuto()" placeholder="${zh?'姓名，或「2位帮厨」':'name or "2 helpers"'}"><datalist id="x_dl">${dl}</datalist></div>
+      <div class="fr"><label>${zh?'职位':'Role'}</label><input id="x_role"></div></div>
+      <div class="fr"><label>${zh?'方式':'Mode'}</label><select id="x_mode"><option value="loan">${zh?'借出支援 Loan':'Loan'}</option><option value="return">${zh?'支援结束返回 Return':'Return'}</option></select></div>`;
+  openForm(`<h3>${kind==='item'?'📦':'🧑‍🍳'} ${kind==='item'?(zh?'发起物品调拨申请':'Item transfer request'):(zh?'发起人力借调申请':'Staff loan request')} <span class="x" onclick="closeM()">×</span></h3>
+    <div class="hint">${zh?'送出后要等对方店批准，双方记录和库存才会变动。':'Records and stock change only after the other branch approves.'}</div>
+    <div class="fg2"><div class="fr"><label>${zh?'日期':'Date'}</label><input id="x_date" type="date" value="${TODAY}"></div>
+      <div class="fr"><label>${zh?'对方分店':'Other branch'}</label><select id="x_to">${toOpts}</select></div></div>
+    <div class="fr"><label>${zh?'方向':'Direction'}</label><select id="x_dir">${dirOpts}</select></div>
+    ${body}
+    <div class="fr"><label>${zh?'备注':'Note'}</label><input id="x_note"></div>
+    <button class="btn block brand" onclick="submitXferReq('${kind}')">${zh?'送出申请':'Send request'}</button>`);
+}
+function xItemAuto(){const it=(d().items||[]).find(i=>i.name===document.getElementById('x_item').value);if(it){const u=document.getElementById('x_unit');if(u&&!u.value)u.value=it.unit||'';}}
+function xStaffAuto(){const e=(d().staff||[]).find(i=>i.name===document.getElementById('x_staff').value);if(e){const r=document.getElementById('x_role');if(r&&!r.value)r.value=e.role||'';}}
+async function submitXferReq(kind){
+  const g=id=>{const el=document.getElementById(id);return el?el.value:'';};const zh=LANG==="zh";
+  const me=curOutlet,counter=g('x_to'),dir=g('x_dir');
+  if(!counter)return alert(zh?"请选择对方分店":"Pick a branch");
+  const from=dir==='out'?me:counter,to=dir==='out'?counter:me;
+  const rec={id:Date.now().toString(36)+Math.random().toString(36).slice(2,6),kind,status:'pending',reqBy:me,counter,from,to,
+    reqByName:oidName(me),counterName:oidName(counter),fromName:oidName(from),toName:oidName(to),dir,
+    date:g('x_date')||TODAY,mode:g('x_mode'),note:g('x_note').trim(),createdBy:(curUser&&curUser.email)||ROLES[curRole].name,createdAt:new Date().toISOString()};
+  if(kind==='item'){
+    rec.item=g('x_item').trim();rec.code=g('x_code').trim();rec.qty=+g('x_qty')||0;rec.unit=g('x_unit').trim();rec.amt=+g('x_amt')||0;
+    if(!rec.item||rec.qty<=0)return alert(zh?"请填品名和数量":"Item and qty required");
+    if(dir==='out'){const it=invItem(rec.item);if((!it||it.qty<rec.qty)&&!confirm(zh?("本店「"+rec.item+"」库存只有 "+(it?it.qty:0)+"，不够调出 "+rec.qty+"。仍要送出申请吗？"):"Not enough stock. Send anyway?"))return;}
+  }else{
+    rec.staff=g('x_staff').trim();rec.role=g('x_role').trim();
+    if(!rec.staff)return alert(zh?"请填员工姓名或需要的人力":"Staff required");
+  }
+  if(!(await cloudWriteNow(xferKey(rec),rec)))return alert(zh?"申请没有送出去（网络或权限问题），请稍后再试。":"Request not sent. Try again.");
+  XREQ.push(rec);
+  sendXferPush(counter,(zh?'🔁 调拨申请 · ':'🔁 Transfer request · ')+rec.reqByName,xferDesc(rec)+' · '+rec.fromName+' → '+rec.toName);
+  closeM();updateXferBell();render();
+}
+async function decideXreq(id,status){
+  const r=XREQ.find(x=>x.id===id);const zh=LANG==="zh";
+  if(!r||!xferCanApprove(r))return alert(zh?"你现在不能处理这张申请（需要在被申请的店面、并且有批准权限）。":"Not allowed.");
+  let reason='';
+  if(status==='rejected'){reason=prompt(zh?"拒绝原因（可不填）：":"Reason (optional):");if(reason===null)return;}
+  if(status==='approved'&&r.kind==='item'&&r.from===curOutlet){const it=invItem(r.item);if((!it||it.qty<r.qty)&&!confirm(zh?("本店「"+r.item+"」库存只有 "+(it?it.qty:0)+"，不够调出 "+r.qty+"。仍要批准吗？"):"Not enough stock. Approve anyway?"))return;}
+  const f=await cloudFetch(xferKey(r));
+  if(!f.ok)return alert(zh?"读取申请失败，请稍后再试。":"Read failed.");
+  if(!f.val||f.val.status!=='pending'){alert(zh?"这张申请已经被处理或被撤回了。":"Already handled or withdrawn.");await xferSync(false);render();return;}
+  const nr=Object.assign({},f.val,{status,decidedBy:(curUser&&curUser.email)||ROLES[curRole].name,decidedByName:(curUser&&curUser.name)||'',decidedAt:new Date().toISOString(),rejectReason:(reason||'').trim()});
+  if(!(await cloudWriteNow(xferKey(nr),nr)))return alert(zh?"没有成功（网络或权限问题），申请状态没有变。":"Failed. Status unchanged.");
+  Object.assign(r,nr);
+  if(status==='approved'){for(const oid of [r.from,r.to]){if(DB[oid]&&canWriteOutlet(oid)&&applyApprovedFor(oid))await save(oid);}}
+  sendXferPush(r.reqBy,(status==='approved'?(zh?'✅ 调拨申请已批准 · ':'✅ Approved · '):(zh?'❌ 调拨申请被拒绝 · ':'❌ Rejected · '))+r.counterName,xferDesc(r)+(reason?' · '+reason:''));
+  updateXferBell();if(_xferInboxOpen)openXferInbox();render();
+}
+async function withdrawXreq(id){
+  const r=XREQ.find(x=>x.id===id);const zh=LANG==="zh";
+  if(!r||!xferCanWithdraw(r))return;
+  if(!confirm(r.status==='pending'?(zh?"撤回这张申请？":"Withdraw this request?"):(zh?"移除这条被拒绝的记录？":"Remove?")))return;
+  if(!(await cloudDeleteNow(xferKey(r))))return alert(zh?"没有成功，请稍后再试。":"Failed.");
+  XREQ=XREQ.filter(x=>x.id!==id);updateXferBell();if(_xferInboxOpen)openXferInbox();render();
+}
 function clearSession(){ // 换人登录/退出时：内存里和本机缓存里不留上一位的数据（尤其薪资）
-  try{DB={};PAY_LOADED.clear();PAY_STRIP.clear();CKO={};CKO_FAILED=false;_aggCache=null;}catch(e){}
-  try{if(CLOUD){Object.keys(localStorage).filter(k=>k.indexOf('erpv2:payroll:')===0||k.indexOf('erpv2:xfer:')===0).forEach(k=>localStorage.removeItem(k));}}catch(e){}
+  try{DB={};PAY_LOADED.clear();PAY_STRIP.clear();CKO={};CKO_FAILED=false;_aggCache=null;XREQ=[];_xreqSig='';_xferInboxOpen=false;if(_xreqPollT){clearInterval(_xreqPollT);_xreqPollT=null;}}catch(e){}
+  try{if(CLOUD){Object.keys(localStorage).filter(k=>k.indexOf('erpv2:payroll:')===0||k.indexOf('erpv2:req:')===0).forEach(k=>localStorage.removeItem(k));}}catch(e){}
 }
 async function loadDB(){
   clearSession();
@@ -987,9 +1164,9 @@ async function loadDB(){
   const res=await Promise.all(mine.map(o=>attachPayroll(o.id).catch(()=>false)));
   mine.forEach((o,i)=>{if(res[i])dirty.add(o.id);});
   try{if(await loadCkOrder())dirty.add('ck');}catch(e){}
-  const inc=await Promise.all(mine.map(o=>applyIncoming(o.id).catch(()=>false)));
-  mine.forEach((o,i)=>{if(inc[i])dirty.add(o.id);});
+  try{if(await loadXreqs()){mine.forEach(o=>{if(applyApprovedFor(o.id))dirty.add(o.id);});}}catch(e){}
   for(const id of dirty){try{await save(id);}catch(e){}}
+  try{xferCheck(true);_xreqSig=XREQ.map(r=>r.id+':'+r.status).join(',');}catch(e){}
 }
 async function save(oid){
   try{
@@ -1006,7 +1183,7 @@ async function save(oid){
     await Store.set('erpv2:'+oid,JSON.stringify(main));
   }catch(e){}
 }
-async function reloadOutlet(oid){if(!canWriteOutlet(oid))return;try{const r=await Store.get('erpv2:'+oid);if(r){DB[oid]=JSON.parse(r.value);let ch=await attachPayroll(oid);if(await applyIncoming(oid))ch=true;if(ch)await save(oid);}}catch(e){}}
+async function reloadOutlet(oid){if(!canWriteOutlet(oid))return;try{const r=await Store.get('erpv2:'+oid);if(r){DB[oid]=JSON.parse(r.value);let ch=await attachPayroll(oid);if(applyApprovedFor(oid))ch=true;if(ch)await save(oid);}}catch(e){}}
 /* ---- 角色权限：全局配置，持久化到云端/本地，所有分店同步 ---- */
 const ROLE_DEFAULTS=Object.fromEntries(Object.keys(ROLES).map(k=>[k,ROLES[k].can.slice()]));
 async function loadRolePerms(){
@@ -1217,7 +1394,7 @@ function renderSidebar(){
   document.getElementById('sidebar').innerHTML=html;
 }
 function toggleSide(){document.getElementById('sidebar').classList.toggle('open');document.getElementById('backdrop').classList.toggle('show');}
-async function switchOutlet(){curOutlet=document.getElementById('outletSel').value;_aggCache=null;
+async function switchOutlet(){curOutlet=document.getElementById('outletSel').value;_aggCache=null;try{updateXferBell();}catch(e){}
   if(CLOUD){try{if(curOutlet===ALL_ID){for(const id of branchIds())await reloadOutlet(id);}else if(curOutlet!==ALL_ID)await reloadOutlet(curOutlet);}catch(e){}}
   render();}
 function switchRole(){curRole=document.getElementById('roleSel').value;if(!pageAllowed(curPage))curPage=firstAllowedPage();render();}
@@ -2571,8 +2748,8 @@ async function reqNotify(){
   playBeep();
   const r=await enablePushSub();
   const st=document.getElementById('notifStatus');
-  if(r&&r.ok){if(st)st.textContent=LANG==="zh"?'✅ 本机已登记，关掉App也会收到':'✅ registered';alert(LANG==="zh"?"✅ 成功！本机已登记接收后台推送。关掉App也会收到新订单通知+响声。":"✅ Registered for background push.");}
-  else{const why={perm:'通知权限未允许',db:'写入订阅失败：'+(r&&r.msg||''),err:'出错：'+(r&&r.msg||''),unsupported:'此浏览器不支持推送',nocloud:'未连接云端',role:'此角色不接收（仅老板/区域副经理）'}[r&&r.reason]||'未知';
+  if(r&&r.ok){if(st)st.textContent=LANG==="zh"?'✅ 本机已登记，关掉App也会收到':'✅ registered';alert(LANG==="zh"?"✅ 成功！本机已登记接收后台推送。关掉App也会收到通知（新订单 / 调拨申请）+响声。":"✅ Registered for background push.");}
+  else{const why={perm:'通知权限未允许',db:'写入订阅失败：'+(r&&r.msg||''),err:'出错：'+(r&&r.msg||''),unsupported:'此浏览器不支持推送',nocloud:'未连接云端',role:'此角色不接收通知'}[r&&r.reason]||'未知';
     alert((LANG==="zh"?"⚠️ 通知已开，但后台推送登记未成功：":"Push register failed: ")+why+(LANG==="zh"?"\n\n（App开着仍会响铃提醒；后台推送需在手机上、且已『加到主画面』再试）":""));}
   updateBell();
 }
@@ -2609,7 +2786,7 @@ async function enablePushSub(){
   try{
     if(!('serviceWorker'in navigator)||!('PushManager'in window))return{ok:false,reason:'unsupported'};
     if(!VAPID_PUBLIC||!AUTH())return{ok:false,reason:'nocloud'};
-    if(!['owner','area','hrmgr'].includes(curRole))return{ok:false,reason:'role'};
+    if(!XFER_ROLES.includes(curRole))return{ok:false,reason:'role'};
     if(!('Notification'in window)||Notification.permission!=='granted')return{ok:false,reason:'perm'};
     const reg=_swReg||await navigator.serviceWorker.ready;
     let sub=await reg.pushManager.getSubscription();
@@ -3113,12 +3290,6 @@ function openM(type,editId){
       <div class="fr"><label>${LANG==="zh"?"折让金额RM":"Credit RM"}</label><input id="g_amt" type="number" step="0.01"></div></div>
       <div class="fr"><label>${LANG==="zh"?"原因":"Reason"}</label><select id="g_reason"><option>实收少货</option><option>破损</option><option>品质不符退货</option></select></div>
       <button class="btn block" style="background:var(--blue)" onclick="saveGRN()">${LANG==="zh"?"生成折让单":"Save Credit Note"}</button>`,
-    transfer:`<h3>🔁 ${LANG==="zh"?"跨店调拨":"Transfer"} <span class="x" onclick="closeM()">×</span></h3>
-      <div class="fr"><label>${LANG==="zh"?"品项":"Item"}</label><select id="tr_item">${itemOpts()}</select></div>
-      <div class="fg2"><div class="fr"><label>${LANG==="zh"?"数量":"Qty"}</label><input id="tr_qty" type="number"></div>
-      <div class="fr"><label>${LANG==="zh"?"调往":"To"}</label><select id="tr_to">${outletOpts()}</select></div></div>
-      <div class="fr"><label>${LANG==="zh"?"日期":"Date"}</label><input id="tr_date" type="date" value="${TODAY}"></div>
-      <button class="btn block" style="background:var(--ink)" onclick="saveTransfer()">${LANG==="zh"?"确认调拨":"Confirm"}</button>`,
     waste:`<h3>🗑 ${LANG==="zh"?"报废损耗":"Wastage"} <span class="x" onclick="closeM()">×</span></h3>
       <div class="fr"><label>${LANG==="zh"?"品项":"Item"}</label><select id="w_item">${itemOpts()}</select></div>
       <div class="fg2"><div class="fr"><label>${LANG==="zh"?"数量":"Qty"}</label><input id="w_qty" type="number"></div>
@@ -3233,7 +3404,7 @@ function prefill(type,id){
 }
 function setV(id,val){const el=document.getElementById(id);if(el)el.value=val;}
 function setTitle(txt){const h=document.querySelector('#mbox h3');if(h)h.childNodes[0].textContent=txt+" ";}
-function closeM(){document.getElementById('mbg').classList.remove('show');_orderEditing=false;if(_updPending&&typeof tryShowForcedUpdate==='function')tryShowForcedUpdate();}
+function closeM(){_xferInboxOpen=false;document.getElementById('mbg').classList.remove('show');_orderEditing=false;if(_updPending&&typeof tryShowForcedUpdate==='function')tryShowForcedUpdate();}
 document.getElementById('mbg').addEventListener('click',e=>{if(e.target.id==='mbg')closeM();});
 document.addEventListener('keydown',e=>{if(e.key==='Escape'){const mbg=document.getElementById('mbg');if(mbg&&mbg.classList.contains('show'))closeM();}});
 function poHint(){const s=document.getElementById('p_item');if(!s)return;const it=findItem(s.value);document.getElementById('poHint').innerHTML=it?`1 ${it.buyUnit} = ${it.conv} ${it.unit} · ${LANG==="zh"?"现价":"now"} ${money(it.cost)}/${it.unit}`:'';}
@@ -3270,20 +3441,6 @@ async function saveGRN(){
   const p=d().payables.find(p=>p.status!=="已付");if(p)p.amt=Math.max(0,p.amt-amt);
   auditLog("退货/补货",`${name} -${qty} (${reason})`,"",money(amt));
   await save();closeM();render();
-}
-async function saveTransfer(){
-  const s=document.getElementById('tr_item'),name=s.value,unit=s.selectedOptions[0].dataset.unit,cost=+s.selectedOptions[0].dataset.cost;
-  const qty=+document.getElementById('tr_qty').value||0,toId=document.getElementById('tr_to').value,date=document.getElementById('tr_date').value;
-  const it=findItem(name);
-  // 先发调拨单（对方登录/刷新时自己入库）；发不出去就整个中止、库存不动
-  const rec={id:Date.now()+'-'+Math.random().toString(36).slice(2,6),date,item:name,qty,unit,cost,cat:it?it.cat:'其他',buyUnit:it?it.buyUnit:'unit',conv:it?it.conv:1,yield:it?it.yield:100,from:curOutlet,fromName:nm(outletObj(curOutlet))};
-  try{await xferPush(curOutlet,toId,rec);}catch(e){alert(LANG==="zh"?"调拨单发送失败（网络或权限问题），库存没有变动，请稍后再试。":"Transfer failed to send. Stock unchanged.");return;}
-  if(it)it.qty=Math.max(0,it.qty-qty);
-  d().moves.unshift({date,type:'transfer',item:name,qty,unit,amt:qty*cost,note:"→"+nm(outletObj(toId))});
-  auditLog("跨店调拨",`${name} ${qty}${unit} →${nm(outletObj(toId))}`,"","");
-  await save();
-  if(DB[toId]&&canWriteOutlet(toId)){try{if(await applyIncoming(toId))await save(toId);}catch(e){}} // 老板/人事经理等能写对方时，当场入库
-  closeM();render();
 }
 async function saveWaste(){
   const s=document.getElementById('w_item'),name=s.value,unit=s.selectedOptions[0].dataset.unit,cost=+s.selectedOptions[0].dataset.cost;
@@ -3838,15 +3995,16 @@ function pgTransfer(){
   const items=allItems.filter(r=>(r.date||'').slice(0,7)===cur).sort((a,b)=>(b.date||'').localeCompare(a.date||''));
   const back=`<button class="btn ghost sm" onclick="nav('proc')">← ${LANG==="zh"?"进销存作业":"Operations"}</button>`;
   return `<div class="fb"><h2 class="h" style="margin:0;">🔁 ${LANG==="zh"?"跨店调拨":"Inter-Branch Transfer"} <span class="tag">v${BUILD}</span></h2>${back}</div>
-  <div class="hint">${LANG==="zh"?"按月分开。记录物品被借走/直接调拨（标注归还或直接Transfer），以及人力资源借调其他店面。":"By month. Item transfers (return/direct) and staff loans."}</div>
+  <div class="hint">${LANG==="zh"?"发起调拨/借调要先送出申请，对方店批准后，双方记录和库存才会变动；对方没处理显示「待批准」，拒绝则显示「被拒绝」。":"Requests need the other branch's approval before records and stock change."}</div>
+  ${xferActive()?`<div class="fb"><h2 class="h" style="margin:0;">📨 ${LANG==="zh"?"调拨申请":"Requests"}</h2></div>${xferCardHtml()}`:''}
   ${logMonthTabs(months,cur,'setTransferMonth')}
-  <div class="fb"><h2 class="h" style="margin:0;">📦 ${LANG==="zh"?"物品调拨":"Item Transfer"}</h2>${writable?`<button class="btn gold sm" onclick="formTransferItem()">+ ${LANG==="zh"?"物品":"Item"}</button>`:''}</div>
+  <div class="fb"><h2 class="h" style="margin:0;">📦 ${LANG==="zh"?"物品调拨":"Item Transfer"}</h2>${writable?`<button class="btn gold sm" onclick="formXferNew('item')">+ ${LANG==="zh"?"物品申请":"Item request"}</button>`:''}</div>
   <div class="card tbl"><table><thead><tr><th>${LANG==="zh"?"日期":"Date"}</th><th>${LANG==="zh"?"品名":"Item"}</th><th>Code</th><th>${LANG==="zh"?"数量":"Qty"}</th><th>${LANG==="zh"?"去向":"To"}</th><th>${LANG==="zh"?"方式":"Mode"}</th><th>${LANG==="zh"?"金额":"Amt"}</th><th>${LANG==="zh"?"备注":"Note"}</th>${writable?'<th></th>':''}</tr></thead><tbody>
-  ${items.map(r=>{const gi=allItems.indexOf(r);return `<tr><td class="mini">${(r.date||'').slice(5)}</td><td>${r.item}</td><td class="mini">${r.code||'—'}</td><td>${num(r.qty)} ${r.unit||''}</td><td>${r.to}</td><td><span class="pill ${modePill(r.mode)}">${modeTxt(r.mode)}</span></td><td>${money(r.amt)}</td><td class="mini">${r.note||''}</td>${writable?`<td style="white-space:nowrap;"><button class="ib" onclick="formTransferItem(${gi})">✏️</button> <button class="ib" onclick="delTransfer(${gi})">🗑️</button></td>`:''}</tr>`;}).join('')||`<tr><td colspan="9" class="empty">${LANG==="zh"?"本月暂无调拨":"None"}</td></tr>`}
+  ${items.map(r=>{const gi=allItems.indexOf(r);return `<tr><td class="mini">${(r.date||'').slice(5)}</td><td>${oEsc(r.item)}</td><td class="mini">${oEsc(r.code)||'—'}</td><td>${num(r.qty)} ${oEsc(r.unit)}</td><td>${r.dir==='in'?'← ':(r.dir==='out'?'→ ':'')}${oEsc(r.to)}</td><td><span class="pill ${modePill(r.mode)}">${modeTxt(r.mode)}</span>${r.reqId?` <span class="pill p-g">✅ ${LANG==="zh"?"已批准":"Approved"}</span>`:''}</td><td>${money(r.amt)}</td><td class="mini">${oEsc(r.note)}</td>${writable?`<td style="white-space:nowrap;">${r.reqId?'':`<button class="ib" onclick="formTransferItem(${gi})">✏️</button> <button class="ib" onclick="delTransfer(${gi})">🗑️</button>`}</td>`:''}</tr>`;}).join('')||`<tr><td colspan="9" class="empty">${LANG==="zh"?"本月暂无调拨":"None"}</td></tr>`}
   </tbody></table></div>
-  <div class="fb" style="margin-top:16px;"><h2 class="h" style="margin:0;">🧑‍🍳 ${LANG==="zh"?"人力资源借调":"Staff Loan"}</h2>${writable?`<button class="btn gold sm" onclick="formStaffLoan()">+ ${LANG==="zh"?"借调":"Loan"}</button>`:''}</div>
+  <div class="fb" style="margin-top:16px;"><h2 class="h" style="margin:0;">🧑‍🍳 ${LANG==="zh"?"人力资源借调":"Staff Loan"}</h2>${writable?`<button class="btn gold sm" onclick="formXferNew('staff')">+ ${LANG==="zh"?"借调申请":"Staff request"}</button>`:''}</div>
   <div class="card tbl"><table><thead><tr><th>${LANG==="zh"?"日期":"Date"}</th><th>${LANG==="zh"?"员工":"Staff"}</th><th>${LANG==="zh"?"职位":"Role"}</th><th>${LANG==="zh"?"支援店面":"To Branch"}</th><th>${LANG==="zh"?"方式":"Mode"}</th><th>${LANG==="zh"?"备注":"Note"}</th>${writable?'<th></th>':''}</tr></thead><tbody>
-  ${loans.map((r,i)=>`<tr><td class="mini">${r.date.slice(5)}</td><td><b>${r.staff}</b></td><td class="mini">${r.role||'—'}</td><td>${r.to}</td><td><span class="pill ${modePill(r.mode)}">${modeTxt(r.mode)}</span></td><td class="mini">${r.note||''}</td>${writable?`<td style="white-space:nowrap;"><button class="ib" onclick="formStaffLoan(${i})">✏️</button> <button class="ib" onclick="delStaffLoan(${i})">🗑️</button></td>`:''}</tr>`).join('')||`<tr><td colspan="7" class="empty">${LANG==="zh"?"暂无借调":"None"}</td></tr>`}
+  ${loans.map((r,i)=>`<tr><td class="mini">${oEsc((r.date||'').slice(5))}</td><td><b>${oEsc(r.staff)}</b></td><td class="mini">${oEsc(r.role)||'—'}</td><td>${r.dir==='in'?'← ':(r.dir==='out'?'→ ':'')}${oEsc(r.to)}</td><td><span class="pill ${modePill(r.mode)}">${modeTxt(r.mode)}</span>${r.reqId?` <span class="pill p-g">✅ ${LANG==="zh"?"已批准":"Approved"}</span>`:''}</td><td class="mini">${oEsc(r.note)}</td>${writable?`<td style="white-space:nowrap;">${r.reqId?'':`<button class="ib" onclick="formStaffLoan(${i})">✏️</button> <button class="ib" onclick="delStaffLoan(${i})">🗑️</button>`}</td>`:''}</tr>`).join('')||`<tr><td colspan="7" class="empty">${LANG==="zh"?"暂无借调":"None"}</td></tr>`}
   </tbody></table></div>`;
 }
 function formTransferItem(editIdx){
@@ -4589,7 +4747,7 @@ async function afterAuth(user){
   document.querySelector('.top').style.display='';
   const sb=document.getElementById('sidebar');if(sb)sb.style.display='';
   curPage=firstAllowedPage();render();
-  try{startOrderPoll();notifyNewOrders(true);enablePushSub();}catch(e){}
+  try{startOrderPoll();notifyNewOrders(true);enablePushSub();startXferPoll();updateXferBell();}catch(e){}
   markActivity(); // 登录当下重新起算闲置时间，避免登入前累积的闲置时间被算进去
 }
 async function authLogout(idleReason){if(typeof dismissIdleWarn==='function')dismissIdleWarn();try{if(AUTH())await _sb.auth.signOut();}catch(e){}curUser=null;clearSession();showAuthLogin(idleReason?`<b>${LANG==="zh"?"⏱️ 长时间未操作，已自动登出，请重新登录。":"Logged out due to inactivity. Please sign in again."}</b>`:undefined);}

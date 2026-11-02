@@ -17,12 +17,13 @@
 
 ### 这是什么
 - 单文件 HTML ERP（`index.html` 约 4600 行，**没有构建步骤**）+ `sw.js`（Service Worker，PWA）+ `order-data.js`（中央厨房订货数据，含图片）+ `manifest.webmanifest` + 图标 + `supabase-schema.sql` / `security-hardening.sql` / `push-schema.sql` + `supabase/functions/send-order-push`（手机推送）。
-- **当前版本：`BUILD="1102mk69"`**（`index.html` 约 668 行），`sw.js` 的 `SW_VERSION` 要**同步改成一样**（每次改动两处一起 +1，右上角版本角标和强制更新弹窗靠它）。版本号格式 `MMDDmkNN`（mk = 明记）。最后一次提交 2026-09-30。
+- **当前版本：`BUILD="1102mk70"`**（`index.html` 约 668 行），`sw.js` 的 `SW_VERSION` 要**同步改成一样**（每次改动两处一起 +1，右上角版本角标和强制更新弹窗靠它）。版本号格式 `MMDDmkNN`（mk = 明记）。最后一次提交 2026-09-30。
 - 部署：GitHub Pages，**直接推 `main` 就上线**（不开分支、不开 PR），网址 `https://mengkeesystem.github.io/ERP-testing-1.0/`。业主要求跟牛室一样：改完测完直接推。
 - 后端 Supabase 项目网址 `https://kmcdokwiyetlmsrdlgqw.supabase.co`；`SUPABASE_ANON_KEY` 是 publishable key（前端公开的，没问题）。**私钥类（service_role、VAPID 私钥）绝对不写进代码/文档**，只放 Supabase Secrets。
 - 数据存哪：登录后用 Supabase（`Store.get/set` → `erp_store` 表，key 是 `erpv2:<分店id>`、`erpv2:roleperms`、`erpv2:orders`）；没登录（演示模式）用浏览器本机。代码改了**不会动到数据**（数据在 Supabase，不在 `index.html` 里）。
 - **薪资数据单独存放（BUILD 1102mk69 起）**：底薪/津贴/加班/EPF/SOCSO/EIS/人头税/银行资料（`PAY_FIELDS`）+ 薪资发放记录（`payrollRuns`/`payrollCfg`/`payrunMonths`，`PAY_TOP`）不再放在分店整包 `erpv2:<店>`，改存 `erpv2:payroll:<店>`（迁移前的备份在 `erpv2:payroll:bak:<店>`）。数据库规则见 `store-lock.sql`（也已并入 `security-hardening.sql` 第 4 部分）：**owner/hrmgr 读写全部，outletmgr 只读本店，其余角色（含 area）读不到也写不进**。网页载入时（`attachPayroll`）把薪资合并回内存的 `staff[]`/`payrollRuns`，所以薪资页面的算法没改；存档时（`save`）再拆开，并由有权限的人算出一份只含总数的 `labourSum` 放在分店整包里，**区域副经理的「薪资总数」就读这份**。老数据由老板/人事经理第一次登录时自动迁移（先备份、确认云端写成功才剥离）。⚠️ 读取薪资失败（断网等）时 `PAY_LOADED` 不会设置：薪资页显示「没有载入」，绝不会把空数据写回去；`autoSyncLabour` 也因此不会把人工成本写成 0。⚠️ 员工自助「我的薪资单」目前暂停（员工读不到薪资，页面提示向人事索取 Payslip；原本也还没人填登入邮箱）。区域副经理在员工档案里改不到薪资/银行栏位（弹窗会隐藏）。
-- **分店隔离（BUILD 1102mk69 起）**：数据库按角色限制能碰的 key——本店角色（店面经理/店长/厨师长/员工）只能读写自己那间的 `erpv2:<店>`；中央经理/员工只能碰 `erpv2:ck`；区域副经理 = `b1~b11`（不含 ck）；老板/人事经理 = 全部。网页用 `canWriteOutlet()`/`myOutlets()` 照同样规则**只载入自己能碰的分店**（读不到的绝不能当空数据去 seed）。`loadDB` 开头会 `clearSession()`（换人登录/退出时清空内存和本机缓存的薪资、调拨单，别让上一位的数据留在同一台手机）。因此原本「跨店写别人整包」的两处改了：① **订货表 `orderList` 搬到共用 key `erpv2:ckorder`**（`CKO`/`loadCkOrder`/`saveCkOrder`；所有白名单账号可读写；原因：店长/厨师长要填订货数量，以前是直接存进中央厨房整包，会连库存一起被旧数据覆盖）；读取失败时 `CKO_FAILED` 会禁止写入。② **跨店调拨改成调拨单**：发出方只写自己的 `erpv2:xfer:<发出>:<收到>`（`xferPush`，发不出去就整个中止、库存不动），收到方登录/刷新时 `applyIncoming` 自己入库（用 `xferApplied` 记已入库的单号，不会重复）；老板/人事经理能写对方，当场入库。`erpv2:orders`、`erpv2:roleperms` 规则见 `store-lock.sql` 文件头。⚠️ **账号的「分店」栏位（`erp_users.outlet`）不能是空的/不对**：本店角色靠它决定能读哪间店，空的会被整个锁在外面。
+- **分店隔离（BUILD 1102mk69 起）**：数据库按角色限制能碰的 key——本店角色（店面经理/店长/厨师长/员工）只能读写自己那间的 `erpv2:<店>`；中央经理/员工只能碰 `erpv2:ck`；区域副经理 = `b1~b11`（不含 ck）；老板/人事经理 = 全部。网页用 `canWriteOutlet()`/`myOutlets()` 照同样规则**只载入自己能碰的分店**（读不到的绝不能当空数据去 seed）。`loadDB` 开头会 `clearSession()`（换人登录/退出时清空内存和本机缓存的薪资、调拨单，别让上一位的数据留在同一台手机）。因此原本「跨店写别人整包」的两处改了：① **订货表 `orderList` 搬到共用 key `erpv2:ckorder`**（`CKO`/`loadCkOrder`/`saveCkOrder`；所有白名单账号可读写；原因：店长/厨师长要填订货数量，以前是直接存进中央厨房整包，会连库存一起被旧数据覆盖）；读取失败时 `CKO_FAILED` 会禁止写入。② **跨店调拨改成「申请 → 对方批准」**（见下一条）。`erpv2:orders`、`erpv2:roleperms` 规则见 `store-lock.sql` 文件头。⚠️ **账号的「分店」栏位（`erp_users.outlet`）不能是空的/不对**：本店角色靠它决定能读哪间店，空的会被整个锁在外面。
+- **跨店调拨申请（BUILD 1102mk70 起）**：「跨店调拨」页（`pgTransfer`）原本只是在自己店里记流水账（`d().transfers` 物品 / `d().staffLoans` 人力），对方店完全不知情。现在 `+物品申请`/`+借调申请`（`formXferNew`→`submitXferReq`）会送出一张申请，存成独立记录 `erpv2:req:<发起店>:<被申请店>:<编号>`（`XREQ`）：状态 `pending`（双方都显示「待批准 Pending」）→ 被申请店 `decideXreq` 批准/拒绝（拒绝可填原因，显示「被拒绝」）。**批准后**双方各自在 `applyApprovedFor(oid)` 把自己这一半记进整包：物品调出方 `invReduce`、调入方 `invReceive`，并各写一条 `transfers`/`staffLoans` 记录（带 `dir:'out'|'in'` 和 `reqId`，页面显示「→ / ←」+「✅已批准」，带 `reqId` 的行不能改不能删）；用 `xferApplied` 防重复；人力借调只记录，不移动员工档案。方向可选「向对方调入」或「调出给对方」。通知：顶栏 🔁 铃铛（`#xferBellBtn`，红点=待我批准的张数）、App 开着每 30 秒轮询（`startXferPoll`/`xferSync`）+ 登录时提示 + 响铃弹窗 + 申请结果（批准/拒绝）通知发起店；手机后台推送走 `sendXferPush`→`send-order-push`（带 `outlet`，只发给那间店的 outletmgr/manager/headchef/ckmgr 已「开启通知」的设备）——**Edge Function 要重新部署才会按店发送**（新版也让「新订单」推送只发给 owner/hrmgr/area）。谁能批准：`XFER_APPROVE_ROLES`（owner/hrmgr/area/outletmgr/manager/headchef/ckmgr），必须切到「被申请店」才能批准（`xferCanApprove`）；发起店可撤回 pending、移除 rejected（`withdrawXreq`）。数据库触发器 `erp_req_guard`（`store-lock.sql`）强制：新申请只能是 pending、只有被申请店（或 owner/hrmgr/area）能批准/拒绝、批准/拒绝后不能再改、只有发起店能删。⚠️ 旧的 `saveTransfer`/`erpv2:xfer:*` 调拨单机制（mk69）没人用，已删除。
 - 公司：明记有 11 间分店 + 中央厨房（`OUTLETS`：`ck`、`b1`~`b11`，b1 OKR、b2 PAPA、b3 PJ、b4 Cheras、b5 Kajang、b6 Puchong、b7 Subang、b8 Klang、b9 Bukit Rimau、b10 Setia Alam、b11 Seremban 2）。⚠️ **ERP 的 b2「PAPA店」和官网的「OKR (Scott Garden 对面)」、b3「PJ店」和官网的「Kelana Jaya (PJ)」应该是同一间店，但名字/顺序不一样**（官网分店序号是官网自己 `config.js` 的顺序，跟 ERP 的 `b1…b11` 没有对应关系）；以后要把官网订单接进 ERP 时要先问业主确认对照表。`OUTLETS` 里的经纬度是示意值，打卡 GPS 围栏用，不是精确位置。
 
 ### 怎么跟业主合作（很重要）
@@ -35,7 +36,7 @@
 ### ⚠️ 这个仓库有「两个会话同时在推 main」
 **牛室那边的 Claude 会话也有权限直接推这个仓库的 `main`**（功能经常同步），不会提前打招呼：`git log` 可能看到不是你推的 commit；不先 `git fetch` 比对就推，可能用旧的 BUILD 号覆盖/冲突。
 1. 每次改 `index.html`/`sw.js` 前先 `git fetch origin main`，远端比本地新就先看远端改了什么（尤其 `BUILD`/`SW_VERSION`）再合并，不要盲目覆盖。
-2. `BUILD` 和 `SW_VERSION` 必须**同步手动升级**（格式 `MMDDmkNN`，例如 `1102mk69`），推送前确认两边一致、且比远端当前值大。
+2. `BUILD` 和 `SW_VERSION` 必须**同步手动升级**（格式 `MMDDmkNN`，例如 `1102mk70`），推送前确认两边一致、且比远端当前值大。
 3. 如果被分配了任务分支，要知道 GitHub Pages 只认 `main`；历史上本项目一直是直接 `git push origin main`，没有走 PR，没出过问题。新会话如被分配不同分支，先跟业主确认部署策略。
 4. 看到自己没做过的 commit，大概率是牛室会话推的（例如提示音），先 `git log` 看内容，别当成 bug。
 
@@ -53,7 +54,7 @@ node -e "const fs=require('fs');const html=fs.readFileSync('index.html','utf8');
 3. `push-schema.sql`：`erp_push_subs`（手机推送订阅）——**业主已跑过**（一开始没建表导致「开启通知」一直失败）。`PUSH_SETUP_MENGKEE.md` 是推送设定步骤；Edge Function `send-order-push` **业主已在 Supabase 网页控制台手动部署**（Secrets 先设 `VAPID_PUBLIC`/`VAPID_PRIVATE`/`VAPID_SUBJECT`，再贴代码，并**关掉「Verify JWT」**——没部署/没关就是浏览器 F12 CORS 报错的根因，不是代码问题，也不影响下单）。
 4. `STORAGE_SETUP_MENGKEE.md`：付款收据储存桶 `receipts`（私人，白名单可读写）。
 5. Supabase 后台手动：Authentication → Providers → Email → **打开「Confirm email」**（SQL 做不到）。
-6. **`store-lock.sql`（BUILD 1102mk69 起要跑；取代之前的 `payroll-lock.sql`，已删除）**：按角色/分店给 `erp_store` 每个 key 上锁（函数 `erp_key_ok` + 策略 `erp_store key-locked`）。跑之前：先让老板/人事经理用新版登录一次（自动把订货表搬出中央厨房整包），再跑文件里「跑之前先检查」那条查询（应为 0 行）。可重复运行，文件末尾有还原语句。
+6. **`store-lock.sql`（BUILD 1102mk69 起要跑；取代之前的 `payroll-lock.sql`，已删除）**：按角色/分店给 `erp_store` 每个 key 上锁（函数 `erp_key_ok` + 策略 `erp_store key-locked`）。跑之前：先让老板/人事经理用新版登录一次（自动把订货表搬出中央厨房整包），再跑文件里「跑之前先检查」那条查询（应为 0 行）。可重复运行，文件末尾有还原语句。**mk70 起它还包含调拨申请的触发器 `erp_req_guard`，所以升级到 mk70 后要再跑一次。**
 - 邀请码机制（2026-11-02 BUILD 1102mk69 起改版）：**码不再写在网页/仓库里**，存在 Supabase 私有表 `erp_invite_codes`（`code`/`role`/`outlet`，开 RLS 且无策略，网页读不到整张表）。网页注册时调用 `rpc('invite_info')`（`inviteLookup()`）查 {role,outlet}；数据库的 `erp_users` 插入策略用 `invite_role()`/`invite_outlet()`（`security-hardening.sql` 第 1 部分，security definer）核对。**换码 = 在 SQL Editor 对 `erp_invite_codes` 做 delete + insert，不用改代码、不用推送**。每个码是 10 位随机字符，一码一用途：区域副经理/中央经理/中央员工各 1 个，11 间分店各 4 个（店面经理 `outletmgr`/店长 `manager`/厨师长 `headchef`/员工 `staff`）。**码本身绝不写进仓库/文档**，完整清单由业主自己保管（需要时可重新生成一批并给业主 SQL）。`NO_CODE_EMAIL`（`index.html` 约 640 行）= 业主本人的救援邮箱，注册免邀请码、直接给老板角色；`security-hardening.sql` 里也有同样的邮箱，两边要对得上。
 - 登录：邮箱+密码（Supabase Auth）；已有「忘记密码」（寄重设链接 → `PASSWORD_RECOVERY` → 设新密码页 → 改完回登录页）；Supabase 后台 Authentication → URL Configuration 的 Redirect URLs 要包含 ERP 的网址。
 
@@ -74,7 +75,7 @@ node -e "const fs=require('fs');const html=fs.readFileSync('index.html','utf8');
 - **`currentEmpId()`**（2026-09-30 已修，别再写死）：按登录邮箱去员工档案 `staff[].email` 找人；找不到回 `null`（员工自助看不到资料，不会看错人）。员工第一次用自助功能前，人事要先在员工档案填好他的登录邮箱（已加「同一邮箱不能绑第二位员工」的拦截）。
 
 ### 页面（侧栏 `MENU`）和功能
-- **营运**：利润大盘 `dash`、销售(POS) `sales`、采购进销 `proc`（作业中心：订货单/进货单/退货补货/报废损耗/招待赠送/跨店调拨/运营开销记录…，**六项都按月份分开**）、订单发票 `orderinv`、中央厨房 `ck`（含订货表，用含图片版）。
+- **营运**（⚠️ 采购进销里的「跨店调拨」现在是申请制，见上）：利润大盘 `dash`、销售(POS) `sales`、采购进销 `proc`（作业中心：订货单/进货单/退货补货/报废损耗/招待赠送/跨店调拨/运营开销记录…，**六项都按月份分开**）、订单发票 `orderinv`、中央厨房 `ck`（含订货表，用含图片版）。
 - **库存**：库存 `inv`、配方成本 `bom`（BOM；`DISH_CATALOG` 内置菜品成本表）、**盘点 `stock`（明记主用，配合 BOM 抓理论 vs 实盘盘差）**、月末盘点 `monthend`、运营开销录入 `opexm`。
 - **财务**：应付账款 `ap`（逐项✔/✗核对订单 + 开票收付 + 对账）、运营开销 `opex`、月度核算 `monthly`、报表 `report`。
 - **人事**：员工档案 `hr`、考勤 `attend`（GPS 打卡）、排班 `schedule`、请假 `leave`、人事薪资 `payroll`、薪资发放 `payrun`（马来西亚法定公式 EPF/SOCSO/EIS/SL24J/PCB + OT + 公共假期津贴；Payslip；已有 CP39 / Borang A / 8A / 银行代发文件 / EA 表导出）。
