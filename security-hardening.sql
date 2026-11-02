@@ -159,7 +159,7 @@ create policy "erp_users delete admin only"
 -- ========== 第 4 部分：erp_store 业务数据 —— 白名单以外的人一律不能碰 ==========
 drop policy if exists "erp_store authed full access" on public.erp_store;
 drop policy if exists "erp_store authed access" on public.erp_store;
--- 薪资 key(erpv2:payroll:*) 额外上锁，规则见 payroll-lock.sql；其余 key 仍是「白名单内的人」
+-- 按 key 的角色/分店规则见 store-lock.sql（这里是同一份，单独跑 store-lock.sql 也行）
 create or replace function public.erp_key_ok(k text, writing boolean)
 returns boolean
 language plpgsql
@@ -167,25 +167,50 @@ security definer set search_path = public
 stable
 as $$
 declare
-  r text;
-  o text;
+  r   text;
+  o   text;
+  eo  text;   -- 这个人「所属的店」(中央角色固定是 ck)
+  src text;
+  dst text;
 begin
-  if k is null or k not like 'erpv2:payroll:%' then
-    return true;                       -- 不是薪资 key：沿用原本的规则
-  end if;
+  if k is null then return false; end if;
   select u.role, u.outlet into r, o
     from public.erp_users u
    where u.email = public.my_email() and u.active = true;
   if r is null then return false; end if;
   if r in ('owner','hrmgr') then return true; end if;
-  if writing then return false; end if;
-  return r = 'outletmgr' and k = 'erpv2:payroll:' || o;   -- 备份 key(erpv2:payroll:bak:…)不会等于这个，所以店面经理读不到
+  eo := case when r in ('ckmgr','ckstaff') then 'ck' else o end;
+
+  if k like 'erpv2:payroll:%' then
+    if writing then return false; end if;
+    return r = 'outletmgr' and k = 'erpv2:payroll:' || o;   -- 备份 key(erpv2:payroll:bak:…)不会等于这个
+  end if;
+
+  if k in ('erpv2:orders','erpv2:ckorder') then return true; end if;
+
+  if k = 'erpv2:roleperms' then return (not writing) or r = 'area'; end if;
+
+  if k ~ '^erpv2:(b([1-9]|1[01])|ck)$' then
+    if r = 'area' then return k <> 'erpv2:ck'; end if;
+    return eo is not null and k = 'erpv2:' || eo;
+  end if;
+
+  if k ~ '^erpv2:xfer:[a-z0-9]+:[a-z0-9]+$' then
+    if r = 'area' then return true; end if;
+    src := split_part(k, ':', 3);
+    dst := split_part(k, ':', 4);
+    if writing then return eo is not null and src = eo; end if;
+    return eo is not null and (src = eo or dst = eo);
+  end if;
+
+  return false;
 end;
 $$;
 
 drop policy if exists "erp_store whitelisted only" on public.erp_store;
 drop policy if exists "erp_store whitelisted payroll-locked" on public.erp_store;
-create policy "erp_store whitelisted payroll-locked"
+drop policy if exists "erp_store key-locked" on public.erp_store;
+create policy "erp_store key-locked"
   on public.erp_store for all
   to authenticated
   using (public.is_whitelisted() and public.erp_key_ok(key, false))

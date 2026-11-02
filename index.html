@@ -656,7 +656,7 @@ function statusOf(d){if(d<=14)return{t:"健康",e:"Fresh",c:"p-g"};if(d<=30)retu
 function stTxt(s){return LANG==="zh"?s.t:s.e;}
 
 /* ================= 数据种子 ================= */
-const BUILD="1102mk68";  // 版本标记：页面右上/网格提示可见，用来确认已载入最新版
+const BUILD="1102mk69";  // 版本标记：页面右上/网格提示可见，用来确认已载入最新版
 const SEED_VERSION="bh-master-2026-09-1";  // 版本变更→下次载入自动重置为最新主数据（仅本店云端）
 function seed(outletId){
   const isCK = outletId==="ck";
@@ -835,7 +835,7 @@ function ensureCatalogSeed(data,oid){
 }
 /* ===== 薪资数据拆分存放（BUILD 1102mk68）=====
    底薪/津贴/加班/EPF/SOCSO/EIS/人头税/银行资料（PAY_FIELDS）+ 薪资发放记录（PAY_TOP）不再放在分店整包 erpv2:<店> 里，
-   改存 erpv2:payroll:<店>。数据库 RLS（payroll-lock.sql）只让 老板/人事经理 读写，店面经理只读本店，其余角色（含区域副经理）读不到。
+   改存 erpv2:payroll:<店>。数据库 RLS（store-lock.sql）只让 老板/人事经理 读写，店面经理只读本店，其余角色（含区域副经理）读不到。
    内存里仍合并回 staff[]/payrollRuns，所以薪资页面的算法不用动；存档时（save）再拆开。
    区域副经理只看总数 → 分店整包里放一份只有总数的 labourSum（由有权限的人存档时算出）。 */
 const PAY_FIELDS=['basic','allowance','ot','epf','socso','eis','levy','bankName','bankAcc'];
@@ -899,18 +899,96 @@ async function attachPayroll(oid){
   if(payWriter()||!legacy)PAY_STRIP.add(oid);
   return changed;
 }
+/* ===== 分店隔离（BUILD 1102mk69）=====
+   数据库（store-lock.sql）按角色限制能碰哪些 key：本店角色只能读写自己那间的 erpv2:<店>，中央角色只能碰 erpv2:ck，
+   区域副经理 = 全部分店（不含中央厨房），老板/人事经理 = 全部。网页这边照同样的规则只载入自己能碰的分店，
+   读不到的绝不会被当成「空数据」去重新初始化。
+   两处原本会跨店改别人整包的地方改成：
+   ① 订货表(orderList)从中央厨房整包拆到共用 key erpv2:ckorder（所有人可读写）；
+   ② 跨店调拨改成「调拨单」：发出方只写自己的 erpv2:xfer:<发出>:<收到>，收到方登录/刷新时自己入库（xferApplied 防重复）。 */
+const cloudFetch=payFetch, cloudWriteNow=payWriteNow;
+function canWriteOutlet(oid){
+  if(!curUser)return true; // 演示模式（没登录）不限制
+  const r=curUser.role;
+  if(r==='owner'||r==='hrmgr')return true;
+  if(r==='area')return oid!=='ck';
+  if(r==='ckmgr'||r==='ckstaff')return oid==='ck';
+  return oid===curUser.outlet;
+}
+function myOutlets(){return OUTLETS.filter(o=>canWriteOutlet(o.id));}
+let CKO={}, CKO_FAILED=false;   // 订货表：{orderList}
+async function loadCkOrder(){   // 回传 true = 中央厨房整包要重新存一次（旧订货表已搬走）
+  CKO_FAILED=false;
+  const f=await cloudFetch('erpv2:ckorder');
+  if(!f.ok){CKO_FAILED=true;CKO={};return false;}   // 读取失败：只显示、不允许写，免得覆盖真正的订货表
+  if(f.val&&f.val.orderList){
+    CKO={orderList:f.val.orderList};
+    if(DB.ck&&DB.ck.orderList&&canWriteOutlet('ck')){delete DB.ck.orderList;return true;} // 旧版又写回中央厨房整包：再清掉
+    return false;
+  }
+  let leg=DB.ck&&DB.ck.orderList;                    // 还没迁移：先借用中央厨房整包里的旧订货表
+  if(!leg){try{const r=await Store.get('erpv2:ck');if(r){const o=JSON.parse(r.value);leg=o&&o.orderList;}}catch(e){}}
+  CKO=leg?{orderList:leg}:{};
+  if(leg&&DB.ck&&canWriteOutlet('ck')){              // 迁移：确认云端写成功才从中央厨房整包剥离
+    if(await cloudWriteNow('erpv2:ckorder',{v:1,orderList:leg,at:new Date().toISOString()})){delete DB.ck.orderList;return true;}
+  }
+  return false;
+}
+async function saveCkOrder(){
+  if(CKO_FAILED)return;
+  try{await Store.set('erpv2:ckorder',JSON.stringify({v:1,orderList:CKO.orderList,at:new Date().toISOString()}));}catch(e){}
+}
+async function xferPush(from,to,rec){ // 调拨单：追加到「发出方→收到方」专用 key；失败就抛错（库存不动）
+  const key='erpv2:xfer:'+from+':'+to;
+  const f=await cloudFetch(key);if(!f.ok)throw new Error('xfer read');
+  const arr=(Array.isArray(f.val)?f.val:[]).concat([rec]).slice(-200);
+  if(!(await cloudWriteNow(key,arr)))throw new Error('xfer write');
+}
+async function xferFetchFor(oid){
+  if(CLOUD&&_sb){
+    try{const {data,error}=await _sb.from(CLOUD_TABLE).select('key,value').like('key','erpv2:xfer:%:'+oid);
+      if(error)return [];return (data||[]).map(r=>({key:r.key,arr:Array.isArray(r.value)?r.value:[]}));}catch(e){return [];}
+  }
+  const out=[];try{for(let i=0;i<localStorage.length;i++){const k=localStorage.key(i);if(k&&k.indexOf('erpv2:xfer:')===0&&k.slice(-(oid.length+1))===':'+oid){const v=JSON.parse(localStorage.getItem(k));out.push({key:k,arr:Array.isArray(v)?v:[]});}}}catch(e){}
+  return out;
+}
+async function applyIncoming(oid){ // 把别店发来、还没入库的调拨单入库；回传 true = 这间店的整包要重新存
+  const db=DB[oid];if(!db||!canWriteOutlet(oid))return false;
+  const rows=await xferFetchFor(oid);if(!rows.length)return false;
+  const done=new Set(db.xferApplied||[]);const todo=[];
+  rows.forEach(r=>r.arr.forEach(x=>{if(x&&x.id&&!done.has(x.id))todo.push(x);}));
+  if(!todo.length)return false;
+  todo.sort((a,b)=>String(a.id)<String(b.id)?-1:1);
+  db.items=db.items||[];db.moves=db.moves||[];
+  todo.forEach((r,i)=>{
+    const di=db.items.find(x=>x.name===r.item);
+    if(di)di.qty+=r.qty;else db.items.push({id:Date.now()+i,name:r.item,cat:r.cat||'其他',unit:r.unit,buyUnit:r.buyUnit||'unit',conv:r.conv||1,qty:r.qty,cost:r.cost,par:0,yield:r.yield||100,batches:[{qty:r.qty,exp:"2027-01-01",in:r.date}]});
+    db.moves.unshift({date:r.date,type:'in',item:r.item,qty:r.qty,unit:r.unit,amt:r.qty*r.cost,note:(LANG==="zh"?"调入":"Transfer in")+(r.fromName?" ← "+r.fromName:"")});
+    done.add(r.id);
+  });
+  db.xferApplied=[...done].slice(-1000);
+  return true;
+}
+function clearSession(){ // 换人登录/退出时：内存里和本机缓存里不留上一位的数据（尤其薪资）
+  try{DB={};PAY_LOADED.clear();PAY_STRIP.clear();CKO={};CKO_FAILED=false;_aggCache=null;}catch(e){}
+  try{if(CLOUD){Object.keys(localStorage).filter(k=>k.indexOf('erpv2:payroll:')===0||k.indexOf('erpv2:xfer:')===0).forEach(k=>localStorage.removeItem(k));}}catch(e){}
+}
 async function loadDB(){
+  clearSession();
   try{if(typeof loadOrders==='function')await loadOrders();}catch(e){}
-  const dirty=new Set();
-  for(const o of OUTLETS){
+  const dirty=new Set();const mine=myOutlets();   // 只载入自己能碰的分店
+  for(const o of mine){
     let data=null;
     try{const r=await Store.get('erpv2:'+o.id);data=r?JSON.parse(r.value):null;}catch(e){data=null;}
     if(!data || data._sv!==SEED_VERSION){ data=seed(o.id); DB[o.id]=data; syncMenuPrices(data); ensureDishCosts(data); ensureCatalogSeed(data,o.id); dirty.add(o.id); }
     else { DB[o.id]=data; let ch=syncMenuPrices(data); if(ensureDishCosts(data))ch=true; if(ensureCatalogSeed(data,o.id))ch=true; if(ch)dirty.add(o.id); }
   }
   // 薪资记录（有权限的角色才会真的去读）：合并回内存；旧数据第一次迁移时顺带重存整包
-  const res=await Promise.all(OUTLETS.map(o=>attachPayroll(o.id).catch(()=>false)));
-  OUTLETS.forEach((o,i)=>{if(res[i])dirty.add(o.id);});
+  const res=await Promise.all(mine.map(o=>attachPayroll(o.id).catch(()=>false)));
+  mine.forEach((o,i)=>{if(res[i])dirty.add(o.id);});
+  try{if(await loadCkOrder())dirty.add('ck');}catch(e){}
+  const inc=await Promise.all(mine.map(o=>applyIncoming(o.id).catch(()=>false)));
+  mine.forEach((o,i)=>{if(inc[i])dirty.add(o.id);});
   for(const id of dirty){try{await save(id);}catch(e){}}
 }
 async function save(oid){
@@ -928,7 +1006,7 @@ async function save(oid){
     await Store.set('erpv2:'+oid,JSON.stringify(main));
   }catch(e){}
 }
-async function reloadOutlet(oid){try{const r=await Store.get('erpv2:'+oid);if(r){DB[oid]=JSON.parse(r.value);if(await attachPayroll(oid))await save(oid);}}catch(e){}}
+async function reloadOutlet(oid){if(!canWriteOutlet(oid))return;try{const r=await Store.get('erpv2:'+oid);if(r){DB[oid]=JSON.parse(r.value);let ch=await attachPayroll(oid);if(await applyIncoming(oid))ch=true;if(ch)await save(oid);}}catch(e){}}
 /* ---- 角色权限：全局配置，持久化到云端/本地，所有分店同步 ---- */
 const ROLE_DEFAULTS=Object.fromEntries(Object.keys(ROLES).map(k=>[k,ROLES[k].can.slice()]));
 async function loadRolePerms(){
@@ -2363,17 +2441,17 @@ function oEsc(s){return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,
 function ckCanOrderDesc(){return ['owner','area','hrmgr'].includes(curRole)&&!isAgg();}
 function ckCanOrderQty(){return ['owner','area','hrmgr','manager','headchef'].includes(curRole)&&!isAgg();}
 function ckCanOrderAccess(){return can('ck')||ckCanOrderQty();}
-function orderStore(){return DB['ck']||d();}
+function orderStore(){return CKO;}
 function orderView(){const s=orderStore();return s.orderList||ORDER_SEED;}
 function orderEdit(){const s=orderStore();if(!s.orderList)s.orderList=JSON.parse(JSON.stringify(ORDER_SEED));return s.orderList;}
 let _ordT=null;
-function orderSave(){if(_ordT)clearTimeout(_ordT);_ordT=setTimeout(()=>{_ordT=null;save('ck');},400);}
+function orderSave(){if(_ordT)clearTimeout(_ordT);_ordT=setTimeout(()=>{_ordT=null;saveCkOrder();},400);}
 function setOrderQty(k,i,v){orderEdit()[k][i].q=v;orderSave();}
 function setOrderDesc(k,i,v){orderEdit()[k][i].d=v;orderSave();}
-async function addOrderItem(k){orderEdit()[k].push({d:'',imgs:[],q:''});await save('ck');render();}
-async function delOrderItem(k,i){const o=orderEdit();const it=o[k][i];if(!confirm(LANG==="zh"?("移除『"+((it.d||it.divider||'').split('\n')[0])+"』？"):"Remove this item?"))return;o[k].splice(i,1);await save('ck');render();}
+async function addOrderItem(k){orderEdit()[k].push({d:'',imgs:[],q:''});await saveCkOrder();render();}
+async function delOrderItem(k,i){const o=orderEdit();const it=o[k][i];if(!confirm(LANG==="zh"?("移除『"+((it.d||it.divider||'').split('\n')[0])+"』？"):"Remove this item?"))return;o[k].splice(i,1);await saveCkOrder();render();}
 function setUniformQty(i,v){orderEdit().uniform[i].q=v;orderSave();}
-async function orderResetSeed(){if(!confirm(LANG==="zh"?"还原为原始订货表？你所有的改动（数量/品项）都会清空。":"Reset to original order list? All edits will be cleared."))return;const s=orderStore();delete s.orderList;await save('ck');render();}
+async function orderResetSeed(){if(!confirm(LANG==="zh"?"还原为原始订货表？你所有的改动（数量/品项）都会清空。":"Reset to original order list? All edits will be cleared."))return;const s=orderStore();delete s.orderList;await saveCkOrder();render();}
 /* 这个分店如果已经存过自己的订货单(填过数量/改过品项)，系统会一直用那份存档，
    不会再看程式码里最新版的 ORDER_SEED——所以后来在 ORDER_SEED 补上的照片，
    这些已经存档过的分店看不到。
@@ -2413,7 +2491,7 @@ async function orderFillImages(){
       if(match){it.d=match.d;it.imgs=match.imgs.slice();n++;}else skip++;
     });
   });
-  await save('ck');render();
+  await saveCkOrder();render();
   alert(zh?`已把 ${n} 个品项统一成原始格式(文字+照片)；${skip} 个品项文字对不上/不够确定，没有帮您改(避免配错)。`:`Synced ${n} items (text+image); ${skip} skipped (uncertain match).`);
 }
 function printOrder(){window.print();}
@@ -2875,7 +2953,7 @@ function permEditorHTML(){
 let auditBranch='all', auditRole='all';
 function setAuditBranch(v){auditBranch=v;render();}
 function setAuditRole(v){auditRole=v;render();}
-async function refreshAudit(){if(CLOUD){try{for(const o of OUTLETS)await reloadOutlet(o.id);}catch(e){}}render();}
+async function refreshAudit(){if(CLOUD){try{for(const o of myOutlets())await reloadOutlet(o.id);}catch(e){}}render();}
 function inferRole(user){user=user||'';
   if(/店长|Manager/i.test(user))return 'manager';
   if(/厨师长|Head Chef|Chef/i.test(user))return 'headchef';
@@ -3196,13 +3274,16 @@ async function saveGRN(){
 async function saveTransfer(){
   const s=document.getElementById('tr_item'),name=s.value,unit=s.selectedOptions[0].dataset.unit,cost=+s.selectedOptions[0].dataset.cost;
   const qty=+document.getElementById('tr_qty').value||0,toId=document.getElementById('tr_to').value,date=document.getElementById('tr_date').value;
-  const it=findItem(name);if(it)it.qty=Math.max(0,it.qty-qty);
+  const it=findItem(name);
+  // 先发调拨单（对方登录/刷新时自己入库）；发不出去就整个中止、库存不动
+  const rec={id:Date.now()+'-'+Math.random().toString(36).slice(2,6),date,item:name,qty,unit,cost,cat:it?it.cat:'其他',buyUnit:it?it.buyUnit:'unit',conv:it?it.conv:1,yield:it?it.yield:100,from:curOutlet,fromName:nm(outletObj(curOutlet))};
+  try{await xferPush(curOutlet,toId,rec);}catch(e){alert(LANG==="zh"?"调拨单发送失败（网络或权限问题），库存没有变动，请稍后再试。":"Transfer failed to send. Stock unchanged.");return;}
+  if(it)it.qty=Math.max(0,it.qty-qty);
   d().moves.unshift({date,type:'transfer',item:name,qty,unit,amt:qty*cost,note:"→"+nm(outletObj(toId))});
-  const dest=DB[toId];const di=dest.items.find(i=>i.name===name);
-  if(di)di.qty+=qty;else dest.items.push({id:Date.now(),name,cat:it?it.cat:'其他',unit,buyUnit:it?it.buyUnit:'unit',conv:it?it.conv:1,qty,cost,par:0,yield:it?it.yield:100,batches:[{qty,exp:"2027-01-01",in:date}]});
-  dest.moves.unshift({date,type:'in',item:name,qty,unit,amt:qty*cost,note:LANG==="zh"?"调入":"Transfer in"});
   auditLog("跨店调拨",`${name} ${qty}${unit} →${nm(outletObj(toId))}`,"","");
-  await save();await save(toId);closeM();render();
+  await save();
+  if(DB[toId]&&canWriteOutlet(toId)){try{if(await applyIncoming(toId))await save(toId);}catch(e){}} // 老板/人事经理等能写对方时，当场入库
+  closeM();render();
 }
 async function saveWaste(){
   const s=document.getElementById('w_item'),name=s.value,unit=s.selectedOptions[0].dataset.unit,cost=+s.selectedOptions[0].dataset.cost;
@@ -4511,7 +4592,7 @@ async function afterAuth(user){
   try{startOrderPoll();notifyNewOrders(true);enablePushSub();}catch(e){}
   markActivity(); // 登录当下重新起算闲置时间，避免登入前累积的闲置时间被算进去
 }
-async function authLogout(idleReason){if(typeof dismissIdleWarn==='function')dismissIdleWarn();try{if(AUTH())await _sb.auth.signOut();}catch(e){}curUser=null;showAuthLogin(idleReason?`<b>${LANG==="zh"?"⏱️ 长时间未操作，已自动登出，请重新登录。":"Logged out due to inactivity. Please sign in again."}</b>`:undefined);}
+async function authLogout(idleReason){if(typeof dismissIdleWarn==='function')dismissIdleWarn();try{if(AUTH())await _sb.auth.signOut();}catch(e){}curUser=null;clearSession();showAuthLogin(idleReason?`<b>${LANG==="zh"?"⏱️ 长时间未操作，已自动登出，请重新登录。":"Logged out due to inactivity. Please sign in again."}</b>`:undefined);}
 /* ================= 闲置自动登出(仅限 店长/厨师长/员工/中央经理/中央员工) =================
    老板/区域副经理/人事经理/店面经理常常需要长时间开着看大盘、不方便被强制踢出，
    所以不受影响；店长/厨师长/员工/中央经理/中央员工 这五个比较基层、共用设备
