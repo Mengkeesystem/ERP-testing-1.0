@@ -10,49 +10,64 @@
 -- 这份补丁把权限判断搬到数据库这一层，就算绕过网页也挡得住。
 -- ============================================================
 
--- ========== 第 1 部分：邀请码 → {职位,分店} 的对照表（跟 index.html 的 INVITE_CODES 一致）==========
--- 之后在 index.html 改邀请码，记得同步把下面这两个函数也改一次。
--- 店面经理/经理/厨师长/员工 是每间分店各自一组码(格式 b1~b11 + 职位码)，
--- 区域副经理/中央经理/中央员工维持单一固定码。
+-- ========== 第 1 部分：邀请码（存在数据库私有表里，不写进代码/仓库）==========
+-- 邀请码 → {职位,分店} 的对照放在 erp_invite_codes 表里：
+--   * 表开了 RLS 且没有任何策略，并收回 anon/authenticated 权限 → 网页/任何登录账号都读不到整张表；
+--   * 只能通过下面的 security definer 函数「拿码问答案」(invite_info / invite_role / invite_outlet)；
+--   * 具体的码由业主在 Supabase SQL Editor 手动 insert，**绝不提交到公开仓库**。
+-- 换码：delete + insert 这张表即可，不用改网页代码。
+create table if not exists public.erp_invite_codes (
+  code   text primary key,          -- 一律小写
+  role   text not null,
+  outlet text not null
+);
+alter table public.erp_invite_codes enable row level security;
+revoke all on public.erp_invite_codes from anon, authenticated;
+
 create or replace function public.invite_role(code text)
 returns text
 language plpgsql
-immutable
+stable
+security definer set search_path = public
 as $$
-declare
-  c text := lower(coalesce(code,''));
-  m text[];
+declare r text;
 begin
-  if c = 'tcymgmt888' then return 'area'; end if;
-  if c = 'tcymgr888' then return 'ckmgr'; end if;
-  if c = 'tcystaff888' then return 'ckstaff'; end if;
-  m := regexp_match(c, '^b([1-9]|1[01])(mkpic888|mkmgr888|chef888|staff888)$');
-  if m is null then return null; end if;
-  return case m[2]
-    when 'mkpic888' then 'outletmgr'
-    when 'mkmgr888' then 'manager'
-    when 'chef888'  then 'headchef'
-    when 'staff888' then 'staff'
-  end;
+  select c.role into r from public.erp_invite_codes c
+   where c.code = lower(coalesce(invite_role.code,''));
+  return r;
 end;
 $$;
 
 create or replace function public.invite_outlet(code text)
 returns text
 language plpgsql
-immutable
+stable
+security definer set search_path = public
 as $$
-declare
-  c text := lower(coalesce(code,''));
-  m text[];
+declare o text;
 begin
-  if c in ('tcymgr888','tcystaff888') then return 'ck'; end if;
-  if c = 'tcymgmt888' then return 'b1'; end if; -- 区域副经理是全分店角色，outlet 存什么不影响权限，固定填 b1
-  m := regexp_match(c, '^b([1-9]|1[01])(mkpic888|mkmgr888|chef888|staff888)$');
-  if m is null then return null; end if;
-  return 'b'||m[1];
+  select c.outlet into o from public.erp_invite_codes c
+   where c.code = lower(coalesce(invite_outlet.code,''));
+  return o;
 end;
 $$;
+
+-- 给网页注册时用：拿邀请码换 {role,outlet}，码不对回 null
+create or replace function public.invite_info(code text)
+returns json
+language plpgsql
+stable
+security definer set search_path = public
+as $$
+declare r json;
+begin
+  select json_build_object('role', c.role, 'outlet', c.outlet) into r
+    from public.erp_invite_codes c
+   where c.code = lower(coalesce(invite_info.code,''));
+  return r;
+end;
+$$;
+grant execute on function public.invite_info(text) to anon, authenticated;
 
 -- ========== 第 2 部分：判断「当前登录的人是谁 / 是不是白名单里的管理员」==========
 -- security definer：以建表者(postgres)的身份运行，能绕开下面 erp_users 自己的
