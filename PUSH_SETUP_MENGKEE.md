@@ -5,15 +5,14 @@
 
 ## 明记 VAPID 密钥
 - **VAPID_PUBLIC**（已写进 index.html）：
-  `BAzKwLjBFt1XAmDMn-FmvzMl5w-oF1eIMEO4Ao4OsTcRe99O7HzbEhpS59oyC0wCpM93YoYgr2EINUoJ0qNXzK4`
-- **VAPID_PRIVATE**（只填到 Supabase secret，别公开）：
-  `MSK3i6BEll_sUUu8jg0LXIwDoYWTwSQ2qdq9Ngz2XDU`
+  `BPGwb8azat026wZ9320MDLBLUpn4JYbsxkJ39knCMKrffomyhC1qKlYJbOwkZ294Bjo66zKA_e-Aw5nkAnZOUng`
+- **VAPID_PRIVATE**：只放在 Supabase Function Secrets，**绝不写进本仓库**（旧私钥已于 2026-11-02 外泄作废，已换新密钥对）。
 
 ## 部署步骤（在明记自己的 Supabase 项目 kmcdokwiyetlmsrdlgqw）
 1. **建订阅表**：SQL Editor 运行 `push-schema.sql`。
 2. **设 secrets**：Project → Edge Functions → Secrets，加：
    - `VAPID_PUBLIC` = 上面的公钥
-   - `VAPID_PRIVATE` = 上面的私钥
+   - `VAPID_PRIVATE` = 新私钥（由业主保管，不在仓库里）
    - `VAPID_SUBJECT` = `mailto:你的邮箱`
 3. **部署函数**：把 `supabase/functions/send-order-push/` 部署为名为 `send-order-push` 的 Edge Function
    （`supabase functions deploy send-order-push`）。

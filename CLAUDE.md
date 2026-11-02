@@ -17,7 +17,7 @@
 
 ### 这是什么
 - 单文件 HTML ERP（`index.html` 约 4600 行，**没有构建步骤**）+ `sw.js`（Service Worker，PWA）+ `order-data.js`（中央厨房订货数据，含图片）+ `manifest.webmanifest` + 图标 + `supabase-schema.sql` / `security-hardening.sql` / `push-schema.sql` + `supabase/functions/send-order-push`（手机推送）。
-- **当前版本：`BUILD="0930mk65"`**（`index.html` 约 668 行），`sw.js` 的 `SW_VERSION` 要**同步改成一样**（每次改动两处一起 +1，右上角版本角标和强制更新弹窗靠它）。版本号格式 `MMDDmkNN`（mk = 明记）。最后一次提交 2026-09-30。
+- **当前版本：`BUILD="1102mk66"`**（`index.html` 约 668 行），`sw.js` 的 `SW_VERSION` 要**同步改成一样**（每次改动两处一起 +1，右上角版本角标和强制更新弹窗靠它）。版本号格式 `MMDDmkNN`（mk = 明记）。最后一次提交 2026-09-30。
 - 部署：GitHub Pages，**直接推 `main` 就上线**（不开分支、不开 PR），网址 `https://mengkeesystem.github.io/ERP-testing-1.0/`。业主要求跟牛室一样：改完测完直接推。
 - 后端 Supabase 项目网址 `https://kmcdokwiyetlmsrdlgqw.supabase.co`；`SUPABASE_ANON_KEY` 是 publishable key（前端公开的，没问题）。**私钥类（service_role、VAPID 私钥）绝对不写进代码/文档**，只放 Supabase Secrets。
 - 数据存哪：登录后用 Supabase（`Store.get/set` → `erp_store` 表，key 是 `erpv2:<分店id>`、`erpv2:roleperms`、`erpv2:orders`）；没登录（演示模式）用浏览器本机。代码改了**不会动到数据**（数据在 Supabase，不在 `index.html` 里）。
@@ -33,7 +33,7 @@
 ### ⚠️ 这个仓库有「两个会话同时在推 main」
 **牛室那边的 Claude 会话也有权限直接推这个仓库的 `main`**（功能经常同步），不会提前打招呼：`git log` 可能看到不是你推的 commit；不先 `git fetch` 比对就推，可能用旧的 BUILD 号覆盖/冲突。
 1. 每次改 `index.html`/`sw.js` 前先 `git fetch origin main`，远端比本地新就先看远端改了什么（尤其 `BUILD`/`SW_VERSION`）再合并，不要盲目覆盖。
-2. `BUILD` 和 `SW_VERSION` 必须**同步手动升级**（格式 `MMDDmkNN`，例如 `0930mk65`），推送前确认两边一致、且比远端当前值大。
+2. `BUILD` 和 `SW_VERSION` 必须**同步手动升级**（格式 `MMDDmkNN`，例如 `1102mk66`），推送前确认两边一致、且比远端当前值大。
 3. 如果被分配了任务分支，要知道 GitHub Pages 只认 `main`；历史上本项目一直是直接 `git push origin main`，没有走 PR，没出过问题。新会话如被分配不同分支，先跟业主确认部署策略。
 4. 看到自己没做过的 commit，大概率是牛室会话推的（例如提示音），先 `git log` 看内容，别当成 bug。
 
@@ -102,7 +102,7 @@ node -e "const fs=require('fs');const html=fs.readFileSync('index.html','utf8');
 7. `canRunPayroll` 式的更细薪资权限、`pageAllowed('payrun')` 的收紧——明记已有 `salaryLock` 做同样的事，不必搬。
 
 ### ⚠️ 安全待办（2026-11-02 复查发现，**业主还没处理**）
-1. **`PUSH_SETUP_MENGKEE.md` 把 `VAPID_PRIVATE`（手机推送的私钥）明文写在公开仓库里**（牛室的 `PUSH_SETUP.md` 同样）。要**换一组新的 VAPID 密钥**：生成新密钥对 → 新私钥只放 Supabase Function Secrets → 新公钥更新 `index.html` 的 `VAPID_PUBLIC` → 把文档里的私钥删掉 → 所有人重新点「开启通知」。（git 历史里旧私钥洗不掉，所以必须换。）
+1. ✅ **已处理（BUILD 1102mk66）**：已换新 VAPID 密钥对，仓库里只剩公钥；新私钥只在业主手上/Supabase Secrets（业主需手动更新 Secret 并让大家重新「开启通知」，见下）。原问题：`PUSH_SETUP_MENGKEE.md` 把 `VAPID_PRIVATE`（手机推送的私钥）明文写在公开仓库里**（牛室的 `PUSH_SETUP.md` 同样）。要**换一组新的 VAPID 密钥**：生成新密钥对 → 新私钥只放 Supabase Function Secrets → 新公钥更新 `index.html` 的 `VAPID_PUBLIC` → 把文档里的私钥删掉 → 所有人重新点「开启通知」。（git 历史里旧私钥洗不掉，所以必须换。）
 2. **邀请码在公开仓库里**（`security-hardening.sql`、`index.html` 的 `INVITE_CODES`；牛室的 CLAUDE.md 里甚至整张列出来）。知道码的人可以自己注册成对应分店的店面经理/店长。选项：① 把 ERP 仓库改成私有（GitHub Pages 私有仓库要付费方案）；② 换一批新码，并把码从仓库里拿掉（只放 Supabase 环境，或由老板手动在后台加白名单）。**换码时网页和数据库两处要同步**。
 3. 记得确认 Supabase 的「Confirm email」是开着的。
 4. 明记的 `erp_store` 没有按分店隔离、薪资没有单独上锁（见上面第 4 项），懂技术的员工账号理论上能用浏览器直接读到别店/薪资数据。
