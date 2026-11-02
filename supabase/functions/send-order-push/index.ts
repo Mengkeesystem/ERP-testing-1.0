@@ -16,27 +16,42 @@
 //   * GET ?health=1 只检查设定，绝不发推送，给监控用。
 import webpush from "npm:web-push@3.6.7";
 import { createClient } from "npm:@supabase/supabase-js@2";
+import { createECDH } from "node:crypto";
+import { Buffer } from "node:buffer";
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL") ?? "";
 const SUPABASE_ANON_KEY = Deno.env.get("SUPABASE_ANON_KEY") ?? "";
 const SERVICE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
-const VAPID_PUBLIC = Deno.env.get("VAPID_PUBLIC") ?? "";
-const VAPID_PRIVATE = Deno.env.get("VAPID_PRIVATE") ?? "";
-const VAPID_SUBJECT = Deno.env.get("VAPID_SUBJECT") ?? "mailto:admin@mengkee.local";
+// 粘贴密钥时常会多出空格/换行/引号，甚至把 "VAPID_PRIVATE=" 一起贴进去：先清掉
+const tidy = (v: string, name: string) => v.trim().replace(/^["']+|["']+$/g, "").replace(new RegExp("^" + name + "\\s*=\\s*"), "").trim();
+const VAPID_PUBLIC = tidy(Deno.env.get("VAPID_PUBLIC") ?? "", "VAPID_PUBLIC");
+const VAPID_PRIVATE = tidy(Deno.env.get("VAPID_PRIVATE") ?? "", "VAPID_PRIVATE");
+const VAPID_SUBJECT = tidy(Deno.env.get("VAPID_SUBJECT") ?? "", "VAPID_SUBJECT") || "mailto:admin@mengkee.local";
 const ALLOWED_ORIGIN = "https://mengkeesystem.github.io";
 const ADMIN_ROLES = ["owner", "hrmgr", "area"];
 const APPROVER_ROLES = ["outletmgr", "manager", "headchef", "ckmgr"];
 const OUTLET_RE = /^(b([1-9]|1[01])|ck)$/;
 
+// 检查密钥；问题只写「哪一项不对」，绝不把密钥内容写出来
+const vapidProblems: string[] = [];
 let vapidOk = false;
-try {
-  if (VAPID_PUBLIC && VAPID_PRIVATE) {
+if (!VAPID_PUBLIC) vapidProblems.push("VAPID_PUBLIC_not_set");
+if (!VAPID_PRIVATE) vapidProblems.push("VAPID_PRIVATE_not_set");
+if (!vapidProblems.length) {
+  try {
     webpush.setVapidDetails(VAPID_SUBJECT, VAPID_PUBLIC, VAPID_PRIVATE);
-    vapidOk = true;
+    try { // 公钥和私钥必须是「一对」
+      const ecdh = createECDH("prime256v1");
+      ecdh.setPrivateKey(Buffer.from(VAPID_PRIVATE, "base64url"));
+      if (!ecdh.getPublicKey().equals(Buffer.from(VAPID_PUBLIC, "base64url"))) vapidProblems.push("VAPID_public_and_private_are_not_a_pair");
+    } catch (_e) {
+      vapidProblems.push("VAPID_private_key_unreadable");
+    }
+  } catch (e) {
+    vapidProblems.push("VAPID_rejected: " + String((e as Error)?.message || e).replace(/\s+/g, " ").slice(0, 120));
   }
-} catch (_e) {
-  vapidOk = false;
 }
+vapidOk = vapidProblems.length === 0;
 
 const supabase = createClient(SUPABASE_URL, SERVICE_KEY);
 
@@ -105,7 +120,7 @@ function tooMany(key: string): boolean {
 
 async function health(req: Request): Promise<Response> {
   const problems: string[] = [];
-  if (!vapidOk) problems.push("vapid_keys_missing_or_invalid");
+  problems.push(...vapidProblems);
   if (!SUPABASE_URL || !SERVICE_KEY) problems.push("supabase_env_missing");
   try {
     const { error } = await supabase.from("erp_push_subs").select("endpoint").limit(1);
