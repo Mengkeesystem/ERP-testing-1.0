@@ -468,6 +468,32 @@ html.ui2 #tabbar button.on .badge{top:-14px;left:56%;background:#fff;color:var(-
   html.ui2 #tabbar{display:grid;grid-auto-flow:column;grid-auto-columns:1fr;position:fixed;left:0;right:0;bottom:0;z-index:70;border-top:1px solid var(--line);background:var(--tab-bg);-webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px);padding:6px 2px calc(8px + env(safe-area-inset-bottom));align-items:end;}
   html.ui2 .al[style*="position:fixed"]{bottom:calc(88px + env(safe-area-inset-bottom))!important;}
 }
+
+/* ---- 进货/供应商列表（mk75） ---- */
+html.ui2 .sup-sum{grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:10px;}
+html.ui2 .sup-sum .kpi{padding:11px 12px;}
+html.ui2 .sup-search{width:100%;padding:12px 14px;font-size:15px;border:1px solid var(--line2);border-radius:var(--radius-sm);background:var(--card);color:var(--ink);}
+html.ui2 .sup-card{display:flex;align-items:center;gap:10px;padding:14px;margin-bottom:9px;background:var(--card);border:1px solid var(--line);border-radius:var(--radius);cursor:pointer;transition:transform .12s,box-shadow .15s;}
+html.ui2 .sup-card:active{transform:scale(.985);}
+html.ui2 .sup-card.done{border-left:5px solid var(--green);}
+html.ui2 .sup-main{flex:1;min-width:0;}
+html.ui2 .sup-name{font-weight:700;font-size:15px;line-height:1.3;word-break:break-word;}
+html.ui2 .sup-amt{text-align:right;display:grid;gap:2px;justify-items:end;}
+html.ui2 .sup-m{font-weight:700;font-size:15px;white-space:nowrap;}
+html.ui2 .sup-go{color:var(--grey);font-size:20px;}
+html.ui2 .sup-act{display:flex;gap:6px;}
+@media(max-width:700px){html.ui2 .sup-sum{grid-template-columns:1fr 1fr;}html.ui2 .sup-sum-3{display:none;}}
+
+/* ---- 手机底部导航：总览在正中间，托在「小山坡」上 ---- */
+@media(max-width:760px){
+  html.ui2 #tabbar.hill::before{content:"";position:absolute;left:var(--hx,50%);transform:translateX(-50%);top:-31px;width:190px;height:32px;pointer-events:none;z-index:0;
+    background:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='190' height='32' viewBox='0 0 190 32'%3E%3Cpath d='M0 32C46 32 52 1.5 95 1.5S144 32 190 32V34H0Z' fill='%23FAF8F3'/%3E%3Cpath d='M0 31.5C46 31.5 52 1 95 1S144 31.5 190 31.5' fill='none' stroke='%23E2DCCB' stroke-width='1.2'/%3E%3C/svg%3E") center bottom/100% 100% no-repeat;}
+  html.ui2 #tabbar.hill{padding-top:10px;}
+  html.ui2 #tabbar button.ctr .ico{width:60px;height:60px;margin-top:-38px;margin-bottom:3px;background:var(--card);color:var(--brand);box-shadow:0 8px 18px rgba(40,20,10,.2),0 0 0 4px var(--paper);animation:none;}
+  html.ui2 #tabbar button.ctr .ico .ic{font-size:26px;}
+  html.ui2 #tabbar button.ctr.on .ico{width:60px;height:60px;margin-top:-38px;margin-bottom:3px;background:var(--brand);color:#fff;box-shadow:0 8px 18px var(--shadow-bub),0 0 0 4px var(--paper);animation:tabpop .26s var(--ease);}
+  html.ui2 #tabbar button.ctr{font-weight:600;color:var(--brand);}
+}
 /* ===================== 流畅度（三个主题共用） ===================== */
 html.ui2 *{-webkit-tap-highlight-color:transparent;}
 html.ui2 button,html.ui2 .btn,html.ui2 .side button,html.ui2 select{touch-action:manipulation;}
@@ -570,6 +596,79 @@ html.ui2[data-theme="cn"] .seg button.active{color:#B3241B;box-shadow:inset 0 -2
 html.ui2[data-theme="cn"] #tabbar{border-top:2px solid #C79A2B;box-shadow:0 -1px 0 #B3241B;}
 html.ui2[data-theme="cn"] #tabbar button{font-family:var(--font-head);letter-spacing:.1em;}
 html.ui2[data-theme="cn"] #tabbar button.on .ico{box-shadow:0 6px 14px var(--shadow-bub),0 0 0 3px var(--paper),0 0 0 4.5px #C79A2B;}
+/* ===================== 机械风 · Cyberpunk 加强（mk75） ===================== */
+html.ui2[data-theme="mech"]{--paper:#070A0F;--tab-bg:rgba(7,10,15,.97);--neon-c:#00E5FF;--neon-m:#FF2BD6;}
+html.ui2[data-theme="mech"] body{background-color:#070A0F;background-image:
+  radial-gradient(ellipse 60% 40% at 12% 0%,rgba(255,43,214,.22),transparent 70%),
+  radial-gradient(ellipse 55% 40% at 95% 8%,rgba(0,229,255,.2),transparent 70%),
+  linear-gradient(rgba(0,229,255,.09) 1px,transparent 1px),linear-gradient(90deg,rgba(0,229,255,.09) 1px,transparent 1px),
+  repeating-linear-gradient(0deg,rgba(255,255,255,.03) 0 1px,transparent 1px 3px);
+  background-size:auto,auto,32px 32px,32px 32px,auto;color:var(--ink);}
+html.ui2[data-theme="mech"] .top{background:#05070A;box-shadow:0 0 22px rgba(0,229,255,.35);}
+html.ui2[data-theme="mech"] .top::after{height:4px;background:linear-gradient(90deg,#00E5FF,#FF2BD6 55%,#F2B417);box-shadow:0 0 12px #00E5FF;}
+html.ui2[data-theme="mech"] .top h1{color:#E8FBFF;text-shadow:0 0 10px rgba(0,229,255,.7);}
+html.ui2[data-theme="mech"] .side{background:#080C11;border-right:2px solid #00E5FF;box-shadow:4px 0 18px rgba(0,229,255,.18);}
+html.ui2[data-theme="mech"] .side button.active{background:rgba(0,229,255,.1);box-shadow:inset 4px 0 0 #00E5FF,inset 0 0 0 1px rgba(0,229,255,.45);color:#fff;}
+html.ui2[data-theme="mech"] .side .grp{color:#FF2BD6;border-bottom-color:rgba(255,43,214,.45);}
+/* 浮在深色背景上的标题改成霓虹浅色 */
+html.ui2[data-theme="mech"] .page.active>.h,html.ui2[data-theme="mech"] .page.active>.fb>.h,html.ui2[data-theme="mech"] .page.active>.fb:first-child .h,html.ui2[data-theme="mech"] .page.active>.h:first-child{color:#E8FBFF;text-shadow:0 0 12px rgba(0,229,255,.65);}
+html.ui2[data-theme="mech"] .page.active>.fb:first-child .h,html.ui2[data-theme="mech"] .page.active>.h:first-child{border-bottom:3px solid #FF2BD6;box-shadow:0 4px 14px -6px #FF2BD6;}
+html.ui2[data-theme="mech"] .page.active>.h .tag,html.ui2[data-theme="mech"] .page.active>.fb>.h .tag{color:#7DEBFF;}
+html.ui2[data-theme="mech"] .page.active>.mini,html.ui2[data-theme="mech"] .page.active>.sub,html.ui2[data-theme="mech"] .page.active>.fb+.mini{color:#8FB3C2;}
+/* 卡片：青色边缘光 + 洋红硬阴影 */
+html.ui2[data-theme="mech"] .card,html.ui2[data-theme="mech"] .pl,html.ui2[data-theme="mech"] .chart-wrap,html.ui2[data-theme="mech"] .sup-card{border:2px solid #0A0D10;box-shadow:0 0 0 1px #00E5FF,0 0 14px rgba(0,229,255,.3),6px 6px 0 #FF2BD6;}
+html.ui2[data-theme="mech"] .sup-card{background:#E9ECEF;}
+html.ui2[data-theme="mech"] .sup-card.done{border-left:8px solid #1EE08A;}
+html.ui2[data-theme="mech"] .kpi{border:2px solid #0A0D10;border-left:8px solid #FF2BD6;box-shadow:inset 0 0 0 1px #17323A,inset 0 6px 14px rgba(0,0,0,.6),0 0 0 1px #00E5FF,0 0 14px rgba(0,229,255,.3),5px 5px 0 rgba(255,43,214,.85);}
+html.ui2[data-theme="mech"] .kpi .v{color:#00F0FF;text-shadow:0 0 12px rgba(0,240,255,.7);}
+html.ui2[data-theme="mech"] .kpi .v.neg{color:#FF4E8B;text-shadow:0 0 12px rgba(255,78,139,.7);}
+html.ui2[data-theme="mech"] .kpi .v.pos{color:#39FF9C;text-shadow:0 0 12px rgba(57,255,156,.65);}
+html.ui2[data-theme="mech"] th{border-bottom:3px solid #FF2BD6;}
+html.ui2[data-theme="mech"] .btn.brand{background:linear-gradient(#FF4FE0,#C0159F);border-color:#4A0A3E;box-shadow:inset 0 1px 0 rgba(255,255,255,.45),0 4px 0 #4A0A3E,0 0 16px rgba(255,43,214,.55);}
+html.ui2[data-theme="mech"] .seg button.active{color:#00F0FF;box-shadow:inset 0 -3px 0 #FF2BD6;}
+html.ui2[data-theme="mech"] .m{box-shadow:0 0 0 2px #00E5FF,0 0 30px rgba(0,229,255,.5),9px 9px 0 #FF2BD6;}
+html.ui2[data-theme="mech"] #tabbar{background:rgba(7,10,15,.97);border-top:2px solid #00E5FF;box-shadow:0 -4px 22px rgba(0,229,255,.35);}
+html.ui2[data-theme="mech"] #tabbar button{color:#7F93A5;}
+html.ui2[data-theme="mech"] #tabbar button.on{color:#00F0FF;text-shadow:0 0 8px rgba(0,240,255,.6);}
+html.ui2[data-theme="mech"] #tabbar button.on .ico{background:#FF2BD6;color:#fff;border-color:#4A0A3E;box-shadow:0 5px 0 #4A0A3E,0 0 18px rgba(255,43,214,.7),0 0 0 4px #070A0F;}
+@media(max-width:760px){
+  html.ui2[data-theme="mech"] #tabbar.hill::before{height:34px;top:-33px;background:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='190' height='34' viewBox='0 0 190 34'%3E%3Cpath d='M0 34H30L56 4H134L160 34H190V36H0Z' fill='%23070A0F'/%3E%3Cpath d='M0 33H30L56 3H134L160 33H190' fill='none' stroke='%2300E5FF' stroke-width='2'/%3E%3Cpath d='M64 8H126' stroke='%23FF2BD6' stroke-width='2'/%3E%3C/svg%3E") center bottom/100% 100% no-repeat;}
+  html.ui2[data-theme="mech"] #tabbar button.ctr .ico{background:#0E1418;color:#00F0FF;border:2px solid #00E5FF;border-radius:0;box-shadow:0 0 16px rgba(0,229,255,.6),0 0 0 4px #070A0F;}
+  html.ui2[data-theme="mech"] #tabbar button.ctr.on .ico{background:#FF2BD6;color:#fff;border-color:#FF2BD6;box-shadow:0 0 20px rgba(255,43,214,.8),0 0 0 4px #070A0F;}
+  html.ui2[data-theme="mech"] #tabbar button.ctr{color:#00F0FF;}
+}
+
+/* ===================== 中式风 · 新年气氛（mk75） ===================== */
+html.ui2[data-theme="cn"]{--top-bg:linear-gradient(180deg,#D4281C,#9A1E15);--top-solid:#B3241B;}
+html.ui2[data-theme="cn"] body{background-color:#FBEED2;background-image:
+  radial-gradient(ellipse 80% 30% at 50% 0%,rgba(212,40,28,.12),transparent 70%),
+  url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='72' height='72'%3E%3Ccircle cx='36' cy='36' r='13' fill='none' stroke='%23C79A2B' stroke-opacity='.3' stroke-width='1.4'/%3E%3Crect x='31.5' y='31.5' width='9' height='9' fill='none' stroke='%23C79A2B' stroke-opacity='.3'/%3E%3Ccircle cx='0' cy='0' r='4' fill='%23D4281C' fill-opacity='.14'/%3E%3Ccircle cx='72' cy='72' r='4' fill='%23D4281C' fill-opacity='.14'/%3E%3Ccircle cx='72' cy='0' r='3' fill='%23C79A2B' fill-opacity='.25'/%3E%3Ccircle cx='0' cy='72' r='3' fill='%23C79A2B' fill-opacity='.25'/%3E%3C/svg%3E");}
+html.ui2[data-theme="cn"] .top{background:radial-gradient(circle,rgba(255,225,130,.55) 1px,transparent 1.6px) 0 0/26px 26px,var(--top-bg);}
+html.ui2[data-theme="cn"] .top::before{content:"";position:absolute;left:46%;top:calc(100% - 2px);width:130px;height:66px;pointer-events:none;z-index:5;
+  background:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='44' height='62' viewBox='0 0 44 62'%3E%3Cpath d='M22 0v8' stroke='%23C79A2B' stroke-width='2'/%3E%3Crect x='13' y='7' width='18' height='5' rx='1.5' fill='%23C79A2B'/%3E%3Cellipse cx='22' cy='28' rx='20' ry='17' fill='%23E0261A'/%3E%3Cellipse cx='22' cy='28' rx='10' ry='17' fill='none' stroke='%23F7C85A' stroke-opacity='.75'/%3E%3Cpath d='M22 11v34' stroke='%23F7C85A' stroke-opacity='.6'/%3E%3Crect x='13' y='44' width='18' height='5' rx='1.5' fill='%23C79A2B'/%3E%3Cpath d='M22 49v11M17 49v8M27 49v8' stroke='%23F7C85A' stroke-width='1.6'/%3E%3C/svg%3E") 0 0/44px 62px no-repeat,
+  url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='44' height='62' viewBox='0 0 44 62'%3E%3Cpath d='M22 0v8' stroke='%23C79A2B' stroke-width='2'/%3E%3Crect x='13' y='7' width='18' height='5' rx='1.5' fill='%23C79A2B'/%3E%3Cellipse cx='22' cy='28' rx='20' ry='17' fill='%23E0261A'/%3E%3Cellipse cx='22' cy='28' rx='10' ry='17' fill='none' stroke='%23F7C85A' stroke-opacity='.75'/%3E%3Cpath d='M22 11v34' stroke='%23F7C85A' stroke-opacity='.6'/%3E%3Crect x='13' y='44' width='18' height='5' rx='1.5' fill='%23C79A2B'/%3E%3Cpath d='M22 49v11M17 49v8M27 49v8' stroke='%23F7C85A' stroke-width='1.6'/%3E%3C/svg%3E") 84px 0/34px 48px no-repeat;
+  animation:lantern 3.2s ease-in-out infinite;transform-origin:50% 0;}
+@keyframes lantern{0%,100%{transform:rotate(-2.5deg);}50%{transform:rotate(2.5deg);}}
+html.ui2[data-theme="cn"] .main{padding-top:56px;}
+html.ui2[data-theme="cn"] .page.active>.fb:first-child .h::before,html.ui2[data-theme="cn"] .page.active>.h:first-child::before{content:"福";width:1.25em;height:1.25em;line-height:1.25em;text-align:center;font-size:.8em;color:#FBE7A8;font-weight:700;background:#C8281C;border-radius:3px;box-shadow:0 0 0 2px #FBEED2,0 0 0 3px #C79A2B;transform:rotate(-6deg);margin-right:.65em;vertical-align:.06em;}
+html.ui2[data-theme="cn"] .card,html.ui2[data-theme="cn"] .kpi,html.ui2[data-theme="cn"] .pl,html.ui2[data-theme="cn"] .chart-wrap,html.ui2[data-theme="cn"] .sup-card{background:#FFFAEB;}
+html.ui2[data-theme="cn"] .kpi{border-top:3px solid #C8281C;}
+html.ui2[data-theme="cn"] .btn.brand{background:linear-gradient(#DC3224,#A81F15);color:#FBE7A8;}
+html.ui2[data-theme="cn"] .m{border-top:8px solid #C8281C;background:#FFFAEB;}
+html.ui2[data-theme="cn"] .side{background:#FBEBC8;}
+html.ui2[data-theme="cn"] .side button.active{background:#FFF8E4;}
+html.ui2[data-theme="cn"] #tabbar{background:rgba(251,238,210,.98);border-top:3px solid #C8281C;box-shadow:0 -2px 0 #C79A2B;}
+@media(max-width:760px){
+  html.ui2[data-theme="cn"] .main{padding-top:58px;}
+  html.ui2[data-theme="cn"] .top::before{left:52%;}
+  html.ui2[data-theme="cn"] #tabbar.hill::before{background:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='190' height='32' viewBox='0 0 190 32'%3E%3Cpath d='M0 32C40 32 44 22 62 14C78 7 82 1.5 95 1.5S112 7 128 14C146 22 150 32 190 32V34H0Z' fill='%23FBEED2'/%3E%3Cpath d='M0 31.5C40 31.5 44 21.5 62 13.5C78 6.5 82 1 95 1S112 6.5 128 13.5C146 21.5 150 31.5 190 31.5' fill='none' stroke='%23C8281C' stroke-width='2'/%3E%3Cpath d='M0 29.5C40 29.5 44 19.5 62 11.5C78 4.5 82 -1 95 -1' fill='none' stroke='%23C79A2B' stroke-width='0'/%3E%3C/svg%3E") center bottom/100% 100% no-repeat;}
+  html.ui2[data-theme="cn"] #tabbar button.ctr .ico{background:#FFFAEB;color:#C8281C;box-shadow:0 8px 18px rgba(120,30,10,.28),0 0 0 3px #FBEED2,0 0 0 4.5px #C79A2B;}
+  html.ui2[data-theme="cn"] #tabbar button.ctr.on .ico{background:#C8281C;color:#FBE7A8;box-shadow:0 8px 18px rgba(200,40,28,.5),0 0 0 3px #FBEED2,0 0 0 4.5px #C79A2B;}
+  html.ui2[data-theme="cn"] #tabbar button.ctr{color:#C8281C;}
+}
+html.ui2[data-theme="mech"] .al{background:#E9ECEF!important;color:var(--ink)!important;border:2px solid #14181C;border-left:8px solid #F2B417;}
+html.ui2[data-theme="mech"] .tag{background:#05070A!important;color:#7DEBFF!important;border:1px solid #00E5FF;border-radius:0;}
+@media(prefers-reduced-motion:reduce){html.ui2[data-theme="cn"] .top::before{animation:none;}}
 </style>
 <!-- Supabase 云端 SDK（未配置 key 时不影响运行，自动回退本地存储）-->
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -944,7 +1043,7 @@ function statusOf(d){if(d<=14)return{t:"健康",e:"Fresh",c:"p-g"};if(d<=30)retu
 function stTxt(s){return LANG==="zh"?s.t:s.e;}
 
 /* ================= 数据种子 ================= */
-const BUILD="1111mk74";  // 版本标记：页面右上/网格提示可见，用来确认已载入最新版
+const BUILD="1111mk75";  // 版本标记：页面右上/网格提示可见，用来确认已载入最新版
 const SEED_VERSION="bh-master-2026-09-1";  // 版本变更→下次载入自动重置为最新主数据（仅本店云端）
 function seed(outletId){
   const isCK = outletId==="ck";
@@ -3864,6 +3963,8 @@ function exportCSV(){
    purchase 采购进货 / grn 验收退货 / transfer 跨店调拨 /
    waste2 报废损耗 / offer 招待赠送 / monthend 月末算货
    ================================================================ */
+let supQuery='',supManage=false;
+function supFilter(v){supQuery=v;const q=v.toLowerCase();document.querySelectorAll('#supList .sup-card').forEach(e=>{e.style.display=(!q||(e.dataset.name||'').includes(q))?'':'none';});}
 let selSupplier=null;                          // 供应商钻取页共用：当前选中供应商
 let ledgerMonth='all';                         // 账册月份筛选（YYYY-MM 或 all）
 let wasteMonth='', grnMonth='', offerMonth='', transferMonth='', opexLogMonth='';  // 各作业当前月份
@@ -4174,24 +4275,34 @@ function gridTable(mod,sup,month){
 function pgLedger(mod){
   const cfg=ledgerCfg(mod);const arr=d()[cfg.arr]||[];const writable=subCanW(mod);
   const back=`<button class="btn ghost sm" onclick="nav('proc')">← ${LANG==="zh"?"进销存作业":"Operations"}</button>`;
-  // —— 供应商列表视图 ——
+  // —— 供应商列表视图（手机优先：今日/本月汇总 + 搜索 + 今日已录入置顶；编辑/删除收进「管理」）——
   if(!selSupplier){
+    const zh=LANG==="zh",tm=TODAY.slice(0,7);
     const sups=supplierList();
-    const cards=sups.map(v=>{
+    const rows=sups.map(v=>{
       const rs=arr.filter(r=>r.supplier===v.name);
-      const tot=sumField(rs,'price');
-      return `<div class="card" style="padding:13px;margin-bottom:9px;cursor:pointer;" onclick="setSupplier('${v.name.replace(/'/g,"\\'")}')">
-        <div style="display:flex;justify-content:space-between;align-items:center;">
-          <div><div style="font-weight:800;font-size:15px;">🏢 ${oEsc(v.name)}</div>
-          <div class="mini">${rs.length} ${LANG==="zh"?"笔单据":"records"} · ${LANG==="zh"?"账期":"Terms"} ${oEsc(v.terms)}${LANG==="zh"?"天":"d"}</div></div>
-          <div style="text-align:right;"><div style="font-weight:800;">${money(tot)}</div>
-          <div style="white-space:nowrap;">${writable?`<button class="ib" onclick="event.stopPropagation();renameSupplier(${v.id})">✏️</button> <button class="ib" onclick="event.stopPropagation();delSupplier(${v.id})">🗑️</button> `:''}<span class="mini">›</span></div></div>
-        </div></div>`;
-    }).join('')||`<div class="empty">${LANG==="zh"?"暂无供应商，点『新增供应商』开始添加。":"No suppliers — tap Add Supplier."}</div>`;
-    return `<div class="fb"><h2 class="h" style="margin:0;">${cfg.icon} ${cfg.title} <span class="tag">v${BUILD}</span></h2>${back}</div>
-      <div class="hint">${LANG==="zh"?"点选供应商 → 先看每月汇总，再点月份看该月每日明细。":"Tap a supplier → monthly breakdown → tap a month for its daily list."}</div>
-      ${writable?`<div style="display:flex;gap:6px;margin-bottom:10px;flex-wrap:wrap;"><button class="btn gold sm" onclick="addSupplier()">+ ${LANG==="zh"?"新增供应商":"Add Supplier"}</button><button class="btn ghost sm" onclick="bulkAddForm('supplier')">📋 ${LANG==="zh"?"批量导入":"Bulk Import"}</button>${sups.length?`<button class="btn ghost sm" onclick="clearSuppliers()">🗑️ ${LANG==="zh"?"清空全部":"Clear All"}</button>`:''}</div>`:''}
-      ${cards}`;
+      const today=rs.filter(r=>r.date===TODAY),mon=rs.filter(r=>(r.date||'').slice(0,7)===tm);
+      const last=rs.reduce((m,r)=>(r.date||'')>m?(r.date||''):m,'');
+      return {v,n:rs.length,tT:sumField(today,'price'),nT:today.length,tM:sumField(mon,'price'),last};
+    }).sort((x,y)=>(y.nT>0)-(x.nT>0)||y.last.localeCompare(x.last)||x.v.name.localeCompare(y.v.name));
+    const sumT=rows.reduce((q,r)=>q+r.tT,0),sumM=rows.reduce((q,r)=>q+r.tM,0),nSup=rows.filter(r=>r.nT>0).length;
+    const q=(supQuery||'').toLowerCase();
+    const cards=rows.map(r=>{const v=r.v;
+      return `<div class="sup-card ${r.nT?'done':''}" data-name="${oEsc(v.name.toLowerCase())}" onclick="setSupplier('${v.name.replace(/\\/g,"\\\\").replace(/'/g,"\\'")}')" ${q&&!v.name.toLowerCase().includes(q)?'style="display:none"':''}>
+        <div class="sup-main"><div class="sup-name">${oEsc(v.name)}</div>
+          <div class="mini">${r.last?(zh?'最近 ':'Last ')+r.last.slice(5):(zh?'还没有记录':'No records yet')} · ${zh?'账期':'Terms'} ${oEsc(v.terms)}${zh?'天':'d'}</div></div>
+        <div class="sup-amt"><div class="sup-m">${money(r.tM)}</div><div class="mini">${zh?'本月':'Month'}</div>
+          ${r.nT?`<span class="pill p-g">${zh?'今日已录入 ':'Today '}${money(r.tT)}</span>`:''}</div>
+        ${supManage&&writable?`<div class="sup-act" onclick="event.stopPropagation()"><button class="ib" onclick="renameSupplier(${v.id})">✏️</button><button class="ib" onclick="delSupplier(${v.id})">🗑️</button></div>`:`<span class="sup-go">›</span>`}</div>`;
+    }).join('')||`<div class="empty">${zh?"暂无供应商，点『新增供应商』开始添加。":"No suppliers — tap Add Supplier."}</div>`;
+    return `<div class="fb"><h2 class="h" style="margin:0;">${cfg.icon} ${cfg.title}</h2>${back}</div>
+      <div class="grid g3 sup-sum"><div class="kpi"><div class="k">${zh?'今日':'Today'}</div><div class="v sm">${money(sumT)}</div><div class="mini">${nSup}/${rows.length} ${zh?'家已录入':'suppliers'}</div></div>
+        <div class="kpi"><div class="k">${zh?'本月':'This month'}</div><div class="v sm">${money(sumM)}</div><div class="mini">${monthLabel(tm)}</div></div>
+        <div class="kpi sup-sum-3"><div class="k">${zh?'供应商':'Suppliers'}</div><div class="v sm">${rows.length}</div><div class="mini">${zh?'点下面一家开始录':'tap one to start'}</div></div></div>
+      <input class="sup-search" type="search" placeholder="${zh?'搜索供应商…':'Search suppliers…'}" value="${oEsc(supQuery||'')}" oninput="supFilter(this.value)" autocomplete="off">
+      <div class="hint" style="margin-top:8px;">${zh?"点一家 → 选月份 → 直接在表格填数量，今天录过的会排在最前面。":"Tap a supplier → pick a month → type quantities. Suppliers entered today come first."}</div>
+      ${writable?`<div style="display:flex;gap:6px;margin-bottom:10px;flex-wrap:wrap;"><button class="btn brand sm" onclick="addSupplier()">+ ${zh?"新增供应商":"Add Supplier"}</button><button class="btn ghost sm" onclick="supManage=!supManage;render()">${supManage?(zh?'完成':'Done'):(zh?'管理':'Manage')}</button>${supManage?`<button class="btn ghost sm" onclick="bulkAddForm('supplier')">${zh?"批量导入":"Bulk Import"}</button>${sups.length?`<button class="btn ghost sm" onclick="clearSuppliers()">${zh?"清空全部":"Clear All"}</button>`:''}`:''}</div>`:''}
+      <div id="supList">${cards}</div>`;
   }
   // —— 单一供应商：按月整表录入（网格）——
   const arrAll=arr.filter(r=>r.supplier===selSupplier);
@@ -4979,20 +5090,24 @@ function ui2Tabs(){
   const zh=LANG==="zh",defs=[];
   const add=(icon,l1,l2,go,on,ok)=>{if(ok)defs.push({icon,label:zh?l1:l2,go,on});};
   const subProc=['ordersheet','grn','waste2','offer','opexlog'];
-  add('chart','总览','Home',"nav('dash')",curPage==='dash',pageAllowed('dash'));
   add('cart','采购','Procure',"nav('proc')",curPage==='proc'||subProc.includes(curPage),pageAllowed('proc'));
   add('inbox','进货','Goods-in',"goProcSub('purchase')",curPage==='purchase',pageAllowed('purchase'));
   add('box','库存','Stock',"nav('inv')",curPage==='inv',pageAllowed('inv'));
   add('swap','调拨','Transfer',"goProcSub('transfer')",curPage==='transfer',pageAllowed('transfer'));
-  if(defs.length<3){defs.length=0;
+  let hasDash=pageAllowed('dash');
+  if(defs.length<2){defs.length=0;hasDash=false;
     [['attend','clock'],['leave','sun'],['payroll','wallet'],['hr','user']].forEach(([p,ic])=>{if(pageAllowed(p))defs.push({icon:ic,label:mlabel(p),go:"nav('"+p+"')",on:curPage===p});});
   }
-  defs.push({icon:'more',label:zh?'更多':'More',go:'toggleSide()',on:false});
+  // 总览放正中间（小山坡的山顶）；底部不再放「更多」——左上角 ☰ 就是菜单
+  let ci=-1;
+  if(hasDash){ci=Math.floor((defs.length+1)/2);defs.splice(ci,0,{icon:'chart',label:zh?'总览':'Home',go:"nav('dash')",on:curPage==='dash',ctr:true});}
+  tb.classList.toggle('hill',ci>=0);
+  if(ci>=0)tb.style.setProperty('--hx',((ci+.5)/defs.length*100).toFixed(2)+'%');
   let pend=0;try{pend=xferPendingForMe().length;}catch(e){}
   tb.innerHTML=defs.map(d=>{
     const badge=(d.icon==='swap'&&pend>0)?`<span class="badge">${pend>9?'9+':pend}</span>`:'';
     const ic=ui2Svg(d.icon);
-    return `<button class="${d.on?'on':''}" onclick="${d.go}"><span class="ico">${ic}</span>${d.label}${badge}</button>`;
+    return `<button class="${d.on?'on':''}${d.ctr?' ctr':''}" onclick="${d.go}"><span class="ico">${ic}</span>${d.label}${badge}</button>`;
   }).join('');
 }
 function ui2AfterRender(){
