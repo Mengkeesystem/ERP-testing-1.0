@@ -682,7 +682,8 @@ html.ui2[data-theme="mech"] .tag{background:#05070A!important;color:#7DEBFF!impo
 @keyframes gatein{from{opacity:0;transform:translateY(14px);}to{opacity:.96;transform:none;}}
 #fishFx .fish-wrap{position:absolute;left:0;top:0;width:110px;height:52px;will-change:transform;}
 #fishFx .fish-flip{width:110px;height:52px;}
-#fishFx .dragon-wrap{position:absolute;left:0;top:0;width:270px;height:96px;will-change:transform,opacity;filter:drop-shadow(0 0 14px rgba(255,200,70,.85));}
+#fishFx .dragon-cv{position:absolute;left:0;top:0;pointer-events:none;}
+#fishFx .dragon-wrap-old{position:absolute;left:0;top:0;width:270px;height:96px;will-change:transform,opacity;filter:drop-shadow(0 0 14px rgba(255,200,70,.85));}
 #fishFx .dragon-wrap .drag-body{animation:dragwig .45s ease-in-out infinite alternate;transform-origin:120px 48px;}
 @keyframes dragwig{from{transform:scaleY(.86) skewX(-3deg);}to{transform:scaleY(1.1) skewX(3deg);}}
 #fishFx .fish-glow{position:absolute;width:30px;height:30px;margin:-15px 0 0 -15px;border-radius:50%;background:radial-gradient(circle,#fff,rgba(255,220,110,.9) 40%,rgba(255,200,70,0) 70%);opacity:0;}
@@ -740,8 +741,8 @@ html.ui2 .dv-row.inv-card,html.ui2 .dv-row.grn-card,.dv-row.inv-card,.dv-row.grn
   html.ui2 table.cardy tbody td:first-child{grid-column:1/-1;font-size:15.5px;font-weight:700;padding-bottom:6px;border-bottom:1px dashed var(--line);}
   html.ui2 table.cardy tbody td:first-child::before{display:none;}
   html.ui2 table.cardy tbody td[data-l=""]::before{display:none;}
-  html.ui2 table.cardy tbody td:last-child:has(button){grid-column:1/-1;display:flex;gap:8px;justify-content:flex-end;padding-top:6px;border-top:1px dashed var(--line);}
-  html.ui2 table.cardy tbody td:last-child:has(button)::before{display:none;}
+  html.ui2 table.cardy tbody td:last-child:has(button),html.ui2 table.cardy tbody td:last-child:has(.ib){grid-column:1/-1;display:flex;gap:8px;justify-content:flex-end;padding-top:6px;border-top:1px dashed var(--line);}
+  html.ui2 table.cardy tbody td:last-child:has(button)::before,html.ui2 table.cardy tbody td:last-child:has(.ib)::before{display:none;}
   html.ui2 table.cardy tbody td[colspan]{grid-column:1/-1;}
   html.ui2 table.cardy tfoot{display:block;margin-top:10px;}html.ui2 table.cardy tfoot tr{display:flex;justify-content:space-between;flex-wrap:wrap;gap:6px;padding:12px 14px;background:var(--btn);color:#fff;border-radius:var(--radius);}
   html.ui2 table.cardy tfoot td{padding:0;border:0;color:#fff!important;background:transparent!important;font-weight:700;}
@@ -1151,7 +1152,7 @@ function statusOf(d){if(d<=14)return{t:"健康",e:"Fresh",c:"p-g"};if(d<=30)retu
 function stTxt(s){return LANG==="zh"?s.t:s.e;}
 
 /* ================= 数据种子 ================= */
-const BUILD="1111mk78";  // 版本标记：页面右上/网格提示可见，用来确认已载入最新版
+const BUILD="1111mk80";  // 版本标记：页面右上/网格提示可见，用来确认已载入最新版
 const SEED_VERSION="bh-master-2026-09-1";  // 版本变更→下次载入自动重置为最新主数据（仅本店云端）
 function seed(outletId){
   const isCK = outletId==="ck";
@@ -2272,6 +2273,8 @@ async function apReReconcile(id){const o=orderById(id);if(!o)return;if(!['owner'
 function apSupTotal(sup){const ordTot=apOrders().filter(o=>apSupOf(o)===sup).reduce((a,o)=>a+orderTotals(o).ta,0);const gridTot=apGridGroups().filter(g=>g.supplier===sup).reduce((a,g)=>a+g.ta,0);return ordTot+gridTot;}
 function apPaidAmt(sup){const m=apPaidMap()[sup];if(!m||!m.paid)return 0;return (m.amount!=null&&m.amount!=='')?(+m.amount||0):apSupTotal(sup);}
 function apShort(sup){const m=apPaidMap()[sup];if(!m||!m.paid||m.amount==null||m.amount==='')return 0;return +(apSupTotal(sup)-(+m.amount||0)).toFixed(2);}
+let apFilter='all',apQuery='';
+function apFilterSet(v){apFilter=v;render();}
 function pgAp(){
   const zh=LANG==="zh";const w=apCanWrite();
   if(isAgg())return `<div class="fb"><h2 class="h" style="margin:0;">💳 ${zh?"应付账款":"Payables"}</h2></div><div class="hint">${zh?"请在右上角切换到某一分店查看该店的应付账款。":"Switch to a branch."}</div>`;
@@ -2283,28 +2286,31 @@ function pgAp(){
   // —— 供应商列表 ——
   if(!apSel){
     let owed=0,unpaidN=0,paidTot=0,paidN=0,shortN=0,shortTot=0;sups.forEach(s=>{const tot=apSupTotal(s);if(apIsPaid(s)){paidN++;paidTot+=apPaidAmt(s);const sh=apShort(s);if(sh>0.005){shortN++;shortTot+=sh;}}else{unpaidN++;owed+=tot;}});
-    const cards=sups.map(s=>{const ords=groups[s];const gcnt=gridAll.filter(g=>g.supplier===s).length;const tot=apSupTotal(s);const sh=apShort(s);const invNos=ords.map(o=>o.invoiceNo).filter(Boolean).join('、');
+    const q=(apQuery||'').toLowerCase();
+    const info=sups.map(s=>{const sh=apShort(s),paid=apIsPaid(s);return {s,sh,paid,tot:apSupTotal(s)};});
+    const shown=info.filter(o=>apFilter==='all'||(apFilter==='paid'&&o.paid)||(apFilter==='unpaid'&&!o.paid)||(apFilter==='short'&&o.sh>0.005));
+    shown.sort((a,b2)=>((b2.sh>0.005)-(a.sh>0.005))||((a.paid)-(b2.paid))||b2.tot-a.tot);
+    const cards=shown.map(({s,sh,paid,tot})=>{const ords=groups[s];const gcnt=gridAll.filter(g=>g.supplier===s).length;const invNos=ords.map(o=>o.invoiceNo).filter(Boolean).join('、');
       const cntLabel=[ords.length?(ords.length+' '+(zh?'张 Invoice':'invoices')):'',gcnt?(gcnt+' '+(zh?'天进货':'days goods-in')):''].filter(Boolean).join(' + ');
-      return `<div class="card" style="padding:13px;margin-bottom:9px;${sh>0.005?'border:2px solid #d92d20;background:#fef2f2;':(sh<-0.005?'border:2px solid #0891b2;background:#ecfeff;':'')}">
-        <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap;">
-          <div><div style="font-weight:800;font-size:15px;">🏢 ${oEsc(s)}</div>
-          <div class="mini">${cntLabel} · ${zh?"应付":"Due"} ${money(tot)}</div>
-          ${sh>0.005?`<div class="mini" style="color:#d92d20;font-weight:800;">⚠️ ${zh?"少付":"Short"} RM${num(sh,2)}（${zh?"实付":"paid"} ${money(apPaidAmt(s))}）· ${oEsc(invNos)}</div>`:(sh<-0.005?`<div class="mini" style="color:#0891b2;font-weight:800;">💧 ${zh?"多付":"Over"} RM${num(-sh,2)}（${zh?"实付":"paid"} ${money(apPaidAmt(s))}）· ${oEsc(invNos)}</div>`:'')}</div>
-          <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;justify-content:flex-end;">
-            <button class="btn ghost sm" onclick="setApSel('${s.replace(/'/g,"\\'")}')">📋 ${zh?"订单状态":"Status"}</button>
-            ${apPaidBtn(s)}
-          </div>
-        </div></div>`;}).join('')||`<div class="empty">${zh?"暂无应付记录。请先在『采购进销 → 进货单』key in 货物，或在『订货单』下单并确认。":"No payables yet."}</div>`;
+      const stripe=sh>0.005?'var(--red)':paid?'var(--green)':'var(--amber)';
+      return `<div class="dv-row ap-card" data-name="${oEsc(s.toLowerCase())}" style="border-left:5px solid ${stripe};${q&&!s.toLowerCase().includes(q)?'display:none;':''}">
+        <div style="min-width:0;"><div class="dv-name">${oEsc(s)}</div>
+          <div class="mini">${cntLabel||'—'}</div>
+          ${sh>0.005?`<div class="mini neg" style="font-weight:700;">${zh?"少付":"Short"} RM${num(sh,2)}（${zh?"实付":"paid"} ${money(apPaidAmt(s))}）${invNos?' · '+oEsc(invNos):''}</div>`:(sh<-0.005?`<div class="mini" style="color:var(--blue);font-weight:700;">${zh?"多付":"Over"} RM${num(-sh,2)}</div>`:'')}</div>
+        <div class="inv-qty"><div class="inv-q ${paid?'':'neg'}">${money(tot)}</div><div class="mini">${paid?(zh?'已付':'Paid'):(zh?'应付':'Due')}</div>
+          <div class="inv-act" style="flex-wrap:wrap;justify-content:flex-end;"><button class="btn ghost sm" onclick="setApSel('${s.replace(/'/g,"\\'")}')">${zh?"订单状态":"Status"}</button>${apPaidBtn(s)}</div></div></div>`;}).join('')||`<div class="empty">${zh?"没有符合的供应商。":"None."}</div>`;
     return `<div class="fb"><h2 class="h" style="margin:0;">💳 ${zh?"应付账款":"Payables"} <span class="tag">v${BUILD}</span></h2><button class="btn ghost sm" onclick="nav('proc')">← ${zh?"返回":"Back"}</button></div>
       <div class="hint">${zh?"点『订单状态』→ 看该店的 Invoice → 逐项核对(✔/✗)→ 按『订单正确』；付款后按『未付款』改为已付款。":"Tap Status to reconcile; mark paid."}</div>
       ${shortN?`<div class="al al-r" style="margin-bottom:10px;"><div class="t">⚠️ ${zh?"有少付":"Underpaid"}</div>${zh?("共 "+shortN+" 家供应商现金少付，合计 RM"+num(shortTot,2)+"。红色卡片即是。"):(shortN+" vendors short, total RM"+num(shortTot,2))}</div>`:''}
-      <div class="grid g2" style="margin-bottom:10px;">
+      <div class="grid g2 sup-sum" style="margin-bottom:10px;">
         <div class="kpi"><div class="k">${zh?"未付供应商":"Unpaid vendors"}</div><div class="v sm ${unpaidN?'neg':''}">${unpaidN}</div></div>
         <div class="kpi"><div class="k">${zh?"未付总额":"Total unpaid"}</div><div class="v sm ${owed>0?'neg':''}">${money(owed)}</div></div>
         <div class="kpi"><div class="k">${zh?"已付供应商":"Paid vendors"}</div><div class="v sm pos">${paidN}</div></div>
         <div class="kpi"><div class="k">${zh?"已付总额":"Total paid"}</div><div class="v sm pos">${money(paidTot)}</div></div>
       </div>
-      ${cards}`;
+      <div class="dv-tools"><input class="dv-search" type="search" placeholder="${zh?'搜索供应商…':'Search…'}" value="${oEsc(apQuery||'')}" oninput="apQuery=this.value;dvFilter(this.value)" autocomplete="off">
+        <div class="seg"><button class="${apFilter==='all'?'active':''}" onclick="apFilterSet('all')">${zh?'全部':'All'}</button><button class="${apFilter==='unpaid'?'active':''}" onclick="apFilterSet('unpaid')">${zh?'未付':'Unpaid'}</button><button class="${apFilter==='paid'?'active':''}" onclick="apFilterSet('paid')">${zh?'已付':'Paid'}</button>${shortN?`<button class="${apFilter==='short'?'active':''}" onclick="apFilterSet('short')">${zh?'少付':'Short'}</button>`:''}</div></div>
+      <div id="dvList">${cards}</div>`;
   }
   // —— 单一供应商：Invoice 对账 ——
   const ords=(groups[apSel]||[]).slice().sort((a,b)=>(b.confirmedAt||b.ts)-(a.confirmedAt||a.ts));
@@ -3018,23 +3024,30 @@ function pgReport(){
 
 /* ================= M10 设置&审计 ================= */
 /* ================= 销售 (POS 数据层) ================= */
+let salesSort='rev';
+function salesSortSet(v){salesSort=v;render();}
 function pgSales(){
-  const x=d();const sales=x.sales||[];
+  const x=d();const sales=x.sales||[];const zh=LANG==="zh";
   const rows=sales.map(s=>{const r=(x.recipes||[]).find(rr=>rr.id===s.recipeId);if(!r)return null;const cost=recipeCost(r);return {id:r.id,name:r.name,price:r.price,qty:s.qty,cost,rev:r.price*s.qty,cogs:cost*s.qty,gp:(r.price-cost)*s.qty};}).filter(Boolean);
-  const totRev=rows.reduce((s,r)=>s+r.rev,0);
-  const totCogs=rows.reduce((s,r)=>s+r.cogs,0);
-  const totGp=totRev/1.06-totCogs;
-  return `<div class="fb"><h2 class="h" style="margin:0;">🧾 ${LANG==="zh"?"销售数据":"Sales"} <span class="tag">v${BUILD}</span></h2>${canW('sales')?`<button class="btn gold sm" onclick="openM('sales')">✎ ${LANG==="zh"?"录入销量":"Edit Sales"}</button>`:''}</div>
-  <div class="hint">👉 ${LANG==="zh"?"功能：录入每道菜卖了几份，系统自动算营业额和毛利，直接连到利润大盘。以后接上 POS 机可自动同步。":"Enter qty sold per dish; revenue & profit auto-calculate into the dashboard."}</div>
-  <div class="grid g3">
-    <div class="kpi"><div class="k">${LANG==="zh"?"含税营业额":"Gross Sales"}</div><div class="v sm">${money(totRev)}</div></div>
-    <div class="kpi"><div class="k">${LANG==="zh"?"食材成本 COGS":"COGS"}</div><div class="v sm up">${money(totCogs)}</div></div>
-    <div class="kpi"><div class="k">${LANG==="zh"?"食材成本率":"Food%"}</div><div class="v sm ${(totRev>0&&(totCogs/(totRev/1.06)*100)>40)?'up':'down'}">${totRev>0?(totCogs/(totRev/1.06)*100).toFixed(1):'0.0'}%</div></div>
-  </div>
-  <div class="card tbl" style="margin-top:10px;"><table><thead><tr><th>${LANG==="zh"?"菜品":"Dish"}</th><th>${LANG==="zh"?"售价":"Price"}</th><th>${LANG==="zh"?"单成本":"Cost"}</th><th>${LANG==="zh"?"销量":"Qty"}</th><th>${LANG==="zh"?"营业额":"Revenue"}</th><th>${LANG==="zh"?"成本":"COGS"}</th><th>${LANG==="zh"?"毛利":"GP"}</th></tr></thead><tbody>
-  ${rows.map(r=>`<tr><td><b>${oEsc(r.name)}</b></td><td>${money(r.price)}</td><td class="mini">${money(r.cost)}</td><td><b>${r.qty}</b></td><td>${money(r.rev)}</td><td class="up">${money(r.cogs)}</td><td class="down">${money(r.gp)}</td></tr>`).join('')}
-  </tbody><tfoot><tr style="background:#FAFBFC;font-weight:800;"><td colspan="4">${LANG==="zh"?"合计":"Total"}</td><td>${money(totRev)}</td><td class="up">${money(totCogs)}</td><td class="down">${money(totRev/1.06-totCogs)}</td></tr></tfoot></table></div>
-  <div class="hint" style="margin-top:10px;">💡 ${LANG==="zh"?"试试：去「配方成本」改某道菜的用量，或「采购进货」让食材变贵 → 回来看这里的 COGS 和大盘净利会跟着变。":"Change a recipe or purchase cost → COGS & Net Profit update here."}</div>`;
+  const totRev=rows.reduce((s2,r)=>s2+r.rev,0),totCogs=rows.reduce((s2,r)=>s2+r.cogs,0),totQty=rows.reduce((s2,r)=>s2+(+r.qty||0),0);
+  const net=totRev/1.06,pct=net>0?totCogs/net*100:0,gp=net-totCogs;
+  const sorted=rows.slice().sort((p1,p2)=>salesSort==='qty'?p2.qty-p1.qty:salesSort==='gp'?p2.gp-p1.gp:p2.rev-p1.rev);
+  const cards=sorted.map(r=>{const cp=r.price>0?r.cost/(r.price/1.06)*100:0;const cls=cp>40?'p-r':cp>32?'p-a':'p-g';
+    return `<div class="dv-row inv-card" data-name="${oEsc((r.name||'').toLowerCase())}">
+      <div style="min-width:0;"><div class="dv-name">${oEsc(r.name)}</div>
+        <div class="mini">${money(r.price)} × <b>${r.qty}</b> ${zh?'份':''} · ${zh?'单成本':'cost'} ${money(r.cost)}</div>
+        <div style="margin-top:4px;"><span class="pill ${cls}">${zh?'成本率':'Food%'} ${cp.toFixed(0)}%</span></div></div>
+      <div class="inv-qty"><div class="inv-q">${money(r.rev)}</div><div class="mini">COGS ${money(r.cogs)}</div><div class="inv-v ${r.gp<0?'neg':'pos'}">${zh?'毛利':'GP'} ${money(r.gp)}</div></div></div>`;}).join('');
+  return `<div class="fb"><h2 class="h" style="margin:0;">${zh?"销售数据":"Sales"}</h2>${canW('sales')?`<button class="btn brand sm" onclick="openM('sales')">${zh?"录入销量":"Enter Sales"}</button>`:''}</div>
+  <div class="grid g3 sup-sum"><div class="kpi"><div class="k">${zh?"含税营业额":"Gross Sales"}</div><div class="v sm">${money(totRev)}</div><div class="mini">${totQty} ${zh?'份':'pcs'}</div></div>
+    <div class="kpi"><div class="k">${zh?"食材成本 COGS":"COGS"}</div><div class="v sm">${money(totCogs)}</div></div>
+    <div class="kpi"><div class="k">${zh?"食材成本率":"Food%"}</div><div class="v sm ${pct>40?'neg':'pos'}">${pct.toFixed(1)}%</div><div class="mini">${zh?'毛利':'GP'} ${money(gp)}</div></div></div>
+  ${rows.length?`<div class="dv-tools"><input class="dv-search" type="search" placeholder="${zh?'搜索菜品…':'Search dishes…'}" oninput="dvFilter(this.value)" autocomplete="off">
+    <div class="seg"><button class="${salesSort==='rev'?'active':''}" onclick="salesSortSet('rev')">${zh?'营业额':'Revenue'}</button><button class="${salesSort==='qty'?'active':''}" onclick="salesSortSet('qty')">${zh?'销量':'Qty'}</button><button class="${salesSort==='gp'?'active':''}" onclick="salesSortSet('gp')">${zh?'毛利':'GP'}</button></div></div>
+    <div id="dvList" class="inv-grid">${cards}</div>
+    <div class="dv-foot"><span>${zh?'合计毛利（不含 SST）':'Gross profit (ex-SST)'}</span><b>${money(gp)}</b></div>`
+  :`<div class="card" style="padding:26px 18px;text-align:center;"><div style="font-weight:700;font-size:16px;margin-bottom:6px;">${zh?'还没有销量':'No sales yet'}</div><div class="mini" style="margin-bottom:14px;">${zh?'录入每道菜卖了几份，系统自动算营业额和毛利，直接连到利润大盘。以后接上 POS 可自动同步。':'Enter quantities sold; revenue and profit calculate automatically.'}</div>${canW('sales')?`<button class="btn brand" onclick="openM('sales')">${zh?'录入销量':'Enter Sales'}</button>`:''}</div>`}
+  <div class="hint" style="margin-top:12px;">${zh?"试试：去「配方成本」改某道菜的用量，或「采购进货」让食材变贵 → 回来看这里的 COGS 和大盘净利会跟着变。":"Change a recipe or purchase price and come back — COGS and profit follow."}</div>`;
 }
 
 // 依角色范围过滤可见员工：all=全部, branch=本店全部, self=只有自己
@@ -3586,13 +3599,30 @@ function pgCK(){
 }
 
 /* 盘点（独立页）*/
+let stockFilter='all',stockSort='var';
+function stockFilterSet(v){stockFilter=v;render();}
+function stockSortSet(v){stockSort=v;render();}
 function pgStock(){
-  const x=d();
-  return `<div class="fb"><h2 class="h" style="margin:0;">📋 ${LANG==="zh"?"实物盘点":"Stock Take"} <span class="tag">v${BUILD}</span></h2>${canW('stock')?`<button class="btn gold sm" onclick="openM('stocktake')">+ ${LANG==="zh"?"盘点":"Count"}</button>`:''}</div>
-  <div class="hint">${LANG==="zh"?"👉 功能：月底(或定期)数一次实际库存填进来，系统自动算出账面 vs 实物差多少(＝隐性损耗/被偷被浪费)，也用来做月度实耗成本。":"Enter your physical count; system shows the shortfall vs book stock."}</div>
-  <div class="card tbl"><table><thead><tr><th>${LANG==="zh"?"品项":"Item"}</th><th>${LANG==="zh"?"理论":"Theory"}</th><th>${LANG==="zh"?"实盘":"Actual"}</th><th>${LANG==="zh"?"盘差":"Var"}</th><th>${LANG==="zh"?"盘差额":"Val"}</th></tr></thead><tbody>
-  ${x.stocktakes.map(s=>{const it=findItem(s.item);const v=s.theory-s.count;return `<tr><td>${oEsc(s.item)}</td><td>${num(s.theory)}</td><td>${num(s.count)}</td><td><span class="pill ${Math.abs(v)>0.4?'p-r':'p-g'}">${v>0?'+':''}${num(v)}</span></td><td class="${Math.abs(v)>0.4?'neg':''}">${money(Math.abs(v)*(it?it.cost:0))}</td></tr>`;}).join('')}
-  </tbody></table></div>`;
+  const x=d();const zh=LANG==="zh";
+  const rows=(x.stocktakes||[]).map(s=>{const it=findItem(s.item);const v=s.theory-s.count;return {name:s.item,theory:s.theory,count:s.count,v,bad:Math.abs(v)>0.4,val:Math.abs(v)*(it?it.cost:0),unit:it?it.unit:''};});
+  const nBad=rows.filter(r=>r.bad).length,totVal=rows.reduce((q,r)=>q+(r.bad?r.val:0),0);
+  let list=rows.filter(r=>stockFilter==='all'||(stockFilter==='bad')===r.bad);
+  list=list.slice().sort((p1,p2)=>stockSort==='name'?(p1.name||'').localeCompare(p2.name||''):stockSort==='val'?p2.val-p1.val:Math.abs(p2.v)-Math.abs(p1.v));
+  const cards=list.map(r=>`<div class="dv-row inv-card ${r.bad?'low':''}" data-name="${oEsc((r.name||'').toLowerCase())}">
+    <div style="min-width:0;"><div class="dv-name">${oEsc(r.name)}</div>
+      <div class="mini">${zh?'理论':'Theory'} ${num(r.theory)} → ${zh?'实盘':'Actual'} <b>${num(r.count)}</b> ${oEsc(r.unit)}</div>
+      <div style="margin-top:4px;"><span class="pill ${r.bad?'p-r':'p-g'}">${r.bad?(zh?'有盘差':'Variance'):(zh?'正常':'OK')}</span></div></div>
+    <div class="inv-qty"><div class="inv-q ${r.bad?'neg':''}">${r.v>0?'+':''}${num(r.v)} <small>${oEsc(r.unit)}</small></div><div class="inv-v ${r.bad?'neg':''}">${money(r.val)}</div><div class="mini">${zh?'盘差额':'Var value'}</div></div></div>`).join('');
+  return `<div class="fb"><h2 class="h" style="margin:0;">${zh?"实物盘点":"Stock Take"}</h2>${canW('stock')?`<button class="btn brand sm" onclick="openM('stocktake')">+ ${zh?"盘点":"Count"}</button>`:''}</div>
+  <div class="grid g3 sup-sum"><div class="kpi"><div class="k">${zh?"盘点品项":"Counted"}</div><div class="v sm">${rows.length}</div></div>
+    <div class="kpi"><div class="k">${zh?"有盘差":"With variance"}</div><div class="v sm ${nBad?'neg':'pos'}">${nBad}</div></div>
+    <div class="kpi"><div class="k">${zh?"盘差额合计":"Variance value"}</div><div class="v sm ${totVal>0?'neg':''}">${money(totVal)}</div></div></div>
+  <div class="hint">${zh?"月底（或定期）数一次实际库存填进来，系统自动算出账面 vs 实物差多少（＝隐性损耗），也用来做月度实耗成本。":"Enter your physical count; the system shows the shortfall vs book stock."}</div>
+  ${rows.length?`<div class="dv-tools"><input class="dv-search" type="search" placeholder="${zh?'搜索品项…':'Search…'}" oninput="dvFilter(this.value)" autocomplete="off">
+    <div class="seg"><button class="${stockFilter==='all'?'active':''}" onclick="stockFilterSet('all')">${zh?'全部':'All'}</button><button class="${stockFilter==='bad'?'active':''}" onclick="stockFilterSet('bad')">${zh?'有盘差':'Variance'}</button><button class="${stockFilter==='ok'?'active':''}" onclick="stockFilterSet('ok')">${zh?'正常':'OK'}</button></div></div>
+    <div class="dv-tools"><div class="seg"><button class="${stockSort==='var'?'active':''}" onclick="stockSortSet('var')">${zh?'盘差最大':'Largest'}</button><button class="${stockSort==='val'?'active':''}" onclick="stockSortSet('val')">${zh?'金额':'Value'}</button><button class="${stockSort==='name'?'active':''}" onclick="stockSortSet('name')">${zh?'品名':'Name'}</button></div></div>
+    <div id="dvList" class="inv-grid">${cards||`<div class="empty">${zh?'没有符合的品项':'None'}</div>`}</div>`
+  :`<div class="card" style="padding:26px 18px;text-align:center;"><div style="font-weight:700;font-size:16px;margin-bottom:6px;">${zh?'还没有盘点记录':'No counts yet'}</div>${canW('stock')?`<button class="btn brand" onclick="openM('stocktake')">+ ${zh?'开始盘点':'Start a count'}</button>`:''}</div>`}`;
 }
 
 /* ---- 权限编辑器（仅 老板/人事经理、区域副经理 可用）---- */
@@ -5505,49 +5535,92 @@ function fishSplash(box,x,pool,big){
     const dx=(Math.random()-.5)*(big?150:100),h=24+Math.random()*(big?80:52);
     d.animate([{transform:'translate(0,0)',opacity:.95},{transform:`translate(${dx*.55}px,${-h}px)`,opacity:.95,offset:.45,easing:'cubic-bezier(.5,0,1,.6)'},{transform:`translate(${dx}px,10px) scale(.5)`,opacity:0}],{duration:680+Math.random()*260,easing:'cubic-bezier(.2,.7,.4,1)'}).onfinish=()=>d.remove();}
 }
+/* ===== 真龙（canvas）：身体沿头的轨迹蜿蜒前进，鳞片/背刺/四爪/龙角/龙须/鬃毛/龙珠 ===== */
+function drawDragon(ctx,P,v,ts,Wmax,alpha,clipY){
+  const N=40,dv=.0125,pts=[];
+  for(let k=0;k<=N+2;k++)pts.push(P(v-k*dv));
+  ctx.save();ctx.beginPath();ctx.rect(0,0,ctx.canvas._w,clipY);ctx.clip();ctx.globalAlpha=alpha;ctx.lineCap='round';ctx.lineJoin='round';
+  const wAt=k=>Wmax*(.32+.68*Math.sin(Math.min(1,(k+2)/11)*Math.PI/2))*(1-.84*Math.pow(k/N,1.35));
+  const lerp=(a,b,t)=>a+(b-a)*t,col=k=>{const t=k/N;return `rgb(${Math.round(lerp(255,206,t))},${Math.round(lerp(206,86,t))},${Math.round(lerp(84,28,t))})`;};
+  // 云
+  for(let i=0;i<7;i++){const q=P(v-.05-i*.075),r=Wmax*(2.6+Math.sin(i*2.3+ts*.002)*.5);const g=ctx.createRadialGradient(q.x+Math.sin(i*5)*Wmax*1.6,q.y,0,q.x+Math.sin(i*5)*Wmax*1.6,q.y,r);g.addColorStop(0,'rgba(255,255,255,.34)');g.addColorStop(1,'rgba(255,255,255,0)');ctx.fillStyle=g;ctx.beginPath();ctx.arc(q.x+Math.sin(i*5)*Wmax*1.6,q.y,r,0,7);ctx.fill();}
+  // 背刺（先画，在身体后面）
+  for(let k=N-2;k>=4;k-=2){const a=pts[k],b=pts[k-1],ang=Math.atan2(b.y-a.y,b.x-a.x),w=wAt(k),nx=Math.sin(ang),ny=-Math.cos(ang);
+    ctx.fillStyle=k%4?'#D8281C':'#FF6A2B';ctx.beginPath();ctx.moveTo(a.x+nx*w*.4-Math.cos(ang)*w*.35,a.y+ny*w*.4-Math.sin(ang)*w*.35);
+    ctx.lineTo(a.x+nx*w*1.15+Math.cos(ang)*w*.35,a.y+ny*w*1.15+Math.sin(ang)*w*.35);ctx.lineTo(a.x+nx*w*.4+Math.cos(ang)*w*.6,a.y+ny*w*.4+Math.sin(ang)*w*.6);ctx.fill();}
+  // 腿爪（两对）
+  [[10,1],[27,-1]].forEach(([k,sd])=>{const a=pts[k],b=pts[k-1],ang=Math.atan2(b.y-a.y,b.x-a.x),w=wAt(k);
+    [1,-1].forEach(s=>{const lx=a.x+Math.sin(ang)*s*w*.6,ly=a.y-Math.cos(ang)*s*w*.6,ex=lx+Math.sin(ang)*s*w*1.5-Math.cos(ang)*w*.9*sd,ey=ly-Math.cos(ang)*s*w*1.5-Math.sin(ang)*w*.9*sd;
+      ctx.strokeStyle='#B8560F';ctx.lineWidth=w*.3;ctx.beginPath();ctx.moveTo(lx,ly);ctx.lineTo(ex,ey);ctx.stroke();
+      ctx.strokeStyle='#FFE9A8';ctx.lineWidth=Math.max(1.5,w*.1);for(let c=-1;c<=1;c++){ctx.beginPath();ctx.moveTo(ex,ey);ctx.lineTo(ex+Math.sin(ang)*s*w*.55+Math.cos(ang)*c*w*.4,ey-Math.cos(ang)*s*w*.55+Math.sin(ang)*c*w*.4);ctx.stroke();}});});
+  // 身体：描边 → 主色 → 腹部浅色 → 鳞片
+  ctx.shadowColor='rgba(255,190,60,.9)';ctx.shadowBlur=Wmax*.9;
+  for(let k=N;k>=1;k--){const a=pts[k+1],b=pts[k];ctx.strokeStyle='#7A2A06';ctx.lineWidth=wAt(k)+4;ctx.beginPath();ctx.moveTo(a.x,a.y);ctx.lineTo(b.x,b.y);ctx.stroke();}
+  ctx.shadowBlur=0;
+  for(let k=N;k>=1;k--){const a=pts[k+1],b=pts[k],w=wAt(k);ctx.strokeStyle=col(k);ctx.lineWidth=w;ctx.beginPath();ctx.moveTo(a.x,a.y);ctx.lineTo(b.x,b.y);ctx.stroke();
+    ctx.strokeStyle='rgba(255,243,200,.55)';ctx.lineWidth=w*.34;ctx.beginPath();ctx.moveTo(a.x,a.y);ctx.lineTo(b.x,b.y);ctx.stroke();}
+  for(let k=N;k>=2;k--){const a=pts[k],b=pts[k-1],ang=Math.atan2(b.y-a.y,b.x-a.x),w=wAt(k);ctx.strokeStyle='rgba(120,40,6,.38)';ctx.lineWidth=1.4;ctx.beginPath();ctx.arc(a.x,a.y,w*.46,ang-1.15,ang+1.15);ctx.stroke();ctx.beginPath();ctx.arc(a.x,a.y,w*.46,ang+Math.PI-1.15,ang+Math.PI+1.15);ctx.stroke();}
+  // 尾焰
+  {const a=pts[N],b=pts[N-2],ang=Math.atan2(a.y-b.y,a.x-b.x);ctx.fillStyle='#E8421C';ctx.beginPath();ctx.moveTo(a.x,a.y);for(let i=-1;i<=1;i++){const aa=ang+i*.5+Math.sin(ts*.01+i)*.15;ctx.quadraticCurveTo(a.x+Math.cos(aa)*Wmax*1.1,a.y+Math.sin(aa)*Wmax*1.1,a.x+Math.cos(aa)*Wmax*2.2,a.y+Math.sin(aa)*Wmax*2.2);ctx.lineTo(a.x,a.y);}ctx.fill();}
+  // 头
+  const h0=pts[0],h1=pts[2],th=Math.atan2(h0.y-h1.y,h0.x-h1.x),s=Wmax/15;
+  ctx.save();ctx.translate(h0.x,h0.y);ctx.rotate(th);ctx.scale(s,s);
+  const sway=Math.sin(ts*.008);
+  // 鬃毛
+  for(let i=0;i<6;i++){ctx.fillStyle=i%2?'#E8421C':'#FF7A2B';ctx.beginPath();ctx.moveTo(4-i*7,-9);ctx.quadraticCurveTo(-8-i*8,-26-sway*5-i,-26-i*10,-12+sway*6);ctx.quadraticCurveTo(-14-i*7,-14,-2-i*7,-6);ctx.fill();}
+  // 龙须
+  ctx.strokeStyle='#FFF2C8';ctx.lineWidth=2;[[-1],[1]].forEach(([sg])=>{ctx.beginPath();ctx.moveTo(36,2*sg);ctx.bezierCurveTo(52,16*sg+sway*8,40,34*sg,10,40*sg+sway*10);ctx.stroke();});
+  // 下颚 / 头 / 上颚
+  ctx.fillStyle='#F0A12E';ctx.strokeStyle='#7A2A06';ctx.lineWidth=2;
+  ctx.beginPath();ctx.moveTo(18,3);ctx.lineTo(40,5);ctx.lineTo(34,13);ctx.lineTo(8,11);ctx.closePath();ctx.fill();ctx.stroke();
+  ctx.fillStyle='#FFD25A';ctx.beginPath();ctx.moveTo(-8,-11);ctx.bezierCurveTo(2,-17,18,-16,30,-10);ctx.lineTo(46,-6);ctx.quadraticCurveTo(50,-1,44,2);ctx.lineTo(20,2);ctx.quadraticCurveTo(0,6,-8,8);ctx.closePath();ctx.fill();ctx.stroke();
+  ctx.fillStyle='#fff';[[28,2],[34,2.5],[40,2]].forEach(([x,y])=>{ctx.beginPath();ctx.moveTo(x,y);ctx.lineTo(x+2.2,y+6);ctx.lineTo(x+4.4,y);ctx.fill();});
+  // 鼻孔 + 眼
+  ctx.fillStyle='#7A2A06';ctx.beginPath();ctx.arc(41,-4.5,1.6,0,7);ctx.fill();
+  ctx.shadowColor='#FF2A10';ctx.shadowBlur=12;ctx.fillStyle='#fff';ctx.beginPath();ctx.ellipse(18,-7,4.4,3.2,-.2,0,7);ctx.fill();ctx.fillStyle='#E01010';ctx.beginPath();ctx.arc(18.6,-7,2.5,0,7);ctx.fill();ctx.shadowBlur=0;ctx.fillStyle='#000';ctx.fillRect(18.2,-9.3,1,4.6);
+  ctx.strokeStyle='#7A2A06';ctx.lineWidth=2.4;ctx.beginPath();ctx.moveTo(10,-12);ctx.lineTo(24,-11);ctx.stroke();
+  // 龙角（鹿角状）
+  ctx.strokeStyle='#FFEBB0';ctx.lineWidth=3.2;[[1],[-1]].forEach(([sg],i)=>{const o=i?3:0;ctx.beginPath();ctx.moveTo(4,-13+o);ctx.bezierCurveTo(-6,-26-o,-18,-32-o,-32,-30-o);ctx.stroke();ctx.lineWidth=2.2;ctx.beginPath();ctx.moveTo(-10,-27-o);ctx.lineTo(-14,-40-o);ctx.moveTo(-20,-30-o);ctx.lineTo(-26,-42-o);ctx.stroke();ctx.lineWidth=3.2;});
+  ctx.restore();
+  // 龙珠
+  {const f=th,px=h0.x+Math.cos(f)*Wmax*5.2,py=h0.y+Math.sin(f)*Wmax*5.2+Math.sin(ts*.006)*4,r=Wmax*.95;ctx.shadowColor='#FFE070';ctx.shadowBlur=24;const g=ctx.createRadialGradient(px-r*.3,py-r*.3,0,px,py,r);g.addColorStop(0,'#fff');g.addColorStop(.5,'#FFE98A');g.addColorStop(1,'#F0A020');ctx.fillStyle=g;ctx.beginPath();ctx.arc(px,py,r,0,7);ctx.fill();ctx.shadowBlur=0;}
+  ctx.restore();
+}
 function ui2Fish(){
   try{if(ui2Theme()!=='classic'||window.matchMedia('(prefers-reduced-motion:reduce)').matches)return;}catch(e){return;}
   const old=document.getElementById('fishFx');if(old)old.remove();
   const W=window.innerWidth,H=window.innerHeight,mobile=W<=760;
-  const POOL=30,tabOff=mobile?68+(parseInt(getComputedStyle(document.documentElement).getPropertyValue('--sab'))||0):0;
-  const waterY=H-tabOff-POOL;                 // 水面的 y（从屏幕顶往下）
-  const G=Math.min(230,Math.round(H*.34)),GW=Math.round(G*150/230),cx=W/2;
+  const POOL=34,tabOff=mobile?70:0,waterY=H-tabOff-POOL;
+  const G=Math.min(300,Math.round(H*.4)),GW=Math.round(G*150/230),cx=W/2;
   const box=document.createElement('div');box.id='fishFx';
-  box.innerHTML=`<div class="fish-gate" style="left:${cx-GW/2}px;top:${waterY-G+6}px;width:${GW}px;height:${G}px;">${GATE_SVG}</div>
-    <div class="fish-wrap"><div class="fish-flip">${FISH_SVG}</div></div><div class="dragon-wrap">${DRAGON_SVG}</div><div class="fish-glow"></div>
-    <div class="fish-pool" style="bottom:${tabOff}px"></div>`;
+  box.innerHTML=`<div class="fish-gate" style="left:${cx-GW/2}px;top:${waterY-G+8}px;width:${GW}px;height:${G}px;">${GATE_SVG}</div>
+    <canvas class="dragon-cv"></canvas><div class="fish-wrap"><div class="fish-flip">${FISH_SVG}</div></div><div class="fish-glow"></div><div class="fish-pool" style="bottom:${tabOff}px;height:${POOL}px"></div>`;
   document.body.appendChild(box);
-  const poolB=tabOff+POOL;                    // 水花用（从底往上）
-  const fish=box.querySelector('.fish-wrap'),flip=box.querySelector('.fish-flip'),dragon=box.querySelector('.dragon-wrap'),glow=box.querySelector('.fish-glow'),gate=box.querySelector('.fish-gate');
-  const D=1.05,D3=1.5;
-  const apexH=Math.round(G*.5);              // 第三跳的最高点正好在龙门中间
-  const jumps=[{t0:.5,x0:.14,x1:.34,h:80,D},{t0:1.65,x0:.82,x1:.62,h:105,D},{t0:2.85,x0:cx/W-.3,x1:cx/W+.3,h:apexH*1.0,D:D3}];
+  const cv=box.querySelector('.dragon-cv'),dpr=Math.min(2,window.devicePixelRatio||1);cv.width=W*dpr;cv.height=H*dpr;cv.style.width=W+'px';cv.style.height=H+'px';
+  const ctx=cv.getContext('2d');ctx.scale(dpr,dpr);ctx._w=W;cv._w=W;ctx.canvas._w=W;
+  const poolB=tabOff+POOL,fish=box.querySelector('.fish-wrap'),flip=box.querySelector('.fish-flip'),glow=box.querySelector('.fish-glow');
+  const FW=mobile?150:170,FH=Math.round(FW*52/110);
+  fish.style.width=FW+'px';fish.style.height=FH+'px';flip.style.width=FW+'px';flip.style.height=FH+'px';
+  const apexH=Math.round(G*.52),apexY=waterY-apexH;
+  const jumps=[{t0:.3,x0:.16,x1:.38,h:100,D:.8},{t0:1.15,x0:.84,x1:.62,h:135,D:.85},{t0:2.05,x0:cx/W-.32,x1:cx/W+.32,h:apexH,D:1.15}];
+  const tApex=jumps[2].t0+jumps[2].D/2,DR=3.1,Wmax=mobile?42:54,R=apexY+Wmax*10;
   jumps.forEach((j,i)=>{const last=i===2;
     setTimeout(()=>{fishSplash(box,j.x0*W,poolB,false);sfx('splash');},j.t0*1000);
-    if(!last)setTimeout(()=>{fishSplash(box,j.x1*W,poolB,false);sfx('splash');},(j.t0+j.D)*1000-50);});
-  const tApex=jumps[2].t0+D3/2;               // 变身时刻
-  const DR=2.6;                                // 龙升天时长
-  const t00=performance.now();let raf=0,morphed=false;
-  const gy=waterY;                             // 水面像素 y
-  setTimeout(()=>{morphed=true;fxGold(box,cx,gy-apexH,26);sfx('dragon');glow.style.cssText=`left:${cx}px;top:${gy-apexH}px;`;glow.classList.add('on');},tApex*1000);
-  function frame(now){const t=(now-t00)/1000;let fishOn=false,drOn=false;
+    if(!last)setTimeout(()=>{fishSplash(box,j.x1*W,poolB,false);sfx('splash');},(j.t0+j.D)*1000-40);});
+  setTimeout(()=>{fxGold(box,cx,apexY,34);sfx('dragon');glow.style.cssText=`left:${cx}px;top:${apexY}px;`;glow.classList.add('on');},tApex*1000);
+  const P=v=>{if(v<0)return {x:cx,y:apexY-v*R*.9};return {x:cx+Math.sin(v*7.4)*(.55+.45*Math.min(1,v*2))*Math.min(W*.3,120),y:apexY-R*(v*1.2-.2*v*v)};};
+  const t00=performance.now();let raf=0;
+  function frame(now){const t=(now-t00)/1000;let fishOn=false;
     for(const j of jumps){const u=(t-j.t0)/j.D;if(u<0||u>1)continue;if(j===jumps[2]&&t>=tApex)break;fishOn=true;
-      const x=(j.x0+(j.x1-j.x0)*u)*W,y=j.h*4*u*(1-u),dir=j.x1>j.x0?1:-1;
-      const vy=j.h*4*(1-2*u)/j.D,vx=Math.abs(j.x1-j.x0)*W/j.D,ang=-dir*Math.atan2(vy,vx)*180/Math.PI;
-      flip.style.transform='scaleX('+dir+')';fish.style.transform=`translate(${(x-55).toFixed(1)}px,${(gy-y-26).toFixed(1)}px) rotate(${ang.toFixed(1)}deg)`;break;}
-    if(t>=tApex){const v=(t-tApex)/DR;if(v<=1){drOn=true;
-      const rise=(gy-apexH+140)*v*(2-v*.6);                       // 越飞越快
-      const x=cx+Math.sin(v*Math.PI*3.2)*(36+v*50),y=gy-apexH-rise;
-      const dx=Math.cos(v*Math.PI*3.2)*(36+v*50)*Math.PI*3.2/ (DR) , dy=-(gy-apexH+140)*(2-v*1.2)/DR;
-      const ang=Math.atan2(dy,dx)*180/Math.PI;                    // 头朝飞行方向
-      const sc=(v<.25?.6+v*4:1.6-(v-.25)*1.2)*(window.innerWidth<=760?1.25:1);
-      dragon.style.opacity=Math.max(0,Math.min(1,v<.1?v*10:(1-Math.max(0,(v-.62)/.38))));
-      dragon.style.transform=`translate(${(x-135).toFixed(1)}px,${(y-48).toFixed(1)}px) rotate(${ang.toFixed(1)}deg) scale(${sc.toFixed(2)})`;}}
-    fish.style.opacity=fishOn?1:0;if(!drOn)dragon.style.opacity=0;
+      const x=(j.x0+(j.x1-j.x0)*u)*W,y=j.h*4*u*(1-u),dir=j.x1>j.x0?1:-1,vy=j.h*4*(1-2*u)/j.D,vx=Math.abs(j.x1-j.x0)*W/j.D,ang=-dir*Math.atan2(vy,vx)*180/Math.PI;
+      flip.style.transform='scaleX('+dir+')';fish.style.transform=`translate(${(x-FW/2).toFixed(1)}px,${(waterY-y-FH/2).toFixed(1)}px) rotate(${ang.toFixed(1)}deg)`;break;}
+    fish.style.opacity=fishOn?1:0;
+    ctx.clearRect(0,0,W,H);
+    if(t>=tApex){const v=(t-tApex)/DR*1.5;const a=Math.min(1,v*8)*Math.min(1,Math.max(0,(1.5-v)/.35));if(a>0)drawDragon(ctx,P,v,now,Wmax,a,waterY);}
     if(t<tApex+DR+.1)raf=requestAnimationFrame(frame);}
-  fish.style.opacity=0;dragon.style.opacity=0;raf=requestAnimationFrame(frame);
-  setTimeout(()=>box.classList.add('out'),(tApex+DR+.2)*1000);
-  setTimeout(()=>{cancelAnimationFrame(raf);box.remove();},(tApex+DR+2.2)*1000);
+  fish.style.opacity=0;raf=requestAnimationFrame(frame);
+  setTimeout(()=>box.classList.add('out'),(tApex+DR)*1000);
+  setTimeout(()=>{cancelAnimationFrame(raf);box.remove();},(tApex+DR+1.8)*1000);
 }
 let _hiddenAt=0;
 document.addEventListener('visibilitychange',()=>{try{if(document.hidden)_hiddenAt=Date.now();else if(_hiddenAt&&Date.now()-_hiddenAt>5*60*1000)ui2Fish();}catch(e){}});
@@ -5556,8 +5629,8 @@ setTimeout(()=>{try{ui2Fish();ui2Lanterns();}catch(e){}},900);
 /* ===== 手机上的表格 → 卡片（SUPY 风格）：给每个格子补 data-label，CSS 在窄屏把一行变成一张卡 ===== */
 function ui2Cardify(){
   if(!window.matchMedia('(max-width:760px)').matches)return;
-  document.querySelectorAll('#pageHost .card.tbl table, #pageHost .tbl > table').forEach(t=>{
-    if(t.dataset.cardy||t.closest('.gwrap')||t.classList.contains('gtbl')||t.classList.contains('odtbl')||t.querySelector('input,select'))return;
+  document.querySelectorAll('#pageHost .card.tbl table, #pageHost .tbl > table, #pageHost table.odtbl').forEach(t=>{
+    if(t.dataset.cardy||t.closest('.gwrap')||t.classList.contains('gtbl')||(t.classList.contains('odtbl')&&curPage!=='ap')||t.querySelector('input,select'))return;
     const heads=[...t.querySelectorAll('thead th')].map(h=>h.textContent.trim());if(heads.length<3)return;
     t.dataset.cardy='1';t.classList.add('cardy');
     t.querySelectorAll('tbody tr').forEach(tr=>{[...tr.children].forEach((td,i)=>{if(td.colSpan>1)return;td.dataset.l=heads[i]||'';});});
