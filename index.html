@@ -728,7 +728,7 @@ html.ui2[data-theme="mech"] .top .r button,html.ui2[data-theme="mech"] .top butt
 .inv-v{font-weight:700;font-size:14px;}.inv-act{display:flex;gap:6px;margin-top:4px;}
 .grn-day{display:flex;justify-content:space-between;align-items:center;margin:14px 2px 8px;font-weight:700;font-size:14px;color:var(--ink2);}
 @media(min-width:761px){.inv-grid{grid-template-columns:1fr 1fr;}.inv-grid .dv-row{grid-template-columns:1fr auto;}}
-html.ui2 .dv-row.inv-card,html.ui2 .dv-row.grn-card,html.ui2 .dv-row.ap-card,.dv-row.inv-card,.dv-row.grn-card,.dv-row.ap-card{grid-template-columns:1fr auto;align-items:start;}
+html.ui2 .dv-row.inv-card,html.ui2 .dv-row.grn-card,html.ui2 .dv-row.ap-card,html.ui2 .dv-row.stf-card,.dv-row.inv-card,.dv-row.grn-card,.dv-row.ap-card,.dv-row.stf-card{grid-template-columns:1fr auto;align-items:start;}
 
 /* ---- 手机：表格变卡片（ui2Cardify）---- */
 @media(max-width:760px){
@@ -776,6 +776,16 @@ html.ui2 .hint{background:transparent!important;border:0!important;padding:2px 2
 .set-detail.empty{color:var(--grey);padding:60px 16px;}
 .set-title{font-size:18px;font-weight:800;margin:6px 0 12px;}
 @media(max-width:760px){.set-wrap{grid-template-columns:1fr;}.set-detail{padding:14px;}}
+
+.actm{position:relative;display:inline-block;}
+.actm-pop{display:none;position:absolute;right:0;top:calc(100% + 6px);z-index:90;min-width:210px;background:var(--card);border:1px solid var(--line2);border-radius:var(--radius);box-shadow:0 12px 30px rgba(0,0,0,.18);padding:6px;}
+.actm-pop.show{display:grid;gap:2px;}
+.actm-pop button{text-align:left;border:0;background:transparent;color:var(--ink);padding:11px 12px;border-radius:var(--radius-sm);font-size:14px;font-family:inherit;cursor:pointer;white-space:nowrap;}
+.actm-pop button:hover,.actm-pop button:active{background:var(--soft);}.actm-pop button.dg{color:var(--red);}
+.fb .actm,.dv-tools .actm,.dv-bar .actm{margin-left:auto;}
+.stf-av{width:44px;height:44px;border-radius:50%;display:grid;place-items:center;background:var(--soft);color:var(--brand);font-weight:800;font-size:17px;flex:none;}
+.bar-lv{height:6px;border-radius:99px;background:var(--soft);overflow:hidden;margin-top:6px;}.bar-lv i{display:block;height:100%;background:var(--green);border-radius:99px;}
+.dc-share{height:5px;border-radius:99px;background:var(--soft);overflow:hidden;margin-top:6px;}.dc-share i{display:block;height:100%;background:var(--brand);}
 /* ---- 进货「按日」视图（SUPY 风格）---- */
 .mtabs{flex-wrap:nowrap!important;overflow-x:auto;max-width:100%;scrollbar-width:none;}.mtabs::-webkit-scrollbar{display:none;}.mtabs button{flex:none;white-space:nowrap;}
 .mtabs.nox .ib{display:none;}
@@ -1180,7 +1190,7 @@ function statusOf(d){if(d<=14)return{t:"健康",e:"Fresh",c:"p-g"};if(d<=30)retu
 function stTxt(s){return LANG==="zh"?s.t:s.e;}
 
 /* ================= 数据种子 ================= */
-const BUILD="1111mk83";  // 版本标记：页面右上/网格提示可见，用来确认已载入最新版
+const BUILD="1111mk84";  // 版本标记：页面右上/网格提示可见，用来确认已载入最新版
 const SEED_VERSION="bh-master-2026-09-1";  // 版本变更→下次载入自动重置为最新主数据（仅本店云端）
 function seed(outletId){
   const isCK = outletId==="ck";
@@ -2095,12 +2105,8 @@ function invRow(i){
 }
 function pgInv(){
   const x=d();const zh=LANG==="zh";
-  const addBtns=`<div style="display:flex;gap:6px;flex-wrap:wrap;">
-      <button class="btn ghost sm" onclick="openM('suggest')">🤖 ${zh?"建议订货":"Suggest"}</button>
-      ${canW('proc')?`<button class="btn gold sm" onclick="openM('item')">+ ${zh?"品项":"Item"}</button>`:''}
-      ${canW('proc')?`<button class="btn ghost sm" onclick="bulkAddForm('item')">📋 ${zh?"批量导入":"Bulk"}</button>`:''}
-      ${canW('proc')?`<button class="btn ghost sm" onclick="recalcCostForm()">🔧 ${zh?"用月均价重算成本":"Recalc cost from month avg"}</button>`:''}
-      ${canW('proc')?`<button class="btn ghost sm" onclick="importSupplierItems()">📥 ${zh?"导入供应商全部品项":"Import supplier items"}</button>`:''}</div>`;
+  const addBtns=`<div class="dv-tools" style="margin-top:2px;">${canW('proc')?`<button class="btn brand sm" onclick="openM('item')">+ ${zh?"品项":"Item"}</button>`:''}
+      ${actm([{l:zh?"建议订货":"Suggest order",on:"openM('suggest')"},canW('proc')&&{l:zh?"批量导入":"Bulk import",on:"bulkAddForm('item')"},canW('proc')&&{l:zh?"用月均价重算成本":"Recalc cost from month avg",on:"recalcCostForm()"},canW('proc')&&{l:zh?"导入供应商全部品项":"Import supplier items",on:"importSupplierItems()"}])}</div>`;
   // 按供应商分组
   const groups={};(x.items||[]).forEach(i=>{const s=itemSupplier(i.name);(groups[s]=groups[s]||[]).push(i);});
   const tHead=`<thead><tr><th>${zh?"品名":"Item"}</th><th>${zh?"库存":"Qty"}</th><th>${zh?"加权单价":"W.Cost"}</th><th>${zh?"净料成本":"Net Cost"}</th><th>${zh?"库存值":"Value"}</th><th>${zh?"批次/状态":"Batch"}</th>${canW('proc')?`<th>${zh?"操作":"Action"}</th>`:''}</tr></thead>`;
@@ -2545,6 +2551,8 @@ async function applyPOSSalesMonthly(month,arr){
 }
 if(typeof window!=='undefined')window.applyPOSSalesMonthly=applyPOSSalesMonthly;
 
+let bomSort='cp',bomFilter='all';
+function bomSortSet(v){bomSort=v;render();}function bomFilterSet(v){bomFilter=v;render();}
 function pgBom(){
   const x=d();const zh=LANG==="zh";const w=canW('proc');
   const list=x.dishCosts||[];
@@ -2553,10 +2561,12 @@ function pgBom(){
     const dc=list.find(d=>d.id===dcSel);
     if(!dc){dcSel=null;}else{
       const tot=dcTotal(dc);const gp=(+dc.price||0)-tot;const cp=dc.price?tot/dc.price*100:0;const gm=dc.price?gp/dc.price*100:0;
-      const rows=(dc.ing||[]).map((ig,idx)=>{const share=tot?(+ig.cost||0)/tot*100:0;return `<tr>
-        <td><b>${oEsc(ig.item)}</b>${ig.link?` <span class="pill p-b" title="关联 ${oEsc(ig.link)}">🔗</span>`:''}</td><td class="mini">${oEsc(ig.type)||'—'}</td><td>${num(ig.qty,2)}</td><td class="mini">${oEsc(ig.unit)}</td><td>${money(ig.link?monthAvgPrice(costMonth,ig.link)*(+ig.qty||0):ig.cost)}${ig.link?`<br><span class="mini">${monthLabel2(costMonth)}</span>`:''}</td><td class="mini">${share.toFixed(1)}%</td>
-        ${w?`<td style="white-space:nowrap;"><button class="ib" onclick="formDcIng(${dc.id},${idx})">✏️</button> <button class="ib" onclick="delDcIng(${dc.id},${idx})">🗑️</button></td>`:''}</tr>`;}).join('')||`<tr><td colspan="7" class="empty">${zh?"暂无材料，点『+ 材料』添加":"No ingredients"}</td></tr>`;
-      return `<div class="fb"><h2 class="h" style="margin:0;">🍽 ${oEsc(dc.cn||dc.code)} <span class="tag">${oEsc(dc.code)}</span></h2><button class="btn ghost sm" onclick="backDc()">← ${zh?"菜品列表":"Dishes"}</button></div>
+      const rows=(dc.ing||[]).map((ig,idx)=>{const c=ig.link?monthAvgPrice(costMonth,ig.link)*(+ig.qty||0):(+ig.cost||0);const share=tot?(+ig.cost||0)/tot*100:0;
+        return `<div class="dv-row inv-card"><div style="min-width:0;"><div class="dv-name">${oEsc(ig.item)}${ig.link?` <span class="pill p-b">${zh?'关联':'linked'}</span>`:''}</div>
+          <div class="mini">${oEsc(ig.type)||'—'} · ${num(ig.qty,2)} ${oEsc(ig.unit)}</div><div class="dc-share"><i style="width:${Math.min(100,share).toFixed(0)}%"></i></div></div>
+          <div class="inv-qty"><div class="inv-q">${money(ig.cost)}</div><div class="mini">${share.toFixed(0)}%</div>
+          ${w?`<div class="inv-act"><button class="ib" onclick="formDcIng(${dc.id},${idx})">✏️</button><button class="ib" onclick="delDcIng(${dc.id},${idx})">🗑️</button></div>`:''}</div></div>`;}).join('')||`<div class="empty">${zh?"暂无材料，点「+ 材料」添加":"No ingredients"}</div>`;
+      return `<div class="fb"><h2 class="h" style="margin:0;">${oEsc(dc.cn||dc.code)} <span class="tag">${oEsc(dc.code)}</span></h2><button class="btn ghost sm" onclick="backDc()">← ${zh?"菜品列表":"Dishes"}</button></div>
       <div class="mini" style="margin-bottom:8px;">${oEsc(dc.en)}</div>
       <div class="grid g4" style="margin-bottom:10px;">
         <div class="kpi"><div class="k">${zh?"售价":"Price"}</div><div class="v sm">${money(dc.price)}</div></div>
@@ -2565,34 +2575,31 @@ function pgBom(){
         <div class="kpi"><div class="k">${zh?"成本率":"Food%"}</div><div class="v sm" style="color:${dcCostPctColor(cp)}">${cp.toFixed(1)}%</div></div>
       </div>
       ${w?`<div style="display:flex;gap:6px;margin-bottom:8px;flex-wrap:wrap;"><button class="btn brand sm" onclick="formDcIng(${dc.id})">+ ${zh?"材料":"Ingredient"}</button><button class="btn ghost sm" onclick="formDish(${dc.id})">✎ ${zh?"编辑菜品/售价":"Edit dish"}</button></div>`:''}
-      <div class="card tbl"><table><thead><tr><th>${zh?"材料/项目":"Item"}</th><th>${zh?"类别":"Type"}</th><th>${zh?"用量":"Qty"}</th><th>${zh?"单位":"Unit"}</th><th>${zh?"成本RM":"Cost"}</th><th>${zh?"占比":"Share"}</th>${w?'<th></th>':''}</tr></thead><tbody>
-        ${rows}
-        <tr style="background:#FAFBFC;font-weight:800;"><td colspan="4">${zh?"总成本":"Total Cost"}</td><td>${money(tot)}</td><td>100%</td>${w?'<td></td>':''}</tr>
-      </tbody></table></div>
+      <div class="inv-grid">${rows}</div>
+      <div class="dv-foot"><span>${zh?'总成本':'Total cost'}</span><b>${money(tot)}</b></div>
       <div class="hint" style="margin-top:8px;">${zh?"直接填每样材料的成本RM，系统自动算总成本、毛利、成本率与占比。占比=该材料成本÷总成本。":"Enter each ingredient cost; totals auto-calc."}</div>`;
     }
   }
   // —— 菜品成本表 列表 ——
   const q=dcSearch.toLowerCase();
-  const shown=q?list.filter(d=>((d.code||'')+(d.cn||'')+(d.en||'')).toLowerCase().includes(q)):list;
-  const rows=shown.map(dc=>{const tot=dcTotal(dc);const gp=(+dc.price||0)-tot;const cp=dc.price?tot/dc.price*100:0;const gm=dc.price?gp/dc.price*100:0;
-    return `<tr style="cursor:pointer;" onclick="setDcSel(${dc.id})">
-      <td class="mini">${oEsc(dc.code)}</td><td><b>${oEsc(dc.cn)}</b><br><span class="mini">${oEsc(dc.en)}${(dc.ing||[]).length?` · ${(dc.ing||[]).length}${zh?"料":""}`:''}</span></td>
-      <td>${money(dc.price)}</td><td>${money(tot)}</td><td class="${gp>=0?'pos':'neg'}">${money(gp)}</td>
-      <td style="color:${dcCostPctColor(cp)};font-weight:800;">${dc.price?cp.toFixed(0)+'%':'—'}</td><td class="mini">${dc.price?gm.toFixed(0)+'%':'—'}</td>
-      ${w?`<td style="white-space:nowrap;" onclick="event.stopPropagation();"><button class="ib" onclick="formDish(${dc.id})">✏️</button> <button class="ib" onclick="delDish(${dc.id})">🗑️</button></td>`:''}
-    </tr>`;}).join('')||`<tr><td colspan="8" class="empty">${zh?"暂无菜品，点『导入菜品表』或『+ 菜品』":"No dishes"}</td></tr>`;
+  const info=list.map(dc=>{const tot=dcTotal(dc);const gp=(+dc.price||0)-tot;const cp=dc.price&&tot?tot/dc.price*100:0;return {dc,tot,gp,cp,set:tot>0};});
+  const nHigh=info.filter(o=>o.set&&o.cp>35).length,nOk=info.filter(o=>o.set&&o.cp>=28&&o.cp<=35).length,nUnset=info.filter(o=>!o.set).length;
+  const avg=info.filter(o=>o.set).reduce((a,o,_,arr)=>a+o.cp/arr.length,0);
+  let shown=info.filter(o=>(!q||((o.dc.code||'')+(o.dc.cn||'')+(o.dc.en||'')).toLowerCase().includes(q))&&(bomFilter==='all'||(bomFilter==='high'&&o.set&&o.cp>35)||(bomFilter==='ok'&&o.set&&o.cp>=28&&o.cp<=35)||(bomFilter==='unset'&&!o.set)));
+  shown.sort((a2,b2)=>bomSort==='name'?(a2.dc.cn||'').localeCompare(b2.dc.cn||''):bomSort==='gp'?b2.gp-a2.gp:(b2.cp-a2.cp));
+  const cards=shown.map(({dc,tot,gp,cp,set})=>`<div class="dv-row inv-card ${set&&cp>35?'low':''}" style="cursor:pointer;" onclick="setDcSel(${dc.id})" data-name="${oEsc(((dc.code||'')+' '+(dc.cn||'')+' '+(dc.en||'')).toLowerCase())}">
+      <div style="min-width:0;"><div class="dv-name">${oEsc(dc.cn||dc.code)}</div><div class="mini">${oEsc(dc.en||'')}${dc.code?' · '+oEsc(dc.code):''}${(dc.ing||[]).length?` · ${(dc.ing||[]).length}${zh?"料":""}`:''}</div>
+        <div style="margin-top:4px;">${set?`<span class="pill ${cp>35?'p-r':cp>=28?'p-g':'p-b'}">${zh?'成本率':'Food%'} ${cp.toFixed(0)}%</span>`:`<span class="pill p-n">${zh?'未设成本':'No cost'}</span>`}</div></div>
+      <div class="inv-qty"><div class="inv-q">${money(dc.price)}</div><div class="mini">${zh?'成本':'Cost'} ${money(tot)}</div><div class="inv-v ${gp>=0?'pos':'neg'}">${zh?'毛利':'GP'} ${money(gp)}</div>
+        ${w?`<div class="inv-act" onclick="event.stopPropagation();"><button class="ib" onclick="formDish(${dc.id})">✏️</button><button class="ib" onclick="delDish(${dc.id})">🗑️</button></div>`:''}</div></div>`).join('')||`<div class="empty">${zh?"没有符合的菜品":"No dishes"}</div>`;
   return `
-  <div class="fb"><h2 class="h" style="margin:0;">🍲 ${zh?"配方成本 · 菜品成本表":"Recipe Cost"} <span class="tag">${list.length}</span></h2></div>
-  <div class="hint">${zh?"👉 功能：设定每道菜的成本。可只填一个成本价，或列出食材让系统自动算(BOM)——用来看每道菜赚多少、成本率健不健康(绿=达标28-35%，红=偏高)。":"Set each dish's cost (single figure or full BOM) to see per-dish margin."}</div>
-  ${w?`<div style="display:flex;gap:6px;margin-bottom:8px;flex-wrap:wrap;">
-    <button class="btn gold sm" onclick="formDish()">+ ${zh?"菜品":"Dish"}</button>
-    <button class="btn ghost sm" onclick="importDishForm()">📥 ${zh?"导入菜品表":"Import Dishes"}</button>
-    <input onchange="setDcSearch(this.value)" value="${dcSearch}" placeholder="${zh?"搜索菜名/编号":"search"}" style="flex:1;min-width:120px;padding:7px 9px;border:1.5px solid var(--line);border-radius:8px;font-size:12.5px;">
-  </div>`:''}
-  <div class="card tbl"><table><thead><tr><th>${zh?"编号":"Code"}</th><th>${zh?"菜品":"Dish"}</th><th>${zh?"售价":"Price"}</th><th>${zh?"总成本":"Cost"}</th><th>${zh?"毛利":"GP"}</th><th>${zh?"成本率":"Food%"}</th><th>${zh?"毛利率":"GM%"}</th>${w?'<th></th>':''}</tr></thead><tbody>
-  ${rows}
-  </tbody></table></div>
+  <div class="fb"><h2 class="h" style="margin:0;">${zh?"配方成本":"Recipe Cost"}</h2>${w?`<div style="display:flex;gap:8px;align-items:center;"><button class="btn brand sm" onclick="formDish()">+ ${zh?"菜品":"Dish"}</button>${actm([{l:zh?"导入菜品表":"Import dishes",on:"importDishForm()"}])}</div>`:''}</div>
+  <div class="grid g3 sup-sum"><div class="kpi"><div class="k">${zh?"菜品数":"Dishes"}</div><div class="v sm">${list.length}</div></div><div class="kpi"><div class="k">${zh?"平均成本率":"Avg Food%"}</div><div class="v sm" style="color:${dcCostPctColor(avg)}">${avg.toFixed(1)}%</div></div><div class="kpi"><div class="k">${zh?"成本率偏高":"High"}</div><div class="v sm ${nHigh?'neg':'pos'}">${nHigh}</div></div></div>
+  <div class="dv-tools"><input class="dv-search" type="search" placeholder="${zh?'搜索菜名/编号…':'Search…'}" value="${oEsc(dcSearch)}" onchange="setDcSearch(this.value)" autocomplete="off">
+    <div class="seg"><button class="${bomSort==='cp'?'active':''}" onclick="bomSortSet('cp')">${zh?'成本率高':'Food%'}</button><button class="${bomSort==='gp'?'active':''}" onclick="bomSortSet('gp')">${zh?'毛利':'GP'}</button><button class="${bomSort==='name'?'active':''}" onclick="bomSortSet('name')">${zh?'名称':'Name'}</button></div></div>
+  <div class="seg mtabs nox" style="margin-bottom:10px;"><button class="${bomFilter==='all'?'active':''}" onclick="bomFilterSet('all')">${zh?'全部':'All'} ${list.length}</button><button class="${bomFilter==='high'?'active':''}" onclick="bomFilterSet('high')">${zh?'偏高':'High'} ${nHigh}</button><button class="${bomFilter==='ok'?'active':''}" onclick="bomFilterSet('ok')">${zh?'达标':'OK'} ${nOk}</button><button class="${bomFilter==='unset'?'active':''}" onclick="bomFilterSet('unset')">${zh?'未设成本':'No cost'} ${nUnset}</button></div>
+  <details class="hintd"><summary>${zh?'说明':'Notes'}</summary><div>${zh?"设定每道菜的成本。可只填一个成本价，或列出食材让系统自动算(BOM)——看每道菜赚多少、成本率健不健康（蓝=偏低，绿=28-35% 达标，红=偏高）。":"Set each dish's cost to see margin."}</div></details>
+  <div id="dvList" class="inv-grid">${cards}</div>
   <details class="card" style="padding:0;margin-top:12px;"><summary style="padding:13px;font-weight:800;cursor:pointer;">🧪 ${zh?"配方 BOM（联动库存/销售）":"Recipe BOM (inventory-linked)"}</summary><div style="padding:2px 12px 12px;">
     ${w?`<button class="btn gold sm" style="margin-bottom:8px;" onclick="openM('recipe')">+ ${zh?"BOM配方":"Recipe"}</button>`:''}
     <div class="mini" style="margin-bottom:6px;">${zh?"此处的 BOM 配方用食材净料成本×用量计算，并驱动销售→库存自动扣减。":"BOM drives sales→inventory deduction."}</div>
@@ -3089,22 +3096,29 @@ function empById(id){return (d().staff||[]).find(e=>e.id===id);}
 
 /* 员工档案 */
 function hrEditable(){return canW('hr')&&hrScope()==="all";} // 员工档案的备注/更改/增加/删减 只交给 区域副经理/人事经理/老板(hrScope=all)；店面经理/店长/厨师长/中央/员工 只能查看，不能操作
+let hrSort='name',hrRole='all',hrQuery='';
+function hrSortSet(v){hrSort=v;render();}function hrRoleSet(v){hrRole=v;render();}
 function pgHR(){
-  const staff=visibleStaff();
-  const selfOnly=hrScope()==="self";
-  const w=hrEditable();
-  return `<div class="fb"><h2 class="h" style="margin:0;">👤 ${LANG==="zh"?"员工档案":"Staff Profiles"} <span class="tag">v${BUILD}</span></h2>${w?`<button class="btn gold sm" onclick="openM('emp')">+ ${LANG==="zh"?"员工":"Staff"}</button>`:''}</div>
-  <div class="hint">${selfOnly?(LANG==="zh"?"你的角色只能查看自己的档案。":"You can view your own profile only."):(w?(LANG==="zh"?"本店员工档案。点 ✏️ 编辑基本资料。":"Branch staff profiles."):(LANG==="zh"?"只能查看，不能修改；如需更改/新增/删除员工档案，请联系区域副经理/人事经理/老板。":"View only — contact Area/HR Manager/Owner to edit."))}</div>
-  ${staff.map(e=>`<div class="card" style="padding:13px;margin-bottom:9px;">
-    <div style="display:flex;justify-content:space-between;align-items:flex-start;">
-      <div><div style="font-weight:800;font-size:15px;">${oEsc(e.name)}</div><div class="mini">${e.empNo?oEsc(e.empNo)+' · ':''}${oEsc(e.role)}${e.nationality?' · '+oEsc(e.nationality):''}</div></div>
-      ${w?`<div><button class="ib" onclick="openM('emp',${e.id})">✏️</button> <button class="ib" onclick="delEmp(${e.id})">🗑️</button></div>`:''}
-    </div>
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-top:9px;font-size:12px;">
-      <div class="mini">🆔 ${oEsc(e.ic)||'—'}</div><div class="mini">📱 ${oEsc(e.phone)||'—'}</div>
-      <div class="mini">📅 ${LANG==="zh"?"入职":"Joined"} ${e.joined||'—'}</div><div class="mini">🌴 ${LANG==="zh"?"年假":"Leave"} ${e.usedLeave||0}/${e.annualLeave||0}</div>
-    </div>
-  </div>`).join('')||`<div class="empty">${LANG==="zh"?"暂无员工":"No staff"}</div>`}`;
+  const staff=visibleStaff();const zh=LANG==="zh";
+  const selfOnly=hrScope()==="self";const w=hrEditable();
+  const roles=[...new Set(staff.map(e=>e.role).filter(Boolean))];
+  let list=staff.filter(e=>hrRole==='all'||e.role===hrRole);
+  list=list.slice().sort((a,b2)=>hrSort==='joined'?(a.joined||'9').localeCompare(b2.joined||'9'):hrSort==='leave'?((b2.usedLeave||0)/(b2.annualLeave||1))-((a.usedLeave||0)/(a.annualLeave||1)):(a.name||'').localeCompare(b2.name||''));
+  const thisM=TODAY.slice(0,7);const newN=staff.filter(e=>(e.joined||'').slice(0,7)===thisM).length;
+  const cards=list.map(e=>{const used=+e.usedLeave||0,tot=+e.annualLeave||0,pct=tot?Math.min(100,used/tot*100):0;
+    return `<div class="dv-row stf-card" data-name="${oEsc(((e.name||'')+' '+(e.empNo||'')+' '+(e.role||'')).toLowerCase())}">
+      <div style="display:flex;gap:12px;align-items:center;min-width:0;"><div class="stf-av">${oEsc((e.name||'?').trim().slice(0,1))}</div>
+        <div style="min-width:0;"><div class="dv-name">${oEsc(e.name)}</div><div class="mini">${e.empNo?oEsc(e.empNo)+' · ':''}${oEsc(e.role)||''}${e.nationality?' · '+oEsc(e.nationality):''}</div>
+          <div class="mini">${oEsc(e.phone)||'—'} · ${zh?'入职':'Joined'} ${e.joined||'—'}</div></div></div>
+      <div class="inv-qty" style="min-width:120px;"><div class="mini">${zh?'年假':'Leave'} <b>${used}</b>/${tot}</div><div class="bar-lv" style="width:110px;"><i style="width:${pct}%"></i></div>
+        ${w?`<div class="inv-act"><button class="ib" onclick="openM('emp',${e.id})">✏️</button><button class="ib" onclick="delEmp(${e.id})">🗑️</button></div>`:''}</div></div>`;}).join('')||`<div class="empty">${zh?"暂无员工":"No staff"}</div>`;
+  return `<div class="fb"><h2 class="h" style="margin:0;">${zh?"员工档案":"Staff Profiles"}</h2>${w?`<div style="display:flex;gap:8px;align-items:center;"><button class="btn brand sm" onclick="openM('emp')">+ ${zh?"员工":"Staff"}</button>${actm([{l:zh?'管理职位列表':'Manage positions',on:"openListMgr('positions')"},{l:zh?'管理国籍列表':'Manage nationalities',on:"openListMgr('nats')"}])}</div>`:''}</div>
+  <div class="grid g3 sup-sum"><div class="kpi"><div class="k">${zh?"员工人数":"Headcount"}</div><div class="v sm">${staff.length}</div></div><div class="kpi"><div class="k">${zh?"本月新入职":"New this month"}</div><div class="v sm">${newN}</div></div><div class="kpi"><div class="k">${zh?"职位数":"Positions"}</div><div class="v sm">${roles.length}</div></div></div>
+  <div class="hint">${selfOnly?(zh?"你的角色只能查看自己的档案。":"You can view your own profile only."):(w?(zh?"点 ✏️ 编辑资料。":"Tap ✏️ to edit."):(zh?"只能查看，不能修改；如需更改/新增/删除员工，请联系人事。":"View only."))}</div>
+  ${staff.length>1?`<div class="dv-tools"><input class="dv-search" type="search" placeholder="${zh?'搜索姓名/编号/职位…':'Search…'}" oninput="dvFilter(this.value)" autocomplete="off">
+    <div class="seg"><button class="${hrSort==='name'?'active':''}" onclick="hrSortSet('name')">${zh?'姓名':'Name'}</button><button class="${hrSort==='joined'?'active':''}" onclick="hrSortSet('joined')">${zh?'入职':'Joined'}</button><button class="${hrSort==='leave'?'active':''}" onclick="hrSortSet('leave')">${zh?'年假用量':'Leave'}</button></div></div>
+    ${roles.length>1?`<div class="seg mtabs nox" style="margin-bottom:10px;"><button class="${hrRole==='all'?'active':''}" onclick="hrRoleSet('all')">${zh?'全部':'All'}</button>${roles.map(r=>`<button class="${hrRole===r?'active':''}" onclick="hrRoleSet('${String(r).replace(/'/g,"\\'")}')">${oEsc(r)}</button>`).join('')}</div>`:''}`:''}
+  <div id="dvList" class="inv-grid">${cards}</div>`;
 }
 
 /* 打卡考勤（GPS 3km 范围内才能打卡）*/
@@ -3619,11 +3633,32 @@ function prodCostHTML(){
     <th>${zh?"大锅成本 RM":"Batch Cost"}</th><th>${zh?"散装/单包 (包数)":"Packs"}</th><th>${zh?"单包成本 RM":"Cost/Pack"}</th>${w?'<th></th>':''}
   </tr></thead><tbody>${rows}</tbody></table></div>${addBtn}`;
 }
+let ckView=(()=>{try{return localStorage.getItem('erpCkView')||'card';}catch(e){return 'card';}})();
+function setCkView(v){ckView=v;try{localStorage.setItem('erpCkView',v);}catch(e){}render();}
+function ckCardsHTML(){
+  const w=canW('ck');const zh=LANG==="zh";const sup=prodCentralSup();const cat=ensureGridCat(sup);
+  const cards=cat.map((c,i)=>{const r=prodRow(c.name);const N=gEsc(c.name);const meta=[c.code,c.uom,c.spec].filter(Boolean).map(oEsc).join(' · ');
+    return `<div class="dv-row" data-name="${oEsc(((c.code||'')+' '+(c.name||'')).toLowerCase())}">
+      <div><div class="dv-name">${oEsc(c.name)}</div>${meta?`<div class="mini">${meta}</div>`:''}</div>
+      <div class="dv-in gcw"><label>${zh?'大锅成本 RM':'Batch cost RM'}<input inputmode="decimal" placeholder="0" value="${oEsc(r.batch)}" ${w?'':'disabled'} oninput="setProdBatch('${N}',${i},this.value)"></label>
+        <label>${zh?'分装包数':'Packs'}<input inputmode="decimal" placeholder="0" value="${oEsc(r.packs)}" ${w?'':'disabled'} oninput="setProdPacks('${N}',${i},this.value)"></label>
+        <div class="dv-amt"><div class="mini" style="font-weight:500;">${zh?'单包成本':'Per pack'}</div><span id="pcr-${i}">${money(prodPer(c.name))}</span></div></div>
+      ${w?`<details class="hintd" style="grid-column:1/-1;margin:0;"><summary>${zh?'编辑品项信息':'Edit item'}</summary><div class="pr-grid" style="margin-top:8px;">
+        <label>CODE<input value="${oEsc(c.code||'')}" onchange="setPcCode('${N}',this.value)"></label><label>${zh?'品名':'Name'}<input value="${oEsc(c.name)}" onchange="setPcName('${N}',this.value)"></label>
+        <label>${zh?'单位':'Unit'}<input value="${oEsc(c.uom||'')}" onchange="setPcUom('${N}',this.value)"></label><label>${zh?'规格/送货':'Pack'}<input placeholder="10kg x 6/ctn" value="${oEsc(c.spec||'')}" onchange="setPcSpec('${N}',this.value)"></label></div>
+        <button class="btn ghost sm" style="margin-top:8px;color:var(--red);" onclick="delPcItem('${N}')">${zh?'删除此品项':'Delete item'}</button></details>`:''}</div>`;}).join('')||`<div class="empty">${zh?"暂无品项，点「+ 品项」添加":"No items"}</div>`;
+  return `<div id="dvList">${cards}</div>`;
+}
 function pgCK(){
-  const isCK=outletObj().ck;
-  const head=`<h2 class="h" style="margin-top:2px;">🏭 ${LANG==="zh"?"中央厨房 · 生产成本":"Central Kitchen · Production Cost"} <span class="tag">v${BUILD}</span></h2>`;
-  if(!isCK)return head+`<div class="hint">⚠️ ${LANG==="zh"?"请先在右上角切换到「中央厨房」查看/录入生产成本。":"Switch to Central Kitchen first."}</div>`;
-  return head+prodCostHTML();
+  const isCK=outletObj().ck;const zh=LANG==="zh";const w=canW('ck');
+  if(!isCK)return `<div class="fb"><h2 class="h" style="margin:0;">${zh?"中央厨房 · 生产成本":"Central Kitchen"}</h2></div><div class="card" style="padding:24px 18px;text-align:center;"><div style="font-weight:700;margin-bottom:6px;">${zh?'请先切换到「中央厨房」':'Switch to Central Kitchen'}</div><div class="mini">${zh?'用右上角的分店选单，选「中央厨房」后再查看或录入生产成本。':'Use the branch selector at the top.'}</div></div>`;
+  const cat=ensureGridCat(prodCentralSup());const done=cat.filter(c=>prodPer(c.name)>0).length;
+  const body=ckView==='grid'?prodCostHTML():`<details class="hintd"><summary>${zh?'说明':'Notes'}</summary><div>${zh?"填「大锅成本」（煮一大锅的总成本）和「分装包数」，系统自动算「单包成本」＝大锅成本 ÷ 包数。":"Batch cost ÷ packs = cost per pack."}</div></details>
+    <div class="dv-tools"><input class="dv-search" type="search" placeholder="${zh?'搜索品项…':'Search items…'}" oninput="dvFilter(this.value)" autocomplete="off"></div>${ckCardsHTML()}`;
+  return `<div class="fb"><h2 class="h" style="margin:0;">${zh?"中央厨房 · 生产成本":"Central Kitchen"}</h2>${w?`<div style="display:flex;gap:8px;align-items:center;"><button class="btn brand sm" onclick="addPcItem()">+ ${zh?"品项":"Item"}</button></div>`:''}</div>
+  <div class="grid g2 sup-sum"><div class="kpi"><div class="k">${zh?"品项":"Items"}</div><div class="v sm">${cat.length}</div></div><div class="kpi"><div class="k">${zh?"已算出单包成本":"Costed"}</div><div class="v sm ${done<cat.length?'':'pos'}">${done}/${cat.length}</div></div></div>
+  <div class="dv-bar"><div class="seg"><button class="${ckView!=='grid'?'active':''}" onclick="setCkView('card')">${zh?'按品项':'Cards'}</button><button class="${ckView==='grid'?'active':''}" onclick="setCkView('grid')">${zh?'表格':'Grid'}</button></div></div>
+  ${body}`;
 }
 
 /* 盘点（独立页）*/
@@ -4494,6 +4529,12 @@ function gridTable(mod,sup,month){
 /* ================= 进货「按日」视图（SUPY 风格，mk76）=================
    手机上每天进货就是：选日期 → 找到品项 → 填 数量 / 单价（鱼类还有重量）→ 自动算金额。
    表格视图还在（右上角切换），两边读写的是同一份数据（setGridCell）。 */
+/* ===== 「操作 ▾」下拉菜单（SUPY 做法：主按钮留外面，次要操作收进这里）===== */
+function actm(items,label){const zh=LANG==="zh";items=items.filter(Boolean);if(!items.length)return '';
+  return `<div class="actm"><button class="btn ghost sm" onclick="actmToggle(event,this)">${label||(zh?'操作':'Actions')} ▾</button><div class="actm-pop">${items.map(i=>`<button class="${i.danger?'dg':''}" onclick="actmClose();${i.on}">${i.l}</button>`).join('')}</div></div>`;}
+function actmToggle(e,b){e.stopPropagation();const pp=b.nextElementSibling;const on=pp.classList.contains('show');actmClose();if(!on)pp.classList.add('show');}
+function actmClose(){document.querySelectorAll('.actm-pop.show').forEach(x=>x.classList.remove('show'));}
+document.addEventListener('click',e=>{if(!e.target.closest||!e.target.closest('.actm'))actmClose();});
 let ledgerView=(()=>{try{return localStorage.getItem('erpLedgerView')||'';}catch(e){return '';}})();
 let dvDay=null,dvSort='used';
 function curLedgerView(){return ledgerView||'day';}
@@ -4588,7 +4629,7 @@ function dayViewHTML(sup,month){
   const dayLabel=zh?`${dd.getMonth()+1}月${dd.getDate()}日 · 周${wd[dd.getDay()]}`:dvDay;
   const mTot=recs.reduce((s,r)=>s+(+r.price||0),0);
   return `<div class="dv-bar"><div class="seg"><button onclick="setLedgerView('day')" class="active">${zh?'按日':'Daily'}</button><button onclick="setLedgerView('grid')">${zh?'表格':'Grid'}</button></div>
-      ${w?`<button class="btn ghost sm" onclick="addGridItem('${S}')">+ ${zh?'品项':'Item'}</button><button class="btn ghost sm" onclick="dvCopyPrev('${S}','${dvDay}')">${zh?'复制上一次':'Copy last'}</button>`:''}</div>
+      ${w?actm([{l:'+ '+(zh?'新增品项':'Add item'),on:"addGridItem('"+S+"')"},{l:zh?'复制上一次进货':'Copy last purchase',on:"dvCopyPrev('"+S+"','"+dvDay+"')"}]):''}</div>
     <div class="dv-strip" id="dvStrip">${chips}</div>
     <div class="card dv-head"><div style="flex:1;min-width:0;"><div class="dv-date">${dayLabel}${dvDay===TODAY?` <span class="pill p-g">${zh?'今天':'Today'}</span>`:''}</div>
       <input class="dv-inv" placeholder="Invoice No." value="${oEsc(gridInv(mod,sup,dvDay))}" ${w?'':'disabled'} onchange="setGridInv('${mod}','${S}','${dvDay}',this.value)"></div>
@@ -4629,7 +4670,7 @@ function pgLedger(mod){
         <div class="kpi sup-sum-3"><div class="k">${zh?'供应商':'Suppliers'}</div><div class="v sm">${rows.length}</div><div class="mini">${zh?'点下面一家开始录':'tap one to start'}</div></div></div>
       <input class="sup-search" type="search" placeholder="${zh?'搜索供应商…':'Search suppliers…'}" value="${oEsc(supQuery||'')}" oninput="supFilter(this.value)" autocomplete="off">
       <div class="hint" style="margin-top:8px;">${zh?"点一家 → 选月份 → 直接在表格填数量，今天录过的会排在最前面。":"Tap a supplier → pick a month → type quantities. Suppliers entered today come first."}</div>
-      ${writable?`<div style="display:flex;gap:6px;margin-bottom:10px;flex-wrap:wrap;"><button class="btn brand sm" onclick="addSupplier()">+ ${zh?"新增供应商":"Add Supplier"}</button><button class="btn ghost sm" onclick="supManage=!supManage;render()">${supManage?(zh?'完成':'Done'):(zh?'管理':'Manage')}</button>${supManage?`<button class="btn ghost sm" onclick="bulkAddForm('supplier')">${zh?"批量导入":"Bulk Import"}</button>${sups.length?`<button class="btn ghost sm" onclick="clearSuppliers()">${zh?"清空全部":"Clear All"}</button>`:''}`:''}</div>`:''}
+      ${writable?`<div class="dv-tools"><button class="btn brand sm" onclick="addSupplier()">+ ${zh?"新增供应商":"Add Supplier"}</button>${actm([{l:supManage?(zh?'完成管理':'Done managing'):(zh?'管理供应商（改名/删除）':'Manage suppliers'),on:'supManage=!supManage;render()'},{l:zh?'批量导入':'Bulk import',on:"bulkAddForm('supplier')"},sups.length&&{l:zh?'清空全部':'Clear all',on:'clearSuppliers()',danger:true}])}</div>`:''}
       <div id="supList">${cards}</div>`;
   }
   // —— 单一供应商：按月整表录入（网格）——
@@ -5344,13 +5385,7 @@ function payActionsHTML(w,fin,zh){
   </div>
   <div class="fb" style="margin-top:14px;"><h2 class="h" style="margin:0;">📑 ${zh?'法定申报 / 银行文件':'Statutory Forms / Bank File'}</h2></div>
   <div class="hint">${zh?'取代 SQL Payroll 缺的几样：CP39(每月PCB申报)、Borang A/8A(EPF+SOCSO/EIS申报)、银行代发薪水文件——都是本月数据；EA表是整年汇总，另外选年份。':'Monthly CP39/Borang A/8A/bank file use the current month; EA Form is a yearly summary (pick a year).'}</div>
-  <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px;">
-    <button class="btn ghost sm" onclick="exportCP39()">📋 CP39 (PCB)</button>
-    <button class="btn ghost sm" onclick="exportBorangA()">📄 Borang A (EPF)</button>
-    <button class="btn ghost sm" onclick="exportBorang8A()">📄 Borang 8A (SOCSO/EIS)</button>
-    <button class="btn ghost sm" onclick="exportBankFile()">🏦 ${zh?'银行代发文件':'Bank Salary File'}</button>
-    <button class="btn gold sm" onclick="openEaFormPanel()">🧾 EA ${zh?'表(年结)':'Form (Annual)'}</button>
-  </div>`:'';
+  <div class="dv-tools">${actm([{l:'CP39 (PCB)',on:'exportCP39()'},{l:'Borang A (EPF)',on:'exportBorangA()'},{l:'Borang 8A (SOCSO/EIS)',on:'exportBorang8A()'},{l:zh?'银行代发文件':'Bank salary file',on:'exportBankFile()'},{l:'EA '+(zh?'表（年结）':'Form (annual)'),on:'openEaFormPanel()'}],zh?'法定申报 / 文件':'Statutory files')}</div>`:'';
 }
 
 
