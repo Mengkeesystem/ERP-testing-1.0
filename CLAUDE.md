@@ -17,7 +17,7 @@
 
 ### 这是什么
 - 单文件 HTML ERP（`index.html` 约 4600 行，**没有构建步骤**）+ `sw.js`（Service Worker，PWA）+ `order-data.js`（中央厨房订货数据，含图片）+ `manifest.webmanifest` + 图标 + `supabase-schema.sql` / `security-hardening.sql` / `push-schema.sql` + `supabase/functions/send-order-push`（手机推送）。
-- **当前版本：`BUILD="1102mk70"`**（`index.html` 约 668 行），`sw.js` 的 `SW_VERSION` 要**同步改成一样**（每次改动两处一起 +1，右上角版本角标和强制更新弹窗靠它）。版本号格式 `MMDDmkNN`（mk = 明记）。最后一次提交 2026-09-30。
+- **当前版本：`BUILD="1111mk71"`**（`index.html` 约 668 行），`sw.js` 的 `SW_VERSION` 要**同步改成一样**（每次改动两处一起 +1，右上角版本角标和强制更新弹窗靠它）。版本号格式 `MMDDmkNN`（mk = 明记）。最后一次提交 2026-09-30。
 - 部署：GitHub Pages，**直接推 `main` 就上线**（不开分支、不开 PR），网址 `https://mengkeesystem.github.io/ERP-testing-1.0/`。业主要求跟牛室一样：改完测完直接推。
 - 后端 Supabase 项目网址 `https://kmcdokwiyetlmsrdlgqw.supabase.co`；`SUPABASE_ANON_KEY` 是 publishable key（前端公开的，没问题）。**私钥类（service_role、VAPID 私钥）绝对不写进代码/文档**，只放 Supabase Secrets。
 - 数据存哪：登录后用 Supabase（`Store.get/set` → `erp_store` 表，key 是 `erpv2:<分店id>`、`erpv2:roleperms`、`erpv2:orders`）；没登录（演示模式）用浏览器本机。代码改了**不会动到数据**（数据在 Supabase，不在 `index.html` 里）。
@@ -25,6 +25,7 @@
 - **分店隔离（BUILD 1102mk69 起）**：数据库按角色限制能碰的 key——本店角色（店面经理/店长/厨师长/员工）只能读写自己那间的 `erpv2:<店>`；中央经理/员工只能碰 `erpv2:ck`；区域副经理 = `b1~b11`（不含 ck）；老板/人事经理 = 全部。网页用 `canWriteOutlet()`/`myOutlets()` 照同样规则**只载入自己能碰的分店**（读不到的绝不能当空数据去 seed）。`loadDB` 开头会 `clearSession()`（换人登录/退出时清空内存和本机缓存的薪资、调拨单，别让上一位的数据留在同一台手机）。因此原本「跨店写别人整包」的两处改了：① **订货表 `orderList` 搬到共用 key `erpv2:ckorder`**（`CKO`/`loadCkOrder`/`saveCkOrder`；所有白名单账号可读写；原因：店长/厨师长要填订货数量，以前是直接存进中央厨房整包，会连库存一起被旧数据覆盖）；读取失败时 `CKO_FAILED` 会禁止写入。② **跨店调拨改成「申请 → 对方批准」**（见下一条）。`erpv2:orders`、`erpv2:roleperms` 规则见 `store-lock.sql` 文件头。⚠️ **账号的「分店」栏位（`erp_users.outlet`）不能是空的/不对**：本店角色靠它决定能读哪间店，空的会被整个锁在外面。
 - **跨店调拨申请（BUILD 1102mk70 起）**：「跨店调拨」页（`pgTransfer`）原本只是在自己店里记流水账（`d().transfers` 物品 / `d().staffLoans` 人力），对方店完全不知情。现在 `+物品申请`/`+借调申请`（`formXferNew`→`submitXferReq`）会送出一张申请，存成独立记录 `erpv2:req:<发起店>:<被申请店>:<编号>`（`XREQ`）：状态 `pending`（双方都显示「待批准 Pending」）→ 被申请店 `decideXreq` 批准/拒绝（拒绝可填原因，显示「被拒绝」）。**批准后**双方各自在 `applyApprovedFor(oid)` 把自己这一半记进整包：物品调出方 `invReduce`、调入方 `invReceive`，并各写一条 `transfers`/`staffLoans` 记录（带 `dir:'out'|'in'` 和 `reqId`，页面显示「→ / ←」+「✅已批准」，带 `reqId` 的行不能改不能删）；用 `xferApplied` 防重复；人力借调只记录，不移动员工档案。方向可选「向对方调入」或「调出给对方」。通知：顶栏 🔁 铃铛（`#xferBellBtn`，红点=待我批准的张数）、App 开着每 30 秒轮询（`startXferPoll`/`xferSync`）+ 登录时提示 + 响铃弹窗 + 申请结果（批准/拒绝）通知发起店；手机后台推送走 `sendXferPush`→`send-order-push`（带 `outlet`，只发给那间店的 outletmgr/manager/headchef/ckmgr 已「开启通知」的设备）——**Edge Function 要重新部署才会按店发送**（新版也让「新订单」推送只发给 owner/hrmgr/area）。谁能批准：`XFER_APPROVE_ROLES`（owner/hrmgr/area/outletmgr/manager/headchef/ckmgr），必须切到「被申请店」才能批准（`xferCanApprove`）；发起店可撤回 pending、移除 rejected（`withdrawXreq`）。数据库触发器 `erp_req_guard`（`store-lock.sql`）强制：新申请只能是 pending、只有被申请店（或 owner/hrmgr/area）能批准/拒绝、批准/拒绝后不能再改、只有发起店能删。⚠️ 旧的 `saveTransfer`/`erpv2:xfer:*` 调拨单机制（mk69）没人用，已删除。
 - **推送函数 `send-order-push` 的安全（2026-11-02）**：Verify JWT 仍关，但函数自己验证——必须是已登录且在 `erp_users` 里 active 的账号（否则 401）；带 `outlet` 的调拨通知要有连着两间店的 `erpv2:req:*` 申请才发（admin 角色除外，否则 403）；标题/内容限长去 `<>`、图标固定 `icon-192.png`；每账号每分钟 20 次；CORS 只允许 `https://mengkeesystem.github.io`；`GET ?health=1` 只检查设定（VAPID 密钥、`erp_push_subs`/`erp_users` 连得上），绝不推送，回 `{ok:true}` 或 503 `{ok:false,problems:[…]}`，监控可以用。改完函数要业主在 Supabase 重新贴代码并 Deploy（不在 GitHub Pages 自动部署范围）。
+- **新界面 ui2（BUILD 1111mk71 起，试用中）**：业主觉得旧界面「像小孩子」，参考 SUPY 的流畅度、Claude 的设计风格重做外观。**只换外观，不改功能**；全部样式在 `<style id="ui2css">`，都挂在 `html.ui2` 底下，没开启时旧界面完全不受影响。开关：`<head>` 最前面的小脚本读 `localStorage.erpUI`（`?ui=2` / `?ui=1` 会写入；设置页「界面风格」也能切）；**`UI_DEFAULT`（该小脚本里，现为 `'1'`=旧界面）改成 `'2'` 就是全员默认新界面**。配色：深酒红 `#7C1619`（logo 底色，主强调色）+ 金 `#B68A2C`（只点缀）+ 暖象牙 `#FAF8F3`；「批准」这类主按钮用深墨色，避免和红色的「被拒绝/负数」混淆。做了：① 表情符号统一换成线条图标（`UI2_EMOJI`→`UI2_ICON`，`MutationObserver` 统一处理，不用逐页改；红黄绿圆点→小色点；其余装饰表情直接去掉；标题/按钮/折叠标题前不放图标）；② 手机顶栏收成一行（☰ + logo + 页面标题 + 分店 + ⋯，次要按钮收进 `#topMore` 面板，`ui2LayoutTop`）；③ 手机底部导航 `#tabbar`（总览/采购/进货/库存/调拨/更多，按 `pageAllowed` 显示，权限少的角色改显示 打卡/请假/薪资；「进货」→ `goProcSub('purchase')`，图标暂用收件箱，**将来做「拍照识别发票」再换成相机**；调拨红点同步 `xferPendingForMe`）。⚠️ 以后新加页面标题/按钮时**别在前面放表情符号**（新界面会自动去掉，旧界面还看得到）；Excel 风格格子（`.gtbl/.otbl/.pctbl`）只换了颜色，没动结构。下一步计划：流畅度（切页保持滚动、骨架屏、固定表头）→ 逐页精修 → 进货单拍照识别（要 Anthropic API 密钥放 Supabase Secrets + 一个新的 Edge Function）→ 新 POS 的 API 对接（业主说新 POS 可接 API，等选定）。
 - 公司：明记有 11 间分店 + 中央厨房（`OUTLETS`：`ck`、`b1`~`b11`，b1 OKR、b2 PAPA、b3 PJ、b4 Cheras、b5 Kajang、b6 Puchong、b7 Subang、b8 Klang、b9 Bukit Rimau、b10 Setia Alam、b11 Seremban 2）。⚠️ **ERP 的 b2「PAPA店」和官网的「OKR (Scott Garden 对面)」、b3「PJ店」和官网的「Kelana Jaya (PJ)」应该是同一间店，但名字/顺序不一样**（官网分店序号是官网自己 `config.js` 的顺序，跟 ERP 的 `b1…b11` 没有对应关系）；以后要把官网订单接进 ERP 时要先问业主确认对照表。`OUTLETS` 里的经纬度是示意值，打卡 GPS 围栏用，不是精确位置。
 
 ### 怎么跟业主合作（很重要）
@@ -37,7 +38,7 @@
 ### ⚠️ 这个仓库有「两个会话同时在推 main」
 **牛室那边的 Claude 会话也有权限直接推这个仓库的 `main`**（功能经常同步），不会提前打招呼：`git log` 可能看到不是你推的 commit；不先 `git fetch` 比对就推，可能用旧的 BUILD 号覆盖/冲突。
 1. 每次改 `index.html`/`sw.js` 前先 `git fetch origin main`，远端比本地新就先看远端改了什么（尤其 `BUILD`/`SW_VERSION`）再合并，不要盲目覆盖。
-2. `BUILD` 和 `SW_VERSION` 必须**同步手动升级**（格式 `MMDDmkNN`，例如 `1102mk70`），推送前确认两边一致、且比远端当前值大。
+2. `BUILD` 和 `SW_VERSION` 必须**同步手动升级**（格式 `MMDDmkNN`，例如 `1111mk71`），推送前确认两边一致、且比远端当前值大。
 3. 如果被分配了任务分支，要知道 GitHub Pages 只认 `main`；历史上本项目一直是直接 `git push origin main`，没有走 PR，没出过问题。新会话如被分配不同分支，先跟业主确认部署策略。
 4. 看到自己没做过的 commit，大概率是牛室会话推的（例如提示音），先 `git log` 看内容，别当成 bug。
 
@@ -45,7 +46,7 @@
 ```bash
 git fetch origin main
 node --check sw.js
-node -e "const fs=require('fs');const html=fs.readFileSync('index.html','utf8');const m=html.match(/<script>([\\s\\S]*)<\\/script>\\s*<\\/body>/);new Function(m[1]);console.log('INLINE_SCRIPT_OK');"
+node -e "const fs=require('fs');const html=fs.readFileSync('index.html','utf8');let n=0;for(const m of html.matchAll(/<script>([\\s\\S]*?)<\\/script>/g)){new Function(m[1]);n++}console.log('INLINE_SCRIPTS_OK',n)"
 ```
 然后 `BUILD` + `SW_VERSION` 一起 +1 → 中文提交信息写清楚改了什么、为什么 → `git push origin main`。影响界面/权限/数据结构的改动，请业主看截图/录屏确认。
 

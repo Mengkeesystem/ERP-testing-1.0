@@ -15,6 +15,11 @@
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="明记家乡小食店">
+<script>
+/* 界面开关：?ui=2 / ?ui=1，或「设置 → 界面风格」；选择存在本机 localStorage。
+   UI_DEFAULT 是「没选过」时用哪个：'1' = 旧界面，'2' = 新界面（业主确认新界面后改成 '2' 就全员切换）。 */
+(function(){var UI_DEFAULT='1';try{var q=location.search.match(/[?&]ui=([12])/);if(q)localStorage.setItem('erpUI',q[1]);var v=localStorage.getItem('erpUI')||UI_DEFAULT;if(v==='2')document.documentElement.classList.add('ui2');}catch(e){}})();
+</script>
 <style>
   *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
   /* 手机流畅度/好点：按钮类元素去掉双击缩放的300ms延迟，滚动区域用惯性滑动 */
@@ -283,6 +288,140 @@
   .bar-row .track{flex:1;background:var(--soft);border-radius:5px;height:18px;overflow:hidden;}
   .bar-row .fill{height:100%;border-radius:5px;}
   .bar-row .val{width:80px;text-align:right;flex-shrink:0;font-weight:700;font-size:11px;}
+</style>
+<style id="ui2css">
+/* ================= 新界面 ui2（BUILD 1111mk71）：暖象牙底 + 明记酒红 + 金色点缀 + 线条图标 =================
+   全部写在 html.ui2 底下，不开启就完全不影响旧界面。 */
+html.ui2{
+  --ink:#221C1A;--ink2:#4D4642;--paper:#FAF8F3;--card:#FFFFFF;--line:#E7E2D5;
+  --brand:#7C1619;--brand2:#9B2A2E;--gold:#B68A2C;--red:#C0392B;--amber:#A8731A;--green:#3E7B57;
+  --blue:#3D6A8F;--purple:#6F5A8A;--grey:#7D766B;--soft:#F2EEE5;
+  --serif:"Iowan Old Style","Palatino Linotype",Georgia,"Songti SC",serif;--ease:cubic-bezier(.2,.7,.2,1);
+}
+html.ui2 body{font-family:-apple-system,BlinkMacSystemFont,"PingFang SC","Noto Sans SC","Microsoft YaHei","Segoe UI",system-ui,sans-serif;font-size:14px;-webkit-font-smoothing:antialiased;}
+html.ui2 .ic{display:inline-flex;align-items:center;vertical-align:-.2em;}
+html.ui2 .dotc{display:inline-block;width:.62em;height:.62em;border-radius:50%;vertical-align:.04em;margin-right:.2em;}
+html.ui2 .ic svg{width:1.15em;height:1.15em;stroke:currentColor;fill:none;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round;}
+/* 顶栏 */
+html.ui2 .top{background:rgba(250,248,243,.94);-webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px);color:var(--ink);border-bottom:1px solid var(--line);padding:9px 20px;}
+html.ui2 .top h1{font-family:var(--serif);font-weight:600;font-size:17px;letter-spacing:.03em;}
+html.ui2 #topBranchTag{display:none;}
+html.ui2 .brand-logo svg{width:32px;height:32px;box-shadow:0 1px 3px rgba(124,22,25,.25);}
+html.ui2 .menu-btn{border:1px solid var(--line);color:var(--ink);background:#fff;font-size:0;}
+html.ui2 .menu-btn .ic{font-size:18px;}
+html.ui2 .lang{border:1px solid transparent;background:transparent;color:var(--ink2);border-radius:8px;min-width:34px;min-height:34px;font-weight:600;display:inline-flex;align-items:center;justify-content:center;font-size:12px;}
+html.ui2 .lang:hover{background:#ECE6D8;}
+html.ui2 .lang .ic{font-size:18px;}
+html.ui2 .sel{background:#fff;color:var(--ink);border:1px solid #D8D1BF;border-radius:8px;font-weight:600;padding:6px 8px;}
+html.ui2 #xferBellCount,html.ui2 #bellCount{background:var(--brand)!important;}
+html.ui2 #updBellCount{background:var(--gold)!important;}
+html.ui2 #updBellBtn img{display:none;}
+/* 侧栏 */
+html.ui2 .side{background:#F5F1E8;color:var(--ink2);border-right:1px solid var(--line);width:236px;box-shadow:none;}
+html.ui2 .side.open{box-shadow:6px 0 24px rgba(34,28,26,.18);}
+html.ui2 .side .grp{color:var(--grey);letter-spacing:.08em;font-size:11px;font-weight:600;padding:16px 18px 5px;}
+html.ui2 .side button{color:var(--ink2);font-weight:500;border-left:3px solid transparent;}
+html.ui2 .side button:hover{background:#ECE6D8;color:var(--ink);}
+html.ui2 .side button.active{background:#fff;color:var(--ink);font-weight:600;border-left-color:var(--brand);}
+html.ui2 .side button.active .si{color:var(--brand);}
+html.ui2 .side .si{width:20px;display:inline-flex;justify-content:center;font-size:17px;}
+html.ui2 .main{max-width:1120px;padding:22px 28px 40px;}
+/* 标题 */
+html.ui2 .h{font-family:var(--serif);font-weight:600;font-size:17px;letter-spacing:0;color:var(--ink);margin:22px 0 10px;}
+html.ui2 .page.active>.fb:first-child .h,html.ui2 .page.active>.h:first-child{font-size:26px;font-weight:500;letter-spacing:-.01em;}
+html.ui2 .h .tag{font-family:inherit;font-weight:500;background:var(--soft);}
+html.ui2 .sub{color:var(--grey);}
+/* 卡片/数字 */
+html.ui2 .card,html.ui2 .kpi,html.ui2 .pl,html.ui2 .chart-wrap{border-radius:10px;border-color:var(--line);}
+html.ui2 .kpi{padding:14px 16px;}
+html.ui2 .kpi .k{font-size:12px;font-weight:500;}
+html.ui2 .kpi .v{font-family:var(--serif);font-size:25px;font-weight:500;letter-spacing:-.01em;font-variant-numeric:tabular-nums lining-nums;}
+html.ui2 .kpi .v.sm{font-size:19px;}
+html.ui2 .pl .row.tot{border-top:1px solid #D8D1BF;}
+/* 表格 */
+html.ui2 th{background:transparent;color:var(--grey);font-size:12px;font-weight:500;text-transform:none;letter-spacing:0;border-bottom:1px solid var(--line);padding:10px 12px;}
+html.ui2 td{padding:11px 12px;border-bottom:1px solid #F0ECE1;}
+html.ui2 .card.tbl tbody tr{transition:background .12s;}
+html.ui2 .card.tbl tbody tr:hover td{background:#FCFAF5;}
+/* 状态标签 */
+html.ui2 .pill{display:inline-flex;align-items:center;gap:5px;font-size:11.5px;font-weight:500;padding:2px 9px;white-space:nowrap;}
+html.ui2 .pill::before{content:"";width:6px;height:6px;border-radius:50%;background:currentColor;}
+html.ui2 .p-g{background:#E6F0E9;color:var(--green);}html.ui2 .p-a{background:#F7ECD3;color:var(--amber);}
+html.ui2 .p-r{background:#FBE7E3;color:var(--red);}html.ui2 .p-n{background:#EEEAE0;color:var(--grey);}
+html.ui2 .p-b{background:#E5EDF4;color:var(--blue);}html.ui2 .p-p{background:#EEE9F3;color:var(--purple);}
+/* 按钮/输入 */
+html.ui2 .btn{background:var(--ink);border-radius:8px;font-weight:600;padding:8px 14px;transition:transform .08s,background .14s;}
+html.ui2 .btn:hover{background:#3A2F2B;}
+html.ui2 .btn.brand{background:var(--brand);}html.ui2 .btn.brand:hover{background:#5C1013;}
+html.ui2 .btn.gold{background:var(--ink);}
+html.ui2 .btn.ghost{background:#fff;color:var(--ink);border:1px solid #D8D1BF;}html.ui2 .btn.ghost:hover{background:#F8F5EC;}
+html.ui2 .ib{border-radius:8px;border-color:var(--line);background:#fff;color:var(--ink2);}
+html.ui2 .ib .ic{font-size:15px;}
+html.ui2 .fr label{font-weight:600;color:var(--ink2);}
+html.ui2 .fr input,html.ui2 .fr select,html.ui2 .fr textarea{border:1px solid #D8D1BF;border-radius:8px;}
+html.ui2 .fr input:focus,html.ui2 .fr select:focus,html.ui2 .fr textarea:focus{border-color:var(--brand);box-shadow:0 0 0 3px rgba(124,22,25,.1);}
+html.ui2 .seg{background:var(--soft);}html.ui2 .seg button{font-weight:600;}
+html.ui2 .hint{background:#F6F1E4;color:var(--ink2);}
+html.ui2 .al-b{background:#F6F1E4;border-color:#E8DFC8;color:var(--ink2);}
+html.ui2 .al-a{background:#F7ECD3;border-color:#EBDBB0;color:#6B4A0C;}
+html.ui2 .al-r{background:#FBE7E3;border-color:#F0C6BF;color:#7A2418;}
+/* 弹窗 */
+html.ui2 .mbg{background:rgba(34,28,26,.45);}
+html.ui2 .m{border-radius:16px 16px 0 0;}
+html.ui2 .m h3{font-family:var(--serif);font-weight:600;font-size:18px;}
+@media(min-width:640px){html.ui2 .m{border-radius:14px;}}
+/* 采购进销入口卡片：去掉彩色粗线 */
+html.ui2 button.card[style*="border-left"]{border-left:1px solid var(--line)!important;transition:border-color .16s,transform .16s var(--ease);}
+html.ui2 button.card[style*="border-left"]:hover{border-color:#D8D1BF;transform:translateY(-1px);}
+html.ui2 button.card[style*="border-left"]>div:first-child{color:var(--ink2);}
+html.ui2 .obanner{background:var(--brand);}
+/* Excel 风格表格：保留功能，把黑粗线和蓝灰底换成暖灰 */
+html.ui2 .gwrap{border:1px solid #CFC8B6;}
+html.ui2 .gtbl th,html.ui2 .gtbl td{border-right-color:#D9D2C0;border-bottom-color:#D9D2C0;}
+html.ui2 .gtbl thead th{background:#F2EEE5;color:var(--ink);border-bottom:2px solid #CFC8B6;}
+html.ui2 .gtbl td.gcode,html.ui2 .gtbl td.gunit,html.ui2 .gtbl td.gpack,html.ui2 .gtbl td.gprice{background:#F8F5EC;}
+html.ui2 .gtbl td.gname{background:#F4F0E6;box-shadow:1px 0 0 #CFC8B6;}
+html.ui2 .gtbl td.gprice,html.ui2 .gtbl th.gprice,html.ui2 .gtbl td.gdate,html.ui2 .gtbl th.gdate{box-shadow:1px 0 0 #CFC8B6;}
+html.ui2 .gtbl thead th.gcode,html.ui2 .gtbl thead th.gname,html.ui2 .gtbl thead th.gunit,html.ui2 .gtbl thead th.gpack,html.ui2 .gtbl thead th.gprice,html.ui2 .gtbl thead th.gdate{background:#F2EEE5;}
+html.ui2 .gtbl tr.ghdr td{background:#F4F0E6;}html.ui2 .gtbl tr.ghdr td.ghlab{background:#ECE6D8;}
+html.ui2 .gtbl tr.ghdr-end td{border-bottom:2px solid #CFC8B6;}
+html.ui2 .otbl th,html.ui2 .otbl td,html.ui2 .pctbl th,html.ui2 .pctbl td{border-color:#D9D2C0;}
+html.ui2 .otbl thead th,html.ui2 .pctbl thead th,html.ui2 .odtbl thead th{background:#F2EEE5;color:var(--ink);}
+html.ui2 .pctbl td.pcid{background:#F8F5EC;}html.ui2 .pctbl td.pcname{background:#F4F0E6;}
+/* 手机底部导航（仅手机 + 新界面） */
+#tabbar{display:none;}
+html.ui2 #tabbar button{border:0;background:transparent;display:flex;flex-direction:column;align-items:center;gap:2px;font-size:11px;color:var(--grey);padding:4px 0;position:relative;min-height:46px;font-family:inherit;cursor:pointer;touch-action:manipulation;}
+html.ui2 #tabbar button .ic{font-size:21px;}
+html.ui2 #tabbar button.on{color:var(--brand);font-weight:600;}
+html.ui2 #tabbar .bub{width:44px;height:44px;border-radius:50%;background:var(--brand);color:#fff;display:grid;place-items:center;margin-top:-20px;box-shadow:0 6px 14px rgba(124,22,25,.35),0 0 0 4px var(--paper);transition:transform .14s;}
+html.ui2 #tabbar .bub .ic{font-size:22px;}
+html.ui2 #tabbar button:active .bub{transform:scale(.94);}
+html.ui2 #tabbar .badge{position:absolute;top:0;left:54%;background:var(--brand);color:#fff;font-size:10px;min-width:16px;height:16px;line-height:16px;border-radius:99px;text-align:center;padding:0 4px;}
+/* 手机：顶栏收成一行，次要按钮收进「⋯」 */
+#moreBtn,#topMore{display:none;}
+@media(max-width:760px){
+  html.ui2 .top{flex-wrap:nowrap;padding:8px 12px;padding-top:calc(8px + env(safe-area-inset-top));gap:8px;}
+  html.ui2 .top .l{flex:1;min-width:0;gap:8px;}
+  html.ui2 .top h1{font-size:19px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0;}
+  html.ui2 .brand-logo svg{width:28px;height:28px;}
+  html.ui2 .top .r{flex:none;flex-wrap:nowrap;gap:6px;}
+  html.ui2 #outletSel{max-width:122px;}
+  html.ui2 #moreBtn{display:inline-flex;position:relative;}
+  html.ui2 #moreBtn .ic svg{stroke-width:3;}
+  html.ui2 .page.active>.fb:first-child>.h,html.ui2 .page.active>.h:first-child{display:none;}
+  html.ui2 .page.active>.fb:first-child{justify-content:flex-end;}
+  html.ui2 #moreBtn.dot::after{content:"";position:absolute;top:5px;right:5px;width:8px;height:8px;border-radius:50%;background:var(--brand);box-shadow:0 0 0 2px var(--paper);}
+  html.ui2 .top.more #topMore{display:flex;}
+  html.ui2 #topMore{flex-direction:column;gap:2px;position:absolute;right:10px;top:calc(100% + 4px);min-width:230px;background:#fff;border:1px solid var(--line);border-radius:12px;padding:6px;box-shadow:0 12px 30px rgba(34,28,26,.18);z-index:90;}
+  html.ui2 #topMore .lang{display:flex;width:100%;justify-content:flex-start;gap:10px;padding:10px 12px;min-height:42px;position:relative;}
+  html.ui2 #topMore .lang::after{content:attr(title);font-size:13.5px;font-weight:500;color:var(--ink2);}
+  html.ui2 #topMore .lang span[id$="Count"]{position:static!important;margin-left:auto;order:3;}
+  html.ui2 #topMore select{width:100%;margin-top:4px;}
+  html.ui2 .main{padding:14px 14px 20px;}
+  html.ui2 body{padding-bottom:calc(86px + env(safe-area-inset-bottom));}
+  html.ui2 #tabbar{display:grid;grid-auto-flow:column;grid-auto-columns:1fr;position:fixed;left:0;right:0;bottom:0;z-index:70;border-top:1px solid var(--line);background:rgba(250,248,243,.97);-webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px);padding:6px 2px calc(8px + env(safe-area-inset-bottom));align-items:end;}
+  html.ui2 .al[style*="position:fixed"]{bottom:calc(88px + env(safe-area-inset-bottom))!important;}
+}
 </style>
 <!-- Supabase 云端 SDK（未配置 key 时不影响运行，自动回退本地存储）-->
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -657,7 +796,7 @@ function statusOf(d){if(d<=14)return{t:"健康",e:"Fresh",c:"p-g"};if(d<=30)retu
 function stTxt(s){return LANG==="zh"?s.t:s.e;}
 
 /* ================= 数据种子 ================= */
-const BUILD="1102mk70";  // 版本标记：页面右上/网格提示可见，用来确认已载入最新版
+const BUILD="1111mk71";  // 版本标记：页面右上/网格提示可见，用来确认已载入最新版
 const SEED_VERSION="bh-master-2026-09-1";  // 版本变更→下次载入自动重置为最新主数据（仅本店云端）
 function seed(outletId){
   const isCK = outletId==="ck";
@@ -1039,6 +1178,7 @@ function updateXferBell(){
   b.style.display=xferActive()?'':'none';
   const n=xferPendingForMe().length;const c=document.getElementById('xferBellCount');
   if(c){c.textContent=n>9?'9+':String(n);c.style.display=n>0?'':'none';}
+  try{if(typeof UI2!=='undefined'&&UI2){ui2Tabs();ui2MoreDot();}}catch(e){} // 新界面：底部导航红点、「⋯」红点跟着更新
 }
 function xferStatusPill(r){
   const zh=LANG==="zh";
@@ -3236,6 +3376,10 @@ function pgSettings(){
     <div class="mini" style="margin-top:6px;">${LANG==="zh"?"系统每隔几分钟、或从背景切回前台时会自动检查新版本；侦测到时所有账号都会响铃+跳出强制更新窗，必须按确认更新才能继续使用。":"Auto-checks every few minutes and on resume; when found, all accounts get a chime + forced update prompt."}</div>
     <button class="btn ghost sm" style="margin-top:8px;" onclick="checkForUpdate(true)">🔄 ${LANG==="zh"?"手动检查更新":"Check now"}</button>
   `)}
+  ${settingsPanel(LANG==="zh"?"界面风格":"Interface",`
+    <div class="mini">${LANG==="zh"?"新界面（试用中）：暖色、统一线条图标、手机顶栏一行、底部导航。可以随时切回旧界面，切换后页面会自动重新载入。":"New look (beta): warm palette, line icons, one-row mobile header, bottom navigation. Switch back any time."}</div>
+    <div style="display:flex;gap:8px;margin-top:8px;flex-wrap:wrap;"><button class="btn ${UI2?'':'brand'} sm" onclick="setUI(2)">${LANG==="zh"?"使用新界面":"Use new look"}</button><button class="btn ghost sm" onclick="setUI(1)">${LANG==="zh"?"用回旧界面":"Use classic"}</button></div>
+  `)}
   ${accountPermsSection()}
   ${whitelistHTML()}
   ${auditMonitorHTML()}
@@ -4574,7 +4718,139 @@ function render(){
   const preview=isPreviewing()?`<div class="al al-a" style="margin-bottom:10px;display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap;"><div><div class="t">👁 ${LANG==="zh"?"岗位预览模式":"Role Preview"}</div>${LANG==="zh"?`你正在以「${ROLES[curRole].name}」身份查看界面（真实身份：${curUser.name} · 老板/管理员）。`:`Previewing as ${ROLES[curRole].en}.`}</div><button class="btn ghost sm" onclick="exitPreview()">↩︎ ${LANG==="zh"?"退出预览":"Exit"}</button></div>`:'';
   document.getElementById('pageHost').innerHTML=`<div class="page active">${banner}${preview}${(_pages[curPage]||pgDash)()}</div>`;
   const mn=document.querySelector('.main');if(mn)mn.classList.toggle('wide',['payrun','monthend'].includes(curPage)); // 宽表页用满宽
+  if(UI2)ui2AfterRender();
 }
+
+/* ================= 新界面 ui2（BUILD 1111mk71）=================
+   只在 <html class="ui2"> 时生效（开关见 <head> 里的小脚本 / 设置页「界面风格」）。
+   做三件事：① 把表情符号换成统一的线条图标；② 手机顶栏收成一行（次要按钮收进「⋯」）；③ 手机底部导航。
+   用 MutationObserver 统一处理，不用逐页改动原来的页面代码。 */
+const UI2=document.documentElement.classList.contains('ui2');
+function setUI(v){try{localStorage.setItem('erpUI',String(v));}catch(e){}location.reload();}
+const UI2_ICON={
+  chart:'M4 20V10M10 20V4M16 20v-7M22 20H2',receipt:'M6 3h12v18l-3-2-3 2-3-2-3 2zM9 8h6M9 12h6',cart:'M3 4h2l2.2 10.2a1 1 0 0 0 1 .8h8.6a1 1 0 0 0 1-.8L20 8H6M9 20h.01M17 20h.01',
+  factory:'M3 21V9l6 4V9l6 4V5h6v16zM8 17h2M14 17h2',box:'M3 7l9-4 9 4v10l-9 4-9-4zM3 7l9 4 9-4M12 11v10',pot:'M4 11h16v3a6 6 0 0 1-6 6h-4a6 6 0 0 1-6-6zM3 11h18M9 4c0 1.5 1 1.5 1 3M14 4c0 1.5 1 1.5 1 3',
+  check:'M9 11l3 3 8-8M20 12v7a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h8',wallet:'M3 7a2 2 0 0 1 2-2h12v4M3 7v11a2 2 0 0 0 2 2h14a1 1 0 0 0 1-1v-9a1 1 0 0 0-1-1H5a2 2 0 0 1-2-2zM16 14h.01',
+  users:'M16 20v-1.5a3.5 3.5 0 0 0-3.5-3.5h-5A3.5 3.5 0 0 0 4 18.5V20M10 11a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7zM20 20v-1.5a3.5 3.5 0 0 0-2.5-3.3M15.5 4.2a3.5 3.5 0 0 1 0 6.6',
+  user:'M20 21v-1a5 5 0 0 0-5-5H9a5 5 0 0 0-5 5v1M12 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8z',swap:'M4 8h13l-3-3M20 16H7l3 3',bell:'M6 17V11a6 6 0 1 1 12 0v6l1.5 2h-15zM10 21h4',
+  menu:'M4 7h16M4 12h16M4 17h16',more:'M4 6h16M4 12h16M4 18h10',dots:'M5 12h.01M12 12h.01M19 12h.01',search:'M11 18a7 7 0 1 0 0-14 7 7 0 0 0 0 14zM20 20l-4-4',
+  clipboard:'M9 4h6v3H9zM7 5H6a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-1M8 12h8M8 16h5',
+  calendar:'M4 7a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2zM4 10h16M8 3v4M16 3v4',clock:'M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18zM12 7v5l3 2',
+  sun:'M12 16a4 4 0 1 0 0-8 4 4 0 0 0 0 8zM12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4',
+  calc:'M6 3h12a1 1 0 0 1 1 1v16a1 1 0 0 1-1 1H6a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1zM8 7h8M8 12h.01M12 12h.01M16 12h.01M8 16h.01M12 16h.01M16 16h.01',
+  gear:'M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6zM19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z',
+  inbox:'M4 14l2-8h12l2 8M4 14v5a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-5M4 14h5l1 2h4l1-2h5',trash:'M4 7h16M10 11v6M14 11v6M6 7l1 12a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2l1-12M9 7V4h6v3',
+  gift:'M4 11h16v9H4zM3 7h18v4H3zM12 7v13M12 7c-2 0-4-1-4-2.5S9.5 2 12 5c2.5-3 4-1.5 4-.5S14 7 12 7z',phone:'M8 3h8a1 1 0 0 1 1 1v16a1 1 0 0 1-1 1H8a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1zM11 18h2',
+  logout:'M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9',lock:'M6 11h12v10H6zM8 11V7a4 4 0 0 1 8 0v4',
+  eye:'M2 12s4-7 10-7 10 7 10 7-4 7-10 7S2 12 2 12zM12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6z',alert:'M12 3l10 18H2zM12 10v5M12 18h.01',
+  tick:'M5 12l5 5L20 7',x:'M6 6l12 12M18 6L6 18',edit:'M4 20h4L19 9l-4-4L4 16zM14 6l4 4',refresh:'M20 11a8 8 0 0 0-14.9-3M4 5v4h4M4 13a8 8 0 0 0 14.9 3M20 19v-4h-4'
+};
+const UI2_EMOJI={'💰':'chart','📊':'chart','📈':'chart','🧾':'receipt','🔄':'swap','🔁':'swap','🏭':'factory','📦':'box','🍲':'pot','🔎':'search','🔍':'search','📋':'clipboard','💵':'wallet','💳':'wallet','💴':'wallet','📅':'calendar','👤':'user','🕐':'clock','🌴':'sun','🧮':'calc','⚙':'gear','🛒':'cart','📥':'inbox','🗑':'trash','🎁':'gift','✏':'edit','🔔':'bell','📲':'phone','🔓':'logout','🔒':'lock','👁':'eye','⚠':'alert','✅':'tick','❌':'x','☰':'menu'};
+const UI2_DOT={'🔴':'#C0392B','🟠':'#D9822B','🟡':'#D8A31A','🟢':'#3E7B57','🔵':'#3D6A8F','🟣':'#6F5A8A','⚪':'#BDB7A8','⚫':'#4D4642'};
+// 1 = 已收录的线条图标；2 = 红黄绿等色点 → 小圆点；3 = 其余装饰性表情 → 直接去掉（✔ ▶ © 这类文字符号不受影响）
+const UI2_RE=new RegExp('('+Object.keys(UI2_EMOJI).join('|')+')\\uFE0F?|('+Object.keys(UI2_DOT).join('|')+')\\uFE0F?|((?:\\p{Emoji_Presentation}|\\p{Emoji}\\uFE0F)(?:\\u200D(?:\\p{Emoji_Presentation}|\\p{Emoji}\\uFE0F?))*)\\s?','gu');
+function ui2Svg(n){return '<span class="ic"><svg viewBox="0 0 24 24"><path d="'+(UI2_ICON[n]||UI2_ICON.dots)+'"/></svg></span>';}
+const UI2_SKIP={SCRIPT:1,STYLE:1,TEXTAREA:1,INPUT:1,SELECT:1,SVG:1,svg:1};
+function ui2Iconize(root){
+  if(!UI2||!root)return;
+  const doText=t=>{
+    const s=t.nodeValue;if(!s||!UI2_RE.test(s)){UI2_RE.lastIndex=0;return;}UI2_RE.lastIndex=0;
+    const par=t.parentNode;if(!par||UI2_SKIP[par.nodeName]||(par.closest&&par.closest('[contenteditable],svg')))return;
+    if(par.nodeName==='OPTION'){t.nodeValue=s.replace(UI2_RE,'').replace(/^\s+/,'');UI2_RE.lastIndex=0;return;}
+    const frag=document.createDocumentFragment();let last=0,m;
+    while((m=UI2_RE.exec(s))){
+      if(m.index>last)frag.appendChild(document.createTextNode(s.slice(last,m.index)));
+      if(m[1]){const w=document.createElement('span');w.innerHTML=ui2Svg(UI2_EMOJI[m[1]]);frag.appendChild(w.firstChild);}
+      else if(m[2]){const d=document.createElement('span');d.className='dotc';d.style.background=UI2_DOT[m[2]];frag.appendChild(d);}
+      last=m.index+m[0].length;}
+    if(last<s.length)frag.appendChild(document.createTextNode(s.slice(last)));
+    UI2_RE.lastIndex=0;par.replaceChild(frag,t);
+  };
+  if(root.nodeType===3){doText(root);return;}
+  if(root.nodeType!==1||UI2_SKIP[root.nodeName])return;
+  const w=document.createTreeWalker(root,NodeFilter.SHOW_TEXT,null);const list=[];let n;while((n=w.nextNode()))list.push(n);
+  list.forEach(doText);
+  // 标题、按钮、折叠标题前面的图标不要（只用文字，更干净统一）；纯图标按钮保留
+  const SEL='.h,.m h3,summary,.btn';
+  const hs=(root.matches&&root.matches(SEL))?[root]:[];root.querySelectorAll&&root.querySelectorAll(SEL).forEach(x=>hs.push(x));
+  hs.forEach(el=>{let c=el.firstChild;while(c&&c.nodeType===3&&!c.nodeValue.trim())c=c.nextSibling;
+    if(c&&c.nodeType===1&&c.classList.contains('ic')&&(el.textContent||'').trim()){while(el.firstChild!==c)el.removeChild(el.firstChild);c.remove();}});
+}
+let _ui2Raf=null;const _ui2Q=new Set();
+function ui2Observe(){
+  const mo=new MutationObserver(recs=>{
+    recs.forEach(r=>{r.addedNodes.forEach(n=>_ui2Q.add(n));if(r.type==='characterData')_ui2Q.add(r.target);});
+    if(_ui2Raf)return;_ui2Raf=requestAnimationFrame(()=>{_ui2Raf=null;const ns=[..._ui2Q];_ui2Q.clear();ns.forEach(n=>{if(n.isConnected!==false)ui2Iconize(n);});});
+  });
+  mo.observe(document.body,{childList:true,subtree:true,characterData:true});
+}
+/* 手机顶栏：☰ + logo + 页面标题 + 分店 + ⋯ ；其余按钮收进 ⋯ 面板 */
+const UI2_MOVE=['installBtn','xferBellBtn','bellBtn','updBellBtn','langBtn','logoutBtn','roleSel'];
+function ui2LayoutTop(){
+  if(!UI2)return;const top=document.querySelector('.top'),r=top&&top.querySelector('.r'),more=document.getElementById('topMore'),mb=document.getElementById('moreBtn'),out=document.getElementById('outletSel');
+  if(!r||!more||!mb)return;
+  const narrow=window.matchMedia('(max-width:760px)').matches;
+  if(narrow){UI2_MOVE.forEach(id=>{const e=document.getElementById(id);if(e&&e.parentElement!==more)more.appendChild(e);});}
+  else{UI2_MOVE.forEach(id=>{const e=document.getElementById(id);if(e&&e.parentElement!==r)r.insertBefore(e,out);});top.classList.remove('more');}
+}
+function ui2ToggleMore(ev){if(ev)ev.stopPropagation();const t=document.querySelector('.top');if(t)t.classList.toggle('more');}
+function ui2MoreDot(){
+  const mb=document.getElementById('moreBtn');if(!mb)return;
+  const on=['bellCount','xferBellCount','updBellCount'].some(id=>{const e=document.getElementById(id);return e&&e.style.display!=='none'&&e.textContent.trim()&&e.textContent.trim()!=='0';});
+  mb.classList.toggle('dot',on);
+}
+function ui2Title(){
+  const t=document.getElementById('appTitle');if(!t||!window.matchMedia('(max-width:760px)').matches)return;
+  const hd=document.querySelector('#pageHost .h');let s='';
+  if(hd){const f=[...hd.childNodes].filter(n=>n.nodeType===3).map(n=>n.nodeValue).join('').replace(/^[^\p{L}\p{N}]+/u,'').trim();s=f;}
+  if(s.indexOf('·')>=0)s=s.split('·').pop().trim();t.textContent=s||mlabel(curPage);
+}
+/* 手机底部导航：总览 / 采购 / 进货 / 库存 / 调拨 / 更多（没有权限的会自动隐藏；没有这些权限的角色改显示 打卡/请假/薪资） */
+function ui2Tabs(){
+  if(!UI2)return;const tb=document.getElementById('tabbar');if(!tb)return;
+  const top=document.querySelector('.top');if(!top||top.style.display==='none'||!curUser&&CLOUD&&AUTH()){tb.style.display='none';tb.innerHTML='';return;}
+  tb.style.display='';
+  const zh=LANG==="zh",defs=[];
+  const add=(icon,l1,l2,go,on,ok,key)=>{if(ok)defs.push({icon,label:zh?l1:l2,go,on,key});};
+  const subProc=['ordersheet','grn','waste2','offer','opexlog'];
+  add('chart','总览','Home',"nav('dash')",curPage==='dash',pageAllowed('dash'));
+  add('cart','采购','Procure',"nav('proc')",curPage==='proc'||subProc.includes(curPage),pageAllowed('proc'));
+  add('inbox','进货','Goods-in',"goProcSub('purchase')",curPage==='purchase',pageAllowed('purchase'),true);
+  add('box','库存','Stock',"nav('inv')",curPage==='inv',pageAllowed('inv'));
+  add('swap','调拨','Transfer',"goProcSub('transfer')",curPage==='transfer',pageAllowed('transfer'));
+  if(defs.length<3){defs.length=0;
+    [['attend','clock'],['leave','sun'],['payroll','wallet'],['hr','user']].forEach(([p,ic])=>{if(pageAllowed(p))defs.push({icon:ic,label:mlabel(p),go:"nav('"+p+"')",on:curPage===p});});
+  }
+  defs.push({icon:'more',label:zh?'更多':'More',go:'toggleSide()',on:false});
+  let pend=0;try{pend=xferPendingForMe().length;}catch(e){}
+  tb.innerHTML=defs.map(d=>{
+    const badge=(d.icon==='swap'&&pend>0)?`<span class="badge">${pend>9?'9+':pend}</span>`:'';
+    const ic=ui2Svg(d.icon);
+    return `<button class="${d.on?'on':''}" onclick="${d.go}">${d.key?`<span class="bub">${ic}</span>`:ic}${d.label}${badge}</button>`;
+  }).join('');
+}
+function ui2AfterRender(){
+  if(!UI2)return;
+  ui2Iconize(document.getElementById('pageHost'));ui2Iconize(document.getElementById('sidebar'));ui2Iconize(document.querySelector('.top'));
+  ui2LayoutTop();ui2Title();ui2Tabs();ui2MoreDot();
+}
+function ui2Init(){
+  if(!UI2)return;
+  try{const m=document.querySelector('meta[name=theme-color]');if(m)m.setAttribute('content','#FAF8F3');}catch(e){}
+  const top=document.querySelector('.top'),r=top&&top.querySelector('.r');
+  if(r&&!document.getElementById('moreBtn')){
+    const mb=document.createElement('button');mb.className='lang';mb.id='moreBtn';mb.title='更多 More';mb.innerHTML=ui2Svg('dots');mb.onclick=ui2ToggleMore;r.appendChild(mb);
+    const more=document.createElement('div');more.id='topMore';top.appendChild(more);
+    const lb=document.getElementById('langBtn');if(lb)lb.title='语言 Language';
+    const ub=document.getElementById('updBellBtn');if(ub&&!ub.querySelector('.ic'))ub.insertAdjacentHTML('afterbegin',ui2Svg('refresh'));
+  }
+  if(!document.getElementById('tabbar')){const tb=document.createElement('nav');tb.id='tabbar';document.body.appendChild(tb);}
+  document.addEventListener('click',e=>{const t=document.querySelector('.top');if(t&&t.classList.contains('more')&&!e.target.closest('#topMore,#moreBtn'))t.classList.remove('more');});
+  window.addEventListener('resize',()=>{ui2LayoutTop();ui2Title();});
+  window.matchMedia('(max-width:760px)').addEventListener&&window.matchMedia('(max-width:760px)').addEventListener('change',()=>{ui2LayoutTop();ui2Title();});
+  ui2Iconize(document.body);ui2LayoutTop();ui2Observe();
+}
+ui2Init();
 
 /* ================= 登录 / 身份验证 =================
    云端(Supabase)已配置 → 真实 Email 登录 + 白名单(erp_users)；
