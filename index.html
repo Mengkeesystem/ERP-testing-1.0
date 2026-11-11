@@ -486,12 +486,11 @@ html.ui2 .sup-act{display:flex;gap:6px;}
 
 /* ---- 手机底部导航：总览在正中间，托在「小山坡」上 ---- */
 @media(max-width:760px){
-  html.ui2 #tabbar.hill::before{content:"";position:absolute;left:var(--hx,50%);transform:translateX(-50%);top:-31px;width:190px;height:32px;pointer-events:none;z-index:0;
-    background:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='190' height='32' viewBox='0 0 190 32'%3E%3Cpath d='M0 32C46 32 52 1.5 95 1.5S144 32 190 32V34H0Z' fill='%23FAF8F3'/%3E%3Cpath d='M0 31.5C46 31.5 52 1 95 1S144 31.5 190 31.5' fill='none' stroke='%23E2DCCB' stroke-width='1.2'/%3E%3C/svg%3E") center bottom/100% 100% no-repeat;}
+  html.ui2 #tabbar.hill::before{content:"";position:absolute;left:var(--hx,50%);transform:translateX(-50%);top:-40.5px;width:130px;height:44px;pointer-events:none;z-index:0;background:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='130' height='44' viewBox='0 0 130 44'%3E%3Cpath d='M0 40H14.92A14 14 0 0 0 28.4 29.77A38 38 0 0 1 101.6 29.77A14 14 0 0 0 115.08 40H130V44H0Z' fill='%23FAF8F3'/%3E%3Cpath d='M0 40H14.92A14 14 0 0 0 28.4 29.77A38 38 0 0 1 101.6 29.77A14 14 0 0 0 115.08 40H130' fill='none' stroke='%23E2DCCB' stroke-width='1.2'/%3E%3C/svg%3E") center top/130px 44px no-repeat;}
   html.ui2 #tabbar.hill{padding-top:10px;}
-  html.ui2 #tabbar button.ctr .ico{width:60px;height:60px;margin-top:-38px;margin-bottom:3px;background:var(--card);color:var(--brand);box-shadow:0 8px 18px rgba(40,20,10,.2),0 0 0 4px var(--paper);animation:none;}
+  html.ui2 #tabbar button.ctr .ico{width:60px;height:60px;margin-top:-40px;margin-bottom:1px;background:var(--card);color:var(--brand);box-shadow:0 8px 18px rgba(40,20,10,.2),0 0 0 4px var(--paper);animation:none;}
   html.ui2 #tabbar button.ctr .ico .ic{font-size:26px;}
-  html.ui2 #tabbar button.ctr.on .ico{width:60px;height:60px;margin-top:-38px;margin-bottom:3px;background:var(--brand);color:#fff;box-shadow:0 8px 18px var(--shadow-bub),0 0 0 4px var(--paper);animation:tabpop .26s var(--ease);}
+  html.ui2 #tabbar button.ctr.on .ico{width:60px;height:60px;margin-top:-40px;margin-bottom:1px;background:var(--brand);color:#fff;box-shadow:0 8px 18px var(--shadow-bub),0 0 0 4px var(--paper);animation:tabpop .26s var(--ease);}
   html.ui2 #tabbar button.ctr{font-weight:600;color:var(--brand);}
 }
 /* ===================== 流畅度（三个主题共用） ===================== */
@@ -632,7 +631,7 @@ html.ui2[data-theme="mech"] #tabbar button{color:#7F93A5;}
 html.ui2[data-theme="mech"] #tabbar button.on{color:#00F0FF;text-shadow:0 0 8px rgba(0,240,255,.6);}
 html.ui2[data-theme="mech"] #tabbar button.on .ico{background:#FF2BD6;color:#fff;border-color:#4A0A3E;box-shadow:0 5px 0 #4A0A3E,0 0 18px rgba(255,43,214,.7),0 0 0 4px #070A0F;}
 @media(max-width:760px){
-  html.ui2[data-theme="mech"] #tabbar.hill::before{height:34px;top:-33px;background:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='190' height='34' viewBox='0 0 190 34'%3E%3Cpath d='M0 34H30L56 4H134L160 34H190V36H0Z' fill='%23070A0F'/%3E%3Cpath d='M0 33H30L56 3H134L160 33H190' fill='none' stroke='%2300E5FF' stroke-width='2'/%3E%3Cpath d='M64 8H126' stroke='%23FF2BD6' stroke-width='2'/%3E%3C/svg%3E") center bottom/100% 100% no-repeat;}
+  html.ui2[data-theme="mech"] #tabbar.hill::before{content:"";position:absolute;left:var(--hx,50%);transform:translateX(-50%);top:-40.5px;width:130px;height:44px;pointer-events:none;z-index:0;background:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='130' height='44' viewBox='0 0 130 44'%3E%3Cpath d='M0 40H14.92A14 14 0 0 0 28.4 29.77A38 38 0 0 1 101.6 29.77A14 14 0 0 0 115.08 40H130V44H0Z' fill='%23070A0F'/%3E%3Cpath d='M0 40H14.92A14 14 0 0 0 28.4 29.77A38 38 0 0 1 101.6 29.77A14 14 0 0 0 115.08 40H130' fill='none' stroke='%2300E5FF' stroke-width='2'/%3E%3C/svg%3E") center top/130px 44px no-repeat;}
   html.ui2[data-theme="mech"] #tabbar button.ctr .ico{background:#0E1418;color:#00F0FF;border:2px solid #00E5FF;border-radius:0;box-shadow:0 0 16px rgba(0,229,255,.6),0 0 0 4px #070A0F;}
   html.ui2[data-theme="mech"] #tabbar button.ctr.on .ico{background:#FF2BD6;color:#fff;border-color:#FF2BD6;box-shadow:0 0 20px rgba(255,43,214,.8),0 0 0 4px #070A0F;}
   html.ui2[data-theme="mech"] #tabbar button.ctr{color:#00F0FF;}
@@ -644,10 +643,6 @@ html.ui2[data-theme="cn"] body{background-color:#FBEED2;background-image:
   radial-gradient(ellipse 80% 30% at 50% 0%,rgba(212,40,28,.12),transparent 70%),
   url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='72' height='72'%3E%3Ccircle cx='36' cy='36' r='13' fill='none' stroke='%23C79A2B' stroke-opacity='.3' stroke-width='1.4'/%3E%3Crect x='31.5' y='31.5' width='9' height='9' fill='none' stroke='%23C79A2B' stroke-opacity='.3'/%3E%3Ccircle cx='0' cy='0' r='4' fill='%23D4281C' fill-opacity='.14'/%3E%3Ccircle cx='72' cy='72' r='4' fill='%23D4281C' fill-opacity='.14'/%3E%3Ccircle cx='72' cy='0' r='3' fill='%23C79A2B' fill-opacity='.25'/%3E%3Ccircle cx='0' cy='72' r='3' fill='%23C79A2B' fill-opacity='.25'/%3E%3C/svg%3E");}
 html.ui2[data-theme="cn"] .top{background:radial-gradient(circle,rgba(255,225,130,.55) 1px,transparent 1.6px) 0 0/26px 26px,var(--top-bg);}
-html.ui2[data-theme="cn"] .top::before{content:"";position:absolute;left:46%;top:calc(100% - 2px);width:130px;height:66px;pointer-events:none;z-index:5;
-  background:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='44' height='62' viewBox='0 0 44 62'%3E%3Cpath d='M22 0v8' stroke='%23C79A2B' stroke-width='2'/%3E%3Crect x='13' y='7' width='18' height='5' rx='1.5' fill='%23C79A2B'/%3E%3Cellipse cx='22' cy='28' rx='20' ry='17' fill='%23E0261A'/%3E%3Cellipse cx='22' cy='28' rx='10' ry='17' fill='none' stroke='%23F7C85A' stroke-opacity='.75'/%3E%3Cpath d='M22 11v34' stroke='%23F7C85A' stroke-opacity='.6'/%3E%3Crect x='13' y='44' width='18' height='5' rx='1.5' fill='%23C79A2B'/%3E%3Cpath d='M22 49v11M17 49v8M27 49v8' stroke='%23F7C85A' stroke-width='1.6'/%3E%3C/svg%3E") 0 0/44px 62px no-repeat,
-  url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='44' height='62' viewBox='0 0 44 62'%3E%3Cpath d='M22 0v8' stroke='%23C79A2B' stroke-width='2'/%3E%3Crect x='13' y='7' width='18' height='5' rx='1.5' fill='%23C79A2B'/%3E%3Cellipse cx='22' cy='28' rx='20' ry='17' fill='%23E0261A'/%3E%3Cellipse cx='22' cy='28' rx='10' ry='17' fill='none' stroke='%23F7C85A' stroke-opacity='.75'/%3E%3Cpath d='M22 11v34' stroke='%23F7C85A' stroke-opacity='.6'/%3E%3Crect x='13' y='44' width='18' height='5' rx='1.5' fill='%23C79A2B'/%3E%3Cpath d='M22 49v11M17 49v8M27 49v8' stroke='%23F7C85A' stroke-width='1.6'/%3E%3C/svg%3E") 84px 0/34px 48px no-repeat;
-  animation:lantern 3.2s ease-in-out infinite;transform-origin:50% 0;}
 @keyframes lantern{0%,100%{transform:rotate(-2.5deg);}50%{transform:rotate(2.5deg);}}
 html.ui2[data-theme="cn"] .main{padding-top:56px;}
 html.ui2[data-theme="cn"] .page.active>.fb:first-child .h::before,html.ui2[data-theme="cn"] .page.active>.h:first-child::before{content:"福";width:1.25em;height:1.25em;line-height:1.25em;text-align:center;font-size:.8em;color:#FBE7A8;font-weight:700;background:#C8281C;border-radius:3px;box-shadow:0 0 0 2px #FBEED2,0 0 0 3px #C79A2B;transform:rotate(-6deg);margin-right:.65em;vertical-align:.06em;}
@@ -660,15 +655,83 @@ html.ui2[data-theme="cn"] .side button.active{background:#FFF8E4;}
 html.ui2[data-theme="cn"] #tabbar{background:rgba(251,238,210,.98);border-top:3px solid #C8281C;box-shadow:0 -2px 0 #C79A2B;}
 @media(max-width:760px){
   html.ui2[data-theme="cn"] .main{padding-top:58px;}
-  html.ui2[data-theme="cn"] .top::before{left:52%;}
-  html.ui2[data-theme="cn"] #tabbar.hill::before{background:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='190' height='32' viewBox='0 0 190 32'%3E%3Cpath d='M0 32C40 32 44 22 62 14C78 7 82 1.5 95 1.5S112 7 128 14C146 22 150 32 190 32V34H0Z' fill='%23FBEED2'/%3E%3Cpath d='M0 31.5C40 31.5 44 21.5 62 13.5C78 6.5 82 1 95 1S112 6.5 128 13.5C146 21.5 150 31.5 190 31.5' fill='none' stroke='%23C8281C' stroke-width='2'/%3E%3Cpath d='M0 29.5C40 29.5 44 19.5 62 11.5C78 4.5 82 -1 95 -1' fill='none' stroke='%23C79A2B' stroke-width='0'/%3E%3C/svg%3E") center bottom/100% 100% no-repeat;}
+  html.ui2[data-theme="cn"] #tabbar.hill::before{content:"";position:absolute;left:var(--hx,50%);transform:translateX(-50%);top:-40.5px;width:130px;height:44px;pointer-events:none;z-index:0;background:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='130' height='44' viewBox='0 0 130 44'%3E%3Cpath d='M0 40H14.92A14 14 0 0 0 28.4 29.77A38 38 0 0 1 101.6 29.77A14 14 0 0 0 115.08 40H130V44H0Z' fill='%23FBEED2'/%3E%3Cpath d='M0 40H14.92A14 14 0 0 0 28.4 29.77A38 38 0 0 1 101.6 29.77A14 14 0 0 0 115.08 40H130' fill='none' stroke='%23C8281C' stroke-width='2'/%3E%3C/svg%3E") center top/130px 44px no-repeat;}
   html.ui2[data-theme="cn"] #tabbar button.ctr .ico{background:#FFFAEB;color:#C8281C;box-shadow:0 8px 18px rgba(120,30,10,.28),0 0 0 3px #FBEED2,0 0 0 4.5px #C79A2B;}
   html.ui2[data-theme="cn"] #tabbar button.ctr.on .ico{background:#C8281C;color:#FBE7A8;box-shadow:0 8px 18px rgba(200,40,28,.5),0 0 0 3px #FBEED2,0 0 0 4.5px #C79A2B;}
   html.ui2[data-theme="cn"] #tabbar button.ctr{color:#C8281C;}
 }
 html.ui2[data-theme="mech"] .al{background:#E9ECEF!important;color:var(--ink)!important;border:2px solid #14181C;border-left:8px solid #F2B417;}
 html.ui2[data-theme="mech"] .tag{background:#05070A!important;color:#7DEBFF!important;border:1px solid #00E5FF;border-radius:0;}
-@media(prefers-reduced-motion:reduce){html.ui2[data-theme="cn"] .top::before{animation:none;}}
+
+/* ===================== mk76：特效 / 灯笼 / 小鱼 / 机械动效 ===================== */
+.spark{position:fixed;width:6px;height:6px;margin:-3px 0 0 -3px;border-radius:50%;pointer-events:none;z-index:9999;animation:spark .75s cubic-bezier(.1,.7,.3,1) forwards;box-shadow:0 0 6px currentColor;}
+@keyframes spark{0%{transform:translate(0,0) scale(1);opacity:1;}100%{transform:translate(var(--dx),var(--dy)) scale(.2);opacity:0;}}
+#lanterns{position:absolute;left:0;right:0;top:var(--topH,56px);height:70px;z-index:55;pointer-events:none;}
+#lanterns .lantern{position:absolute;top:-3px;pointer-events:auto;touch-action:none;cursor:grab;transform-origin:50% 0;}
+#lanterns .lantern i{display:block;width:100%;height:100%;background-size:100% 100%;background-repeat:no-repeat;transform-origin:50% 0;animation:lantern 3.2s ease-in-out infinite;filter:drop-shadow(0 4px 5px rgba(120,20,10,.3));}
+#lanterns .lantern:nth-child(2) i{animation-delay:-1.1s;}#lanterns .lantern:nth-child(3) i{animation-delay:-2.1s;}
+#lanterns .lantern.drag{cursor:grabbing;}#lanterns .lantern.drag i{animation-play-state:paused;transform:scale(1.08);}
+@media(prefers-reduced-motion:reduce){#lanterns .lantern i{animation:none;}}
+/* 开屏小鱼（Default 主题） */
+#fishFx{position:fixed;left:0;right:0;bottom:calc(112px + env(safe-area-inset-bottom));height:0;z-index:9000;pointer-events:none;}
+#fishFx .fish-x{position:absolute;left:0;bottom:0;animation:fishx 4.2s linear forwards;}
+#fishFx .fish-y{animation:fishy 1.4s ease-in-out 3 forwards;transform-origin:50% 60%;}
+#fishFx .fish-body{animation:fishfade 4.2s linear forwards;}
+@keyframes fishx{0%{transform:translateX(-70px);}100%{transform:translateX(calc(100vw + 10px));}}
+@keyframes fishy{0%{transform:translateY(0) rotate(0deg);}18%{transform:translateY(-62px) rotate(-26deg);}36%{transform:translateY(-92px) rotate(8deg);}54%{transform:translateY(-34px) rotate(32deg);}70%{transform:translateY(0) rotate(14deg) scale(1.04,.88);}82%{transform:translateY(-10px) rotate(-6deg);}100%{transform:translateY(0) rotate(0deg);}}
+@keyframes fishfade{0%,62%{opacity:1;}100%{opacity:0;}}
+@media(min-width:761px){#fishFx{bottom:60px;}}
+/* 机械风：菜单逐格弹出、按钮「锁扣」 */
+@keyframes mechin{0%{opacity:0;transform:translateX(-18px);}55%{opacity:1;transform:translateX(5px);}100%{opacity:1;transform:none;}}
+@keyframes mechflash{0%{box-shadow:inset 0 0 0 100px rgba(0,229,255,.35);}100%{box-shadow:inset 0 0 0 0 rgba(0,229,255,0);}}
+html.ui2[data-theme="mech"] .side.open button,html.ui2[data-theme="mech"] .side.open .grp{animation:mechin .32s steps(5,end) both;}
+html.ui2[data-theme="mech"] .side.open button:nth-child(2n){animation-delay:.03s;}html.ui2[data-theme="mech"] .side.open button:nth-child(3n){animation-delay:.06s;}html.ui2[data-theme="mech"] .side.open button:nth-child(4n){animation-delay:.09s;}
+html.ui2[data-theme="mech"] .side.open{animation:mechflash .4s steps(4,end);transition:transform .22s steps(6,end);}
+html.ui2[data-theme="mech"] #tabbar button:active .ico{transform:translateY(3px) scale(.96);}
+html.ui2[data-theme="mech"] .sup-card:active,html.ui2[data-theme="mech"] .card:active{transform:translate(2px,2px);}
+/* 机械风：看不清的字（浮在深色底上的小字、日期、说明） */
+html.ui2[data-theme="mech"] .page.active>.fb .mini,html.ui2[data-theme="mech"] .page.active>.mini,html.ui2[data-theme="mech"] .page.active>.fb .tag{color:#9FD8E8;}
+html.ui2[data-theme="mech"] .hint{background:#E9ECEF;color:#2A323A;border:2px solid #14181C;border-left:6px solid #00E5FF;}
+html.ui2[data-theme="mech"] .empty{background:#E9ECEF;color:#2A323A;border:2px dashed #5A646E;}
+html.ui2[data-theme="mech"] .seg{background:#E9ECEF;}
+html.ui2[data-theme="mech"] .seg button{color:#14181C;}
+html.ui2[data-theme="mech"] .grid>.mini,html.ui2[data-theme="mech"] .page.active>.grid+.mini{color:#9FD8E8;}
+html.ui2[data-theme="mech"] .pill{background:#E9ECEF!important;}
+html.ui2[data-theme="mech"] .side button{color:#C9CFD6;}
+html.ui2[data-theme="mech"] .side button.active{color:#fff;}
+html.ui2[data-theme="mech"] .btn.ghost{color:#14181C;}
+html.ui2[data-theme="mech"] .m,html.ui2[data-theme="mech"] .m *{--ink:#14181C;}
+html.ui2[data-theme="mech"] .top .r button,html.ui2[data-theme="mech"] .top button{color:#E6E9EC;}
+/* ---- 进货「按日」视图（SUPY 风格）---- */
+.mtabs{flex-wrap:nowrap!important;overflow-x:auto;max-width:100%;scrollbar-width:none;}.mtabs::-webkit-scrollbar{display:none;}.mtabs button{flex:none;white-space:nowrap;}
+@media(max-width:760px){.mtabs .ib{display:none;}}
+.dv-bar{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin:6px 0 10px;}
+.dv-bar .seg{margin:0;}
+.dv-strip{display:flex;gap:8px;overflow-x:auto;padding:4px 2px 10px;margin:0 -2px;scroll-snap-type:x proximity;-webkit-overflow-scrolling:auto;}
+.dv-chip{flex:none;scroll-snap-align:center;width:48px;padding:7px 0 8px;border:1px solid var(--line);border-radius:var(--radius);background:var(--card);color:var(--ink);cursor:pointer;display:grid;justify-items:center;gap:1px;font-family:inherit;position:relative;}
+.dv-chip i{font-style:normal;font-size:10.5px;color:var(--grey);}
+.dv-chip b{font-size:17px;font-weight:700;line-height:1.15;}
+.dv-chip.has::after{content:"";position:absolute;bottom:4px;width:5px;height:5px;border-radius:50%;background:var(--green);}
+.dv-chip.today{border-color:var(--brand);}
+.dv-chip.on{background:var(--brand);border-color:var(--brand);color:#fff;}
+.dv-chip.on i{color:rgba(255,255,255,.8);}.dv-chip.on.has::after{background:#fff;}
+.dv-head{display:flex;justify-content:space-between;align-items:flex-end;gap:10px;padding:14px;margin-bottom:10px;}
+.dv-date{font-weight:700;font-size:17px;}
+.dv-tot{font-weight:800;font-size:22px;white-space:nowrap;}
+.dv-inv{width:100%;margin-top:8px;padding:9px 11px;border:1px solid var(--line2);border-radius:var(--radius-sm);background:var(--card);color:var(--ink);font-size:14px;}
+.dv-tools{display:flex;gap:8px;margin-bottom:10px;flex-wrap:wrap;align-items:center;}
+.dv-search{flex:1;min-width:150px;padding:11px 13px;border:1px solid var(--line2);border-radius:var(--radius-sm);background:var(--card);color:var(--ink);font-size:15px;}
+.dv-row{display:grid;grid-template-columns:1fr;gap:8px;padding:12px 13px;margin-bottom:8px;background:var(--card);border:1px solid var(--line);border-radius:var(--radius);}
+.dv-row.has{border-left:5px solid var(--green);}
+.dv-name{font-weight:700;font-size:15px;line-height:1.3;word-break:break-word;}
+.dv-in{display:flex;gap:8px;align-items:flex-end;flex-wrap:wrap;}
+.dv-in label{display:grid;gap:2px;font-size:10.5px;color:var(--grey);flex:1;min-width:64px;}
+.dv-in input{width:100%;padding:10px 8px;font-size:16px;text-align:center;border:1px solid var(--line2);border-radius:var(--radius-sm);background:var(--card);color:var(--ink);font-variant-numeric:tabular-nums;}
+.dv-in input:focus{outline:2px solid var(--brand);outline-offset:0;}
+.dv-amt{min-width:84px;text-align:right;font-weight:800;font-size:15px;padding-bottom:9px;white-space:nowrap;}
+.dv-foot{position:sticky;bottom:calc(86px + env(safe-area-inset-bottom));z-index:30;display:flex;justify-content:space-between;align-items:center;padding:12px 16px;margin:10px 0;background:var(--btn);color:#fff;border-radius:var(--radius);box-shadow:0 8px 20px rgba(0,0,0,.22);}
+.dv-foot b{font-size:18px;}
+@media(min-width:761px){.dv-foot{bottom:12px;}.dv-row{grid-template-columns:minmax(180px,1fr) auto;align-items:center;}}
 </style>
 <!-- Supabase 云端 SDK（未配置 key 时不影响运行，自动回退本地存储）-->
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -1043,7 +1106,7 @@ function statusOf(d){if(d<=14)return{t:"健康",e:"Fresh",c:"p-g"};if(d<=30)retu
 function stTxt(s){return LANG==="zh"?s.t:s.e;}
 
 /* ================= 数据种子 ================= */
-const BUILD="1111mk75";  // 版本标记：页面右上/网格提示可见，用来确认已载入最新版
+const BUILD="1111mk76";  // 版本标记：页面右上/网格提示可见，用来确认已载入最新版
 const SEED_VERSION="bh-master-2026-09-1";  // 版本变更→下次载入自动重置为最新主数据（仅本店云端）
 function seed(outletId){
   const isCK = outletId==="ck";
@@ -3631,6 +3694,8 @@ function pgSettings(){
         <span style="display:flex;flex:none;border-radius:8px;overflow:hidden;border:1px solid var(--line);">${t.sw.map(c=>`<span style="width:16px;height:34px;background:${c};display:block;"></span>`).join('')}</span>
         <span style="flex:1;min-width:0;"><b style="font-size:14px;">${LANG==="zh"?t.zh:t.en}</b>${ui2Theme()===k?` <span class="pill p-g">${LANG==="zh"?"使用中":"Active"}</span>`:''}<div class="mini" style="margin-top:2px;">${t.desc}</div></span>
       </button>`).join('')}</div>
+    <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;margin-top:12px;"><div><b>${LANG==="zh"?"音效":"Sound effects"}</b><div class="mini">${LANG==="zh"?"机械风：机械声；中式风：烟花声。Default 没有音效。":"Mech: clicks. Chinese: fireworks."}</div></div>
+      <button class="btn ${sfxOn()?'brand':'ghost'} sm" onclick="setSfx(${sfxOn()?'false':'true'})">${sfxOn()?(LANG==="zh"?"开":"On"):(LANG==="zh"?"关":"Off")}</button></div>
   `)}
   ${accountPermsSection()}
   ${whitelistHTML()}
@@ -4158,6 +4223,7 @@ function gridRecalc(mod,sup){
     const ea=document.getElementById('gta-'+i);if(ea)ea.textContent=money(ta);});
   dates.forEach((dt,j)=>{const ed=document.getElementById('gtd-'+j);if(ed)ed.textContent=money(dayTot[j]);});
   const gg=document.getElementById('gtg');if(gg)gg.textContent=money(grand);
+  try{dvAfterRecalc(mod,sup);}catch(e){}
 }
 /* 打字时只即时算合计(超轻量)；存档+摘要重建延后到停手 0.4 秒，避免每键序列化整库造成卡顿 */
 let _gridSaveT=null,_gridSaveCtx=null;
@@ -4272,6 +4338,87 @@ function gridTable(mod,sup,month){
   return `${controls}<div class="gwrap"><table class="gtbl"><thead><tr>${head}</tr></thead><tbody>${cat.length?codeRow+priceRow+uomRow+specRow:''}${body}<tr class="gsum"><td class="gdate">${zh?"合计":"Total"}</td><td></td>${cat.map((c,i)=>`<td id="gta-${i}">${money(rAmt(c))}</td>`).join('')}<td id="gtg">${money(grand)}</td></tr></tbody></table></div>`;
 }
 
+/* ================= 进货「按日」视图（SUPY 风格，mk76）=================
+   手机上每天进货就是：选日期 → 找到品项 → 填 数量 / 单价（鱼类还有重量）→ 自动算金额。
+   表格视图还在（右上角切换），两边读写的是同一份数据（setGridCell）。 */
+let ledgerView=(()=>{try{return localStorage.getItem('erpLedgerView')||'';}catch(e){return '';}})();
+let dvDay=null,dvSort='used';
+function curLedgerView(){return ledgerView||(window.matchMedia('(max-width:760px)').matches?'day':'grid');}
+function setLedgerView(v){ledgerView=v;try{localStorage.setItem('erpLedgerView',v);}catch(e){}render();}
+function dvPick(dt){dvDay=dt;render();}
+function dvSortSet(v){dvSort=v;render();}
+function dvLastPrice(sup,cid){const arr=(d().purchases||[]).filter(r=>r.supplier===sup&&r.cid===cid&&(+r.unitPrice||0)>0).sort((a,b)=>(b.date||'').localeCompare(a.date||''));if(arr.length)return +arr[0].unitPrice;const c=gridCatRow(sup,cid);return c?(+c.price||0):0;}
+function dvDayTotal(sup,dt){return (d().purchases||[]).filter(r=>r.supplier===sup&&r.date===dt).reduce((s,r)=>s+(+r.price||0),0);}
+function dvFilter(v){const q=(v||'').toLowerCase();document.querySelectorAll('#dvList .dv-row').forEach(e=>{e.style.display=(!q||(e.dataset.name||'').includes(q))?'':'none';});}
+function dvAfterRecalc(mod,sup){
+  if(mod!=='purchase'||!document.getElementById('dv-tot')||!dvDay)return;
+  const t=dvDayTotal(sup,dvDay);const e=document.getElementById('dv-tot');if(e)e.textContent=money(t);
+  const f=document.getElementById('dv-foot');if(f){const m=(gridCurMonth||'');const mt=(d().purchases||[]).filter(r=>r.supplier===sup&&(r.date||'').slice(0,7)===m).reduce((s,r)=>s+(+r.price||0),0);f.textContent=money(mt);}
+  const chip=document.querySelector('.dv-chip.on');if(chip)chip.classList.toggle('has',t>0);
+}
+/* 一行三个格子（重量/数量/单价）任何一格改了，都把这一行当前的值一起存：
+   数量填好、单价还空着 → 自动带入上次的单价（SUPY 的做法）；先填单价再填数量也不会丢（表格视图会丢，这里不会）。 */
+async function dvCommit(el,sup,cid,dt){
+  const box=el.closest('.dv-in');const inp=f=>box.querySelector('input[data-f="'+f+'"]');
+  const g=f=>{const i=inp(f);return i?(+i.value||0):0;};
+  let wt=g('weight'),q=g('qty'),pr=g('price');
+  if(el.dataset.f==='qty'&&q>0&&!pr){const lp=dvLastPrice(sup,cid);if(lp>0){pr=lp;inp('price').value=lp;}}
+  if(inp('weight'))await setGridCell('purchase',sup,cid,dt,'weight',wt);
+  await setGridCell('purchase',sup,cid,dt,'qty',q);
+  await setGridCell('purchase',sup,cid,dt,'price',pr);
+  gridCellRecalc(el);
+  const row=el.closest('.dv-row');if(row)row.classList.toggle('has',(q>0||wt>0));
+}
+async function dvCopyPrev(sup,dt){
+  const arr=d().purchases||[];const prev=[...new Set(arr.filter(r=>r.supplier===sup&&r.date<dt).map(r=>r.date))].sort().pop();
+  if(!prev)return alert(LANG==="zh"?"前面没有可复制的进货记录":"No earlier day to copy");
+  if(!confirm((LANG==="zh"?`把 ${prev} 的进货（数量和单价）复制到 ${dt}？已经填了的品项不会被覆盖。`:`Copy ${prev} to ${dt}? Filled items are kept.`)))return;
+  const src=arr.filter(r=>r.supplier===sup&&r.date===prev).slice();
+  for(const r of src){if(gridRec('purchase',sup,r.cid,dt))continue;
+    if((+r.unitPrice||0)>0)await setGridCell('purchase',sup,r.cid,dt,'price',r.unitPrice);
+    if((+r.weight||0)>0)await setGridCell('purchase',sup,r.cid,dt,'weight',r.weight);
+    await setGridCell('purchase',sup,r.cid,dt,'qty',r.qty);}
+  render();
+}
+function dayViewHTML(sup,month){
+  const mod='purchase',zh=LANG==="zh",w=subCanW(mod);gridCurMonth=month;
+  const cat=ensureGridCat(sup),dates=gridDates(mod,sup,month),S=gEsc(sup);
+  const recs=(d().purchases||[]).filter(r=>r.supplier===sup&&(r.date||'').slice(0,7)===month);
+  const has=new Set(recs.map(r=>r.date));
+  if(!dvDay||dvDay.slice(0,7)!==month)dvDay=dates.includes(TODAY)?TODAY:([...has].sort().pop()||dates[0]);
+  const wd=zh?['日','一','二','三','四','五','六']:['Su','Mo','Tu','We','Th','Fr','Sa'];
+  const chips=dates.map(dt=>{const dd=new Date(dt+'T00:00:00');return `<button class="dv-chip ${dt===dvDay?'on':''} ${has.has(dt)?'has':''} ${dt===TODAY?'today':''}" onclick="dvPick('${dt}')"><i>${wd[dd.getDay()]}</i><b>${+dt.slice(8)}</b></button>`;}).join('');
+  const fish=FISH_SUPPLIERS.includes(sup);
+  const dayRecs={};recs.filter(r=>r.date===dvDay).forEach(r=>{dayRecs[r.cid]=r;});
+  let items=cat.map((c,i)=>({c,i,r:dayRecs[c.cid]}));
+  if(dvSort==='name')items.sort((a,b)=>(a.c.name||'').localeCompare(b.c.name||''));
+  else if(dvSort==='amt')items.sort((a,b)=>(+(b.r&&b.r.price)||0)-(+(a.r&&a.r.price)||0)||a.i-b.i);
+  else items.sort((a,b)=>(!!b.r-!!a.r)||a.i-b.i);
+  const rows=items.map(({c,r})=>{
+    const qty=r?(+r.qty||0):0,price=r?(+r.unitPrice||0):0,wt=r?(+r.weight||0):0,amt=r?(+r.price||0):0,lp=dvLastPrice(sup,c.cid);
+    const dis=w?'':'disabled',meta=[c.code,c.uom,c.spec].filter(Boolean).map(oEsc).join(' · ');
+    return `<div class="dv-row ${r?'has':''}" data-name="${oEsc(((c.code||'')+' '+(c.name||'')).toLowerCase())}">
+      <div><div class="dv-name">${oEsc(c.name||'')}</div>${meta?`<div class="mini">${meta}</div>`:''}</div>
+      <div class="dv-in gcw">${fish?`<label>${zh?'重量':'Weight'}<input type="number" inputmode="decimal" step="0.01" data-f="weight" value="${wt||''}" ${dis} oninput="gridCellRecalc(this)" onchange="dvCommit(this,'${S}','${c.cid}','${dvDay}')"></label>`:''}
+        <label>${zh?'数量':'Qty'}<input type="number" inputmode="decimal" step="0.01" data-f="qty" value="${qty||''}" ${dis} oninput="gridCellRecalc(this)" onchange="dvCommit(this,'${S}','${c.cid}','${dvDay}')"></label>
+        <label>${zh?'单价 RM':'Price RM'}<input type="number" inputmode="decimal" step="0.01" data-f="price" placeholder="${lp?lp.toFixed(2):''}" value="${price||''}" ${dis} oninput="gridCellRecalc(this)" onchange="dvCommit(this,'${S}','${c.cid}','${dvDay}')"></label>
+        <div class="gcamt dv-amt">${amt?money(amt):'-'}</div></div></div>`;}).join('')||`<div class="empty">${zh?'这家供应商还没有品项，点『+ 品项』添加':'No items — tap + Item'}</div>`;
+  const dd=new Date(dvDay+'T00:00:00');
+  const dayLabel=zh?`${dd.getMonth()+1}月${dd.getDate()}日 · 周${wd[dd.getDay()]}`:dvDay;
+  const mTot=recs.reduce((s,r)=>s+(+r.price||0),0);
+  return `<div class="dv-bar"><div class="seg"><button onclick="setLedgerView('day')" class="active">${zh?'按日':'Daily'}</button><button onclick="setLedgerView('grid')">${zh?'表格':'Grid'}</button></div>
+      ${w?`<button class="btn ghost sm" onclick="addGridItem('${S}')">+ ${zh?'品项':'Item'}</button><button class="btn ghost sm" onclick="dvCopyPrev('${S}','${dvDay}')">${zh?'复制上一次':'Copy last'}</button>`:''}</div>
+    <div class="dv-strip" id="dvStrip">${chips}</div>
+    <div class="card dv-head"><div style="flex:1;min-width:0;"><div class="dv-date">${dayLabel}${dvDay===TODAY?` <span class="pill p-g">${zh?'今天':'Today'}</span>`:''}</div>
+      <input class="dv-inv" placeholder="Invoice No." value="${oEsc(gridInv(mod,sup,dvDay))}" ${w?'':'disabled'} onchange="setGridInv('${mod}','${S}','${dvDay}',this.value)"></div>
+      <div style="text-align:right;"><div class="mini">${zh?'当天合计':'Day total'}</div><div class="dv-tot" id="dv-tot">${money(dvDayTotal(sup,dvDay))}</div></div></div>
+    <div class="dv-tools"><input class="dv-search" type="search" placeholder="${zh?'搜索品项…':'Search items…'}" oninput="dvFilter(this.value)" autocomplete="off">
+      <div class="seg"><button class="${dvSort==='used'?'active':''}" onclick="dvSortSet('used')">${zh?'已录入优先':'Filled'}</button><button class="${dvSort==='name'?'active':''}" onclick="dvSortSet('name')">${zh?'品名':'Name'}</button><button class="${dvSort==='amt'?'active':''}" onclick="dvSortSet('amt')">${zh?'金额':'Amount'}</button></div></div>
+    <div id="dvList">${rows}</div>
+    <div class="dv-foot"><span>${monthLabel(month)} ${zh?'进货合计':'total'}</span><b id="dv-foot">${money(mTot)}</b></div>`;
+}
+function dvAfter(){const s=document.getElementById('dvStrip'),c=s&&s.querySelector('.dv-chip.on');if(s&&c)s.scrollLeft=c.offsetLeft-s.clientWidth/2+c.offsetWidth/2;}
+
 function pgLedger(mod){
   const cfg=ledgerCfg(mod);const arr=d()[cfg.arr]||[];const writable=subCanW(mod);
   const back=`<button class="btn ghost sm" onclick="nav('proc')">← ${LANG==="zh"?"进销存作业":"Operations"}</button>`;
@@ -4310,9 +4457,11 @@ function pgLedger(mod){
   const months=[...new Set([...ensureGridMonths(),...dataMonths])].sort().reverse();
   const curM=(ledgerMonth!=='all'&&months.includes(ledgerMonth))?ledgerMonth:(months.includes(TODAY.slice(0,7))?TODAY.slice(0,7):months[0]);
   const supHead=`<div class="fb"><h2 class="h" style="margin:0;">${cfg.icon} ${selSupplier}</h2><button class="btn ghost sm" onclick="backSupplier()">← ${LANG==="zh"?"供应商列表":"Suppliers"}</button></div>`;
-  const tabs=`<div class="seg" style="flex-wrap:wrap;margin-bottom:8px;">${months.map(m=>`<button class="${m===curM?'active':''}" onclick="setLedgerMonth('${m}')">${monthLabel(m)}${writable&&!dataMonths.includes(m)?` <span class="ib" title="${LANG==="zh"?'从列表移除(空月)':'remove'}" onclick="event.stopPropagation();delGridMonth('${m}')">×</span>`:''}</button>`).join('')}${writable?`<button onclick="addGridMonth()">+ ${LANG==="zh"?"月份":"Month"}</button>`:''}</div>`;
+  const tabs=`<div class="seg mtabs" style="flex-wrap:wrap;margin-bottom:8px;">${months.map(m=>`<button class="${m===curM?'active':''}" onclick="setLedgerMonth('${m}')">${monthLabel(m)}${writable&&!dataMonths.includes(m)?` <span class="ib" title="${LANG==="zh"?'从列表移除(空月)':'remove'}" onclick="event.stopPropagation();delGridMonth('${m}')">×</span>`:''}</button>`).join('')}${writable?`<button onclick="addGridMonth()">+ ${LANG==="zh"?"月份":"Month"}</button>`:''}</div>`;
   const hint=`<div class="hint">${LANG==="zh"?"选月份 → 直接在表格里填『数量』(输入即时算金额、即时更新总计)。品项>10个用『行=品项 列=日期』，≤10个用『行=日期 列=品项』。可『+品项』『+日期』或用 × / 🗑️ 删除，随时改。":"Pick a month, type quantities in the grid."} <span class="mini" style="opacity:.6;">build ${BUILD}</span></div>`;
-  return `${supHead}${tabs}${hint}${gridTable(mod,selSupplier,curM)}<div id="gridSummary">${gridSummaryHTML(mod,selSupplier,curM)}</div>`;
+  if(mod==='purchase'&&curLedgerView()==='day')return `${supHead}${tabs}${dayViewHTML(selSupplier,curM)}<div id="gridSummary">${gridSummaryHTML(mod,selSupplier,curM)}</div>`;
+  const _vseg=mod==='purchase'?`<div class="dv-bar"><div class="seg"><button onclick="setLedgerView('day')">${LANG==="zh"?'按日':'Daily'}</button><button class="active" onclick="setLedgerView('grid')">${LANG==="zh"?'表格':'Grid'}</button></div></div>`:'';
+  return `${supHead}${tabs}${_vseg}${hint}${gridTable(mod,selSupplier,curM)}<div id="gridSummary">${gridSummaryHTML(mod,selSupplier,curM)}</div>`;
 }
 /* 各货物本月总计（可即时重建，不刷新页面） */
 function gridSummaryHTML(mod,sup,month){
@@ -5003,7 +5152,7 @@ const UI2_THEMES={classic:{zh:'Default 默认',en:'Default',desc:'暖象牙底�
   cn:{zh:'中式风',en:'Chinese',desc:'宣纸米色、朱红与金、回纹窗格、印章标题、宋体；典雅的中式味道',color:'#8F1C14',sw:['#8F1C14','#C79A2B','#F6EEDC','#2A1A14']}};
 function ui2Theme(){const t=document.documentElement.getAttribute('data-theme');return UI2_THEMES[t]?t:'classic';}
 function ui2ThemeColor(){try{const m=document.querySelector('meta[name=theme-color]');if(m)m.setAttribute('content',UI2_THEMES[ui2Theme()].color);}catch(e){}}
-function setTheme(n){if(n==='kampung')n='cn';if(!UI2_THEMES[n])n='classic';try{localStorage.setItem('erpTheme',n);}catch(e){}document.documentElement.setAttribute('data-theme',n);ui2ThemeColor();render();}
+function setTheme(n){if(n==='kampung')n='cn';if(!UI2_THEMES[n])n='classic';try{localStorage.setItem('erpTheme',n);}catch(e){}document.documentElement.setAttribute('data-theme',n);ui2ThemeColor();try{ui2Lanterns();}catch(e){}render();if(n!=='classic')try{sfx('open');}catch(e){}}
 const UI2_ICON={
   chart:'M4 20V10M10 20V4M16 20v-7M22 20H2',receipt:'M6 3h12v18l-3-2-3 2-3-2-3 2zM9 8h6M9 12h6',cart:'M3 4h2l2.2 10.2a1 1 0 0 0 1 .8h8.6a1 1 0 0 0 1-.8L20 8H6M9 20h.01M17 20h.01',
   factory:'M3 21V9l6 4V9l6 4V5h6v16zM8 17h2M14 17h2',box:'M3 7l9-4 9 4v10l-9 4-9-4zM3 7l9 4 9-4M12 11v10',pot:'M4 11h16v3a6 6 0 0 1-6 6h-4a6 6 0 0 1-6-6zM3 11h18M9 4c0 1.5 1 1.5 1 3M14 4c0 1.5 1 1.5 1 3',
@@ -5110,10 +5259,87 @@ function ui2Tabs(){
     return `<button class="${d.on?'on':''}${d.ctr?' ctr':''}" onclick="${d.go}"><span class="ico">${ic}</span>${d.label}${badge}</button>`;
   }).join('');
 }
+/* ================= 主题特效（mk76）：音效 + 机械感 + 烟花/灯笼 + 小鱼 =================
+   音效全部用 WebAudio 现场合成（不用音频文件）；iOS 要用户点过一下才会响，所以都挂在点按上。
+   设置页「音效」可关（localStorage.erpSfx='0'）。Default 主题没有音效，只有开屏小鱼。 */
+let _ax=null,_sfxLast=0;
+function sfxOn(){try{return localStorage.getItem('erpSfx')!=='0';}catch(e){return true;}}
+function setSfx(on){try{localStorage.setItem('erpSfx',on?'1':'0');}catch(e){}if(on)sfx('open');render();}
+function sfxCtx(){try{if(!_ax){const C=window.AudioContext||window.webkitAudioContext;if(!C)return null;_ax=new C();}if(_ax.state==='suspended')_ax.resume();return _ax;}catch(e){return null;}}
+function _tone(ac,t,type,f0,f1,dur,vol){const o=ac.createOscillator(),g=ac.createGain();o.type=type;o.frequency.setValueAtTime(f0,t);if(f1)o.frequency.exponentialRampToValueAtTime(f1,t+dur);g.gain.setValueAtTime(vol,t);g.gain.exponentialRampToValueAtTime(0.0001,t+dur);o.connect(g);g.connect(ac.destination);o.start(t);o.stop(t+dur+.03);}
+function _noise(ac,t,dur,vol,ft,f0,f1){const n=Math.max(1,Math.floor(ac.sampleRate*dur)),b=ac.createBuffer(1,n,ac.sampleRate),a=b.getChannelData(0);for(let i=0;i<n;i++)a[i]=Math.random()*2-1;
+  const s=ac.createBufferSource();s.buffer=b;const f=ac.createBiquadFilter();f.type=ft;f.frequency.setValueAtTime(f0,t);if(f1)f.frequency.exponentialRampToValueAtTime(f1,t+dur);
+  const g=ac.createGain();g.gain.setValueAtTime(vol,t);g.gain.exponentialRampToValueAtTime(0.0001,t+dur);s.connect(f);f.connect(g);g.connect(ac.destination);s.start(t);}
+function sfx(kind){
+  if(!sfxOn())return;const th=ui2Theme();if(th==='classic')return;
+  const now=Date.now();if(kind==='tap'&&now-_sfxLast<70)return;_sfxLast=now;
+  const ac=sfxCtx();if(!ac)return;const t=ac.currentTime+.005;
+  if(th==='mech'){
+    if(kind==='tap'){_tone(ac,t,'square',200,55,.07,.11);_noise(ac,t,.05,.2,'bandpass',2800,1300);_tone(ac,t+.05,'triangle',950,520,.04,.05);}               // 机械「咔嗒」
+    else{_tone(ac,t,'sawtooth',80,460,.3,.07);_noise(ac,t,.32,.08,'bandpass',450,2600);_tone(ac,t+.3,'square',130,48,.11,.13);_noise(ac,t+.3,.06,.22,'highpass',1800);_tone(ac,t+.42,'square',2400,2400,.03,.03);} // 伺服启动 + 锁定
+  }else{
+    if(kind==='tap'){_tone(ac,t,'sine',520,1900,.2,.05);_noise(ac,t+.2,.14,.16,'lowpass',2500,500);_tone(ac,t+.2,'sine',120,45,.12,.1);}                     // 小烟花：咻 + 啪
+    else{_tone(ac,t,'sine',360,2500,.55,.06);_tone(ac,t,'triangle',360,2500,.55,.025);_noise(ac,t,.55,.03,'highpass',3000);
+      const b=t+.56;_noise(ac,b,.5,.24,'lowpass',4200,350);_tone(ac,b,'sine',110,38,.3,.16);
+      for(let i=0;i<9;i++)_noise(ac,b+.12+Math.random()*.6,.035,.09,'highpass',3500+Math.random()*3000);}                                                // 咻——砰——噼啪
+  }
+}
+/* 点按音效：只对按钮类元素响 */
+document.addEventListener('pointerdown',e=>{try{
+  const el=e.target&&e.target.closest&&e.target.closest('button,.btn,.ib,.sup-card,.dv-chip,.side button,.seg button,#tabbar button,.lantern');
+  if(!el||el.classList.contains('menu-btn'))return;
+  sfx('tap');if(ui2Theme()==='cn')fxBurst(e.clientX,e.clientY,el.classList&&el.classList.contains('lantern')?16:7);
+}catch(_){}},true);
+/* 烟花火花（中式风）：在 (x,y) 炸开若干小点 */
+function fxBurst(x,y,n){
+  if(ui2Theme()!=='cn'||window.matchMedia('(prefers-reduced-motion:reduce)').matches)return;
+  const cols=['#E0261A','#F7C85A','#FFD98A','#FF7A59','#C8281C'];
+  for(let i=0;i<n;i++){const s=document.createElement('i');s.className='spark';const a=Math.PI*2*i/n+Math.random()*.5,r=24+Math.random()*34;
+    s.style.cssText=`left:${x}px;top:${y}px;background:${cols[i%cols.length]};--dx:${(Math.cos(a)*r).toFixed(1)}px;--dy:${(Math.sin(a)*r).toFixed(1)}px;`;
+    document.body.appendChild(s);setTimeout(()=>s.remove(),800);}
+}
+/* 打开左边菜单：机械风=伺服启动声 + 逐格弹出；中式风=烟花起飞 */
+(function(){const o=window.toggleSide;if(typeof o!=='function')return;
+  window.toggleSide=function(){o();try{const sb=document.getElementById('sidebar');if(sb&&sb.classList.contains('open')){sfx('open');if(ui2Theme()==='cn'){const r=sb.getBoundingClientRect();fxBurst(r.right-30,Math.max(120,r.top+r.height*.35),22);}}}catch(e){}};})();
+/* ===== 中式风：灯笼（同一排，可左右拖动；点一下放烟花；位置记在本机） ===== */
+const LANT_SVG="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='44' height='62' viewBox='0 0 44 62'%3E%3Cpath d='M22 0v8' stroke='%23C79A2B' stroke-width='2'/%3E%3Crect x='13' y='7' width='18' height='5' rx='1.5' fill='%23C79A2B'/%3E%3Cellipse cx='22' cy='28' rx='20' ry='17' fill='%23E0261A'/%3E%3Cellipse cx='22' cy='28' rx='10' ry='17' fill='none' stroke='%23F7C85A' stroke-opacity='.75'/%3E%3Cpath d='M22 11v34' stroke='%23F7C85A' stroke-opacity='.6'/%3E%3Crect x='13' y='44' width='18' height='5' rx='1.5' fill='%23C79A2B'/%3E%3Cpath d='M22 49v11M17 49v8M27 49v8' stroke='%23F7C85A' stroke-width='1.6'/%3E%3C/svg%3E";
+function ui2Lanterns(){
+  let box=document.getElementById('lanterns');
+  if(ui2Theme()!=='cn'){if(box)box.remove();return;}
+  if(box)return;
+  let pos=[.2,.5,.8];try{const j=JSON.parse(localStorage.getItem('erpLant')||'null');if(Array.isArray(j)&&j.length===3)pos=j.map(v=>Math.min(.96,Math.max(.02,+v||.5)));}catch(e){}
+  box=document.createElement('div');box.id='lanterns';
+  const sizes=[46,38,46];
+  pos.forEach((f,i)=>{const l=document.createElement('div');l.className='lantern';l.style.left=(f*100)+'%';l.style.width=sizes[i]+'px';l.style.height=Math.round(sizes[i]*1.41)+'px';
+    l.innerHTML='<i style="background-image:url(&quot;'+LANT_SVG+'&quot;)"></i>';
+    let drag=null;
+    l.addEventListener('pointerdown',e=>{drag={x:e.clientX,left:l.offsetLeft,moved:false};try{l.setPointerCapture(e.pointerId);}catch(_){}l.classList.add('drag');});
+    l.addEventListener('pointermove',e=>{if(!drag)return;const dx=e.clientX-drag.x;if(Math.abs(dx)>4)drag.moved=true;if(!drag.moved)return;
+      const w=box.clientWidth;let nx=Math.min(w-l.offsetWidth-2,Math.max(2,drag.left+dx));l.style.left=(nx/w*100)+'%';});
+    const end=e=>{if(!drag)return;l.classList.remove('drag');
+      if(drag.moved){try{const arr=[...box.querySelectorAll('.lantern')].map(x=>+(parseFloat(x.style.left)/100).toFixed(4));localStorage.setItem('erpLant',JSON.stringify(arr));}catch(_){}}
+      drag=null;};
+    l.addEventListener('pointerup',end);l.addEventListener('pointercancel',end);
+    box.appendChild(l);});
+  document.body.appendChild(box);
+}
+/* ===== Default 主题：每次打开界面，一只小鱼蹦蹦跳跳几下，慢慢消失 ===== */
+function ui2Fish(){
+  try{if(ui2Theme()!=='classic'||window.matchMedia('(prefers-reduced-motion:reduce)').matches)return;}catch(e){return;}
+  const old=document.getElementById('fishFx');if(old)old.remove();
+  const f=document.createElement('div');f.id='fishFx';
+  f.innerHTML='<div class="fish-x"><div class="fish-y"><svg viewBox="0 0 64 40" width="58" height="36"><g class="fish-body"><path d="M4 20C14 4 36 4 46 18L62 6V34L46 22C36 36 14 36 4 20Z" fill="#E8822C"/><path d="M14 12C22 8 32 9 38 15" fill="none" stroke="#FFD28A" stroke-width="2.2" stroke-linecap="round"/><path d="M46 18L62 6V14Z" fill="#C4511A" opacity=".55"/><circle cx="14" cy="17" r="3.2" fill="#fff"/><circle cx="13.2" cy="17" r="1.6" fill="#221C1A"/><path d="M8 24Q11 26 14 24" fill="none" stroke="#7C1619" stroke-width="1.4" stroke-linecap="round"/></g></svg></div></div><div class="fish-splash"></div>';
+  document.body.appendChild(f);setTimeout(()=>f.remove(),4600);
+}
+let _hiddenAt=0;
+document.addEventListener('visibilitychange',()=>{try{if(document.hidden)_hiddenAt=Date.now();else if(_hiddenAt&&Date.now()-_hiddenAt>5*60*1000)ui2Fish();}catch(e){}});
+setTimeout(()=>{try{ui2Fish();ui2Lanterns();}catch(e){}},900);
+
 function ui2AfterRender(){
   if(!UI2)return;
   ui2Iconize(document.getElementById('pageHost'));ui2Iconize(document.getElementById('sidebar'));ui2Iconize(document.querySelector('.top'));
   ui2LayoutTop();ui2Title();ui2Tabs();ui2MoreDot();
+  try{dvAfter();}catch(e){}
 }
 function ui2Init(){
   if(!UI2)return;
