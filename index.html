@@ -765,6 +765,17 @@ html.ui2 .dv-row.inv-card,html.ui2 .dv-row.grn-card,html.ui2 .dv-row.ap-card,.dv
 @media(min-width:761px){#dvList .pr-card{max-width:760px;}}
 .seg.mtabs{margin-bottom:12px!important;}
 html.ui2 .hint{background:transparent!important;border:0!important;padding:2px 2px 8px!important;font-size:12px;color:var(--grey)!important;}
+
+/* ---- 设置：左列表 + 右详情（SUPY 风） ---- */
+.set-wrap{display:grid;grid-template-columns:300px 1fr;gap:16px;align-items:start;}
+.set-list{display:grid;gap:0;background:var(--card);border:1px solid var(--line);border-radius:var(--radius);overflow:hidden;}
+.set-item{display:flex;align-items:center;justify-content:space-between;gap:10px;text-align:left;padding:14px 16px;border:0;border-bottom:1px solid var(--row-line);background:transparent;color:var(--ink);cursor:pointer;font-family:inherit;}
+.set-item:last-child{border-bottom:0;}.set-item b{display:block;font-size:14.5px;font-weight:700;}.set-item small{display:block;font-size:11.5px;color:var(--grey);margin-top:2px;}.set-item i{font-style:normal;font-size:20px;color:var(--grey);}
+.set-item.on{background:var(--soft);box-shadow:inset 4px 0 0 var(--brand);}
+.set-detail{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);padding:16px;min-width:0;}
+.set-detail.empty{color:var(--grey);padding:60px 16px;}
+.set-title{font-size:18px;font-weight:800;margin:6px 0 12px;}
+@media(max-width:760px){.set-wrap{grid-template-columns:1fr;}.set-detail{padding:14px;}}
 /* ---- 进货「按日」视图（SUPY 风格）---- */
 .mtabs{flex-wrap:nowrap!important;overflow-x:auto;max-width:100%;scrollbar-width:none;}.mtabs::-webkit-scrollbar{display:none;}.mtabs button{flex:none;white-space:nowrap;}
 .mtabs.nox .ib{display:none;}
@@ -1169,7 +1180,7 @@ function statusOf(d){if(d<=14)return{t:"健康",e:"Fresh",c:"p-g"};if(d<=30)retu
 function stTxt(s){return LANG==="zh"?s.t:s.e;}
 
 /* ================= 数据种子 ================= */
-const BUILD="1111mk82";  // 版本标记：页面右上/网格提示可见，用来确认已载入最新版
+const BUILD="1111mk83";  // 版本标记：页面右上/网格提示可见，用来确认已载入最新版
 const SEED_VERSION="bh-master-2026-09-1";  // 版本变更→下次载入自动重置为最新主数据（仅本店云端）
 function seed(outletId){
   const isCK = outletId==="ck";
@@ -2665,11 +2676,17 @@ function pgMonthly(){
   const sales=monthSales(m);
   const cpCol=(pct)=>pct<28?'#0891B2':(pct<=35?'var(--green)':'var(--red)');
   // 销售明细
-  const salesRows=sales.map((s,i)=>{const dc=dishes.find(x=>x.id===s.dishId);if(!dc)return '';const q=+s.qty||0;const uc=dishCostForMonth(dc,m);const rev=(+dc.price||0)*q;const cogs=uc*q;return `<tr>
-    <td><b>${oEsc(dc.cn||dc.code)}</b> <span class="mini">${oEsc(dc.code)}</span></td><td>${num(q)}</td><td>${money(dc.price)}</td><td>${money(uc)}</td><td>${money(rev)}</td><td class="neg">${money(cogs)}</td><td class="${rev-cogs>=0?'pos':'neg'}">${money(rev-cogs)}</td>
-    ${w&&!locked?`<td style="white-space:nowrap;"><button class="ib" onclick="formMonthSale('${m}',${i})">✏️</button> <button class="ib" onclick="delMonthSale('${m}',${i})">🗑️</button></td>`:''}</tr>`;}).join('')||`<tr><td colspan="8" class="empty">${zh?"本月暂无销量，点『录入销量』或由 POS 推送":"No sales this month"}</td></tr>`;
-  return `<div class="fb"><h2 class="h" style="margin:0;">📅 ${zh?"月度核算":"Monthly Cost"} ${picker}</h2>
-    ${locked?`<span class="pill p-b">🔒 ${zh?"已锁定":"Locked"}</span>`:''}</div>
+  const salesRows=sales.map((s2,i)=>{const dc=dishes.find(x=>x.id===s2.dishId);if(!dc)return '';const q=+s2.qty||0;const uc=dishCostForMonth(dc,m);const rev=(+dc.price||0)*q;const cogs=uc*q;const cp=dc.price?uc/dc.price*100:0;
+    return `<div class="dv-row inv-card" data-name="${oEsc(((dc.cn||'')+' '+(dc.code||'')).toLowerCase())}">
+      <div style="min-width:0;"><div class="dv-name">${oEsc(dc.cn||dc.code)} <span class="mini">${oEsc(dc.code||'')}</span></div>
+        <div class="mini">${money(dc.price)} × <b>${num(q)}</b> · ${zh?'单位成本':'unit cost'} ${money(uc)}</div>
+        <div style="margin-top:4px;"><span class="pill ${cp>35?'p-r':cp>=28?'p-g':'p-b'}">${zh?'成本率':'Food%'} ${cp.toFixed(0)}%</span></div></div>
+      <div class="inv-qty"><div class="inv-q">${money(rev)}</div><div class="mini">COGS ${money(cogs)}</div><div class="inv-v ${rev-cogs>=0?'pos':'neg'}">${zh?'毛利':'GP'} ${money(rev-cogs)}</div>
+        ${w&&!locked?`<div class="inv-act"><button class="ib" onclick="formMonthSale('${m}',${i})">✏️</button><button class="ib" onclick="delMonthSale('${m}',${i})">🗑️</button></div>`:''}</div></div>`;}).join('');
+  const chips=`<div class="seg mtabs nox">${months.map(x=>`<button class="${x===m?'active':''}" onclick="setCostMonth('${x}')">${monthLabel2(x)}</button>`).join('')}</div>`;
+  return `<div class="fb"><h2 class="h" style="margin:0;">${zh?"月度核算":"Monthly Cost"}</h2>
+    ${locked?`<span class="pill p-b">${zh?"已锁定":"Locked"}</span>`:''}</div>
+  ${chips}
   <div class="hint">${zh?`👉 功能：每个月单独结一次账，看这个月到底<b>赚还是亏</b>。用当月进货均价 × 当月销量自动算，${monthLabel2(m)}只算${monthLabel2(m)}的，不会串到别的月；按「锁定」后该月数字归档固定。`:"Close each month's books: profit or loss, using that month's costs only."}</div>
   <div class="grid g4" style="margin-bottom:10px;">
     <div class="kpi"><div class="k">${zh?"月营收":"Revenue"}</div><div class="v sm pos">${money(pnl.rev)}</div><div class="s mini">${num(pnl.orders)} ${zh?"份":"sold"}</div></div>
@@ -2688,11 +2705,9 @@ function pgMonthly(){
     ${w&&!locked?`<button class="btn brand sm" onclick="formMonthSale('${m}')">+ ${zh?"录入销量":"Add Sales"}</button>`:''}
     ${w?(locked?`<button class="btn ghost sm" onclick="unlockMonth('${m}')">🔓 ${zh?"解锁本月":"Unlock"}</button>`:`<button class="btn gold sm" onclick="lockMonth('${m}')">🔒 ${zh?"月末锁定":"Month-End Close"}</button>`):''}
   </div>
-  <h2 class="h">🧾 ${zh?"月度销售 → 成本 → 毛利":"Sales · Cost · Gross"} <span class="tag">${monthLabel2(m)}</span></h2>
-  <div class="card tbl"><table><thead><tr><th>${zh?"菜品":"Dish"}</th><th>${zh?"销量":"Qty"}</th><th>${zh?"售价":"Price"}</th><th>${zh?"当月单位成本":"Unit Cost"}</th><th>${zh?"营收":"Revenue"}</th><th>${zh?"成本":"COGS"}</th><th>${zh?"毛利":"Gross"}</th>${w&&!locked?'<th></th>':''}</tr></thead><tbody>
-    ${salesRows}
-    <tr style="background:#FAFBFC;font-weight:800;"><td colspan="4">${zh?"合计":"Total"}</td><td>${money(pnl.rev)}</td><td class="neg">${money(pnl.cogs)}</td><td class="${pnl.gp>=0?'pos':'neg'}">${money(pnl.gp)}</td>${w&&!locked?'<td></td>':''}</tr>
-  </tbody></table></div>
+  <div class="fb" style="margin-top:14px;"><h2 class="h" style="margin:0;">${zh?"月度销售 → 成本 → 毛利":"Sales · Cost · Gross"} <span class="tag">${monthLabel2(m)}</span></h2></div>
+  ${sales.length?`<div class="dv-tools"><input class="dv-search" type="search" placeholder="${zh?'搜索菜品…':'Search dishes…'}" oninput="dvFilter(this.value)" autocomplete="off"></div><div id="dvList" class="inv-grid">${salesRows}</div>
+  <div class="dv-foot"><span>${zh?'合计毛利':'Gross profit'} · ${money(pnl.rev)} − ${money(pnl.cogs)}</span><b>${money(pnl.gp)}</b></div>`:`<div class="empty">${zh?'本月还没有销量。点上面「录入销量」，或由 POS 推送。':'No sales this month yet.'}</div>`}
   <details class="card" style="padding:0;margin-top:12px;"><summary style="padding:13px;font-weight:800;cursor:pointer;">🥩 ${zh?"原料月度平均进价":"Monthly Avg Material Price"} <span class="mini">· ${mats.length}</span></summary><div style="padding:2px 12px 12px;">
     <div class="mini" style="margin-bottom:6px;">${zh?"月均单价＝当月该原料采购总额÷总数量（来自采购单）":"= month purchase amount / qty"}</div>
     <div class="card tbl"><table><thead><tr><th>${zh?"原料":"Material"}</th><th>${zh?"当月采购量":"Qty"}</th><th>${zh?"当月采购额":"Amount"}</th><th>${zh?"月均单价":"Avg Price"}</th></tr></thead><tbody>
@@ -3664,7 +3679,9 @@ async function resetPerms(){
   auditLog("重置岗位权限",LANG==="zh"?"恢复默认":"reset to defaults","","");await saveRolePerms();render();
 }
 /* 设置页统一的可折叠功能面板 */
+let _spCol=null;
 function settingsPanel(title,body){
+  if(_spCol){_spCol.push({title,body});return '';}
   return `<details class="card" style="padding:0;margin-bottom:12px;">
     <summary style="padding:13px;font-weight:800;cursor:pointer;font-size:14px;color:var(--ink);">${title}</summary>
     <div style="padding:2px 12px 12px;">${body}</div>
@@ -3786,20 +3803,22 @@ async function delUser(email){
     auditLog("白名单删除",email,"","");await loadUsers();render();
   }catch(e){alert((LANG==="zh"?"删除失败：":"Delete failed: ")+(e.message||e));}
 }
+let settingsSel=null;
+function setSettingsSel(k){settingsSel=k;render();window.scrollTo(0,0);}
 function pgSettings(){
-  const x=d();
-  return `<h2 class="h" style="margin-top:2px;">⚙️ ${LANG==="zh"?"系统设置":"Settings"}</h2>
-  <div class="card" style="padding:12px;margin-bottom:12px;">
+  const x=d();const zh=LANG==="zh";
+  _spCol=[];
+  const roleBody=`<div class="card" style="padding:12px;margin-bottom:12px;">
     <div class="fr"><label>${LANG==="zh"?"当前角色权限 (RBAC)":"Role Permissions"}</label>
     <div class="mini">${Object.entries(ROLES).map(([k,v])=>`<div style="padding:4px 0;">${k===curRole?'▶ ':''}<b>${LANG==="zh"?v.name:v.en}</b>：${v.can.length} ${LANG==="zh"?"个模块":"modules"}</div>`).join('')}</div></div>
     <div class="mini">${LANG==="zh"?"切换角色请用右上角选单。老板/人事经理：全权含个人薪资。区域副经理：全权但薪资只看总数、不看个人。店长：本店采购/盘点/损耗/OpEx+报表。厨师长：生产/成品入库/配送调拨。员工：打卡/请假/查看自己薪资。":"Switch role top-right."}</div>
-  </div>
-  ${settingsPanel('📦 '+(LANG==="zh"?"版本更新":"App Version"),`
+  </div>`;
+  const verBody=`${settingsPanel('📦 '+(LANG==="zh"?"版本更新":"App Version"),`
     <div class="mini">${LANG==="zh"?"当前版本":"Current version"}：<b>v${BUILD}</b></div>
     <div class="mini" style="margin-top:6px;">${LANG==="zh"?"系统每隔几分钟、或从背景切回前台时会自动检查新版本；侦测到时所有账号都会响铃+跳出强制更新窗，必须按确认更新才能继续使用。":"Auto-checks every few minutes and on resume; when found, all accounts get a chime + forced update prompt."}</div>
     <button class="btn ghost sm" style="margin-top:8px;" onclick="checkForUpdate(true)">🔄 ${LANG==="zh"?"手动检查更新":"Check now"}</button>
-  `)}
-  ${settingsPanel(LANG==="zh"?"界面风格":"Interface",`
+  `)}`;
+  const themeBody=`${settingsPanel(LANG==="zh"?"界面风格":"Interface",`
     <div class="mini">${LANG==="zh"?"选一个你喜欢的外观，马上生效；只影响这台手机/电脑，不影响别人。":"Pick a look. Applies instantly; this device only."}</div>
     <div style="display:grid;gap:8px;margin-top:10px;">${Object.entries(UI2_THEMES).map(([k,t])=>`
       <button class="card" style="text-align:left;padding:11px 12px;cursor:pointer;display:flex;align-items:center;gap:12px;${ui2Theme()===k?'border:2px solid var(--brand);':''}" onclick="setTheme('${k}')">
@@ -3808,11 +3827,11 @@ function pgSettings(){
       </button>`).join('')}</div>
     <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;margin-top:12px;"><div><b>${LANG==="zh"?"音效":"Sound effects"}</b><div class="mini">${LANG==="zh"?"机械风：键盘 click；中式风：麻将「啪」；Default：鲤鱼跃龙门的水花声。":"Mech: clicks. Chinese: fireworks."}</div></div>
       <button class="btn ${sfxOn()?'brand':'ghost'} sm" onclick="setSfx(${sfxOn()?'false':'true'})">${sfxOn()?(LANG==="zh"?"开":"On"):(LANG==="zh"?"关":"Off")}</button></div>
-  `)}
-  ${accountPermsSection()}
-  ${whitelistHTML()}
-  ${auditMonitorHTML()}
-  <div class="card" style="padding:12px;margin-bottom:12px;">
+  `)}`;
+  const acctBody=`${accountPermsSection()}`;
+  const wlBody=`${whitelistHTML()}`;
+  const audBody=`${auditMonitorHTML()}`;
+  const stoBody=`<div class="card" style="padding:12px;margin-bottom:12px;">
     <div class="fr" style="margin:0 0 8px;"><label>☁️ ${LANG==="zh"?"数据存储状态":"Storage Status"}</label>
     <div class="al ${CLOUD?'al-b':'al-a'}" style="margin:0;"><div class="t">${CLOUD?("🟢 "+(LANG==="zh"?"Supabase 云端同步 已启用":"Cloud sync ON")):("🟡 "+(LANG==="zh"?"本地存储模式（localStorage）":"Local storage mode"))}</div>
     ${CLOUD?(LANG==="zh"?"各分店数据实时保存到云端，跨设备/跨分店共享。":"Branch data syncs to the cloud across devices."):(LANG==="zh"?"数据保存在此浏览器本地，打开即用、无需授权；但不跨设备同步。填入 SUPABASE_URL / ANON_KEY 即可点亮云端。":"Saved in this browser only. Add SUPABASE_URL / ANON_KEY to enable cloud.")}</div></div>
@@ -3821,6 +3840,28 @@ function pgSettings(){
     <div class="fr" style="margin:0;"><label>🔐 ${LANG==="zh"?"登录方式":"Login Mode"}</label>
     <div class="mini">${CLOUD?(curUser?(LANG==="zh"?`已启用真实登录：当前 ${oEsc(curUser.name)}（${oEsc(curUser.email)}）· 岗位与分店由白名单锁定。未登录无法读取任何数据。`:`Real auth on: ${oEsc(curUser.email)}.`):(LANG==="zh"?"已启用 Supabase 真实邮箱登录 + 白名单。":"Supabase auth + whitelist enabled.")):(LANG==="zh"?"当前为演示登录（未连云端）。填入 Supabase 后自动切换为真实邮箱登录 + 白名单。":"Demo login. Configure Supabase for real auth.")}</div></div>
   </div>`;
+  const col=_spCol;_spCol=null;
+  // 把 settingsPanel 收集到的面板（版本/界面/账号权限/白名单/监察）按标题取出
+  const pick=(re)=>{const i=col.findIndex(c=>re.test(c.title));return i>=0?col.splice(i,1)[0]:null;};
+  const pVer=pick(/版本|Version/),pTh=pick(/界面|Interface/),pAcc=pick(/账号权限|Account/),pAud=pick(/监察|Monitor/),pWl=col.shift()||null;
+  const strip=t=>String(t).replace(/<span class="mini"[^>]*>.*?<\/span>/g,'').replace(/<[^>]+>/g,'').replace(/[🔑🔍📦☁🔐👥🛡]️?/g,'').trim();
+  const secs=[
+    {k:'role',t:zh?'当前角色权限':'Role permissions',d:zh?'各岗位能进哪些模块':'What each role can open',h:roleBody},
+    pVer&&{k:'ver',t:zh?'版本更新':'App version',d:'v'+BUILD,h:pVer.body},
+    pTh&&{k:'theme',t:zh?'界面风格与音效':'Look & sound',d:(UI2_THEMES[ui2Theme()]||{}).zh||'',h:pTh.body},
+    pAcc&&{k:'acc',t:zh?'账号权限':'Account permissions',d:zh?'管理各岗位可访问的模块':'Manage role access',h:pAcc.body},
+    pWl&&{k:'wl',t:strip(pWl.title)||(zh?'员工账号白名单':'Account whitelist'),d:zh?'谁能登录、岗位与分店':'Who can sign in',h:pWl.body},
+    pAud&&{k:'aud',t:zh?'员工操作监察':'Activity monitor',d:zh?'跨分店操作记录':'Cross-branch audit',h:pAud.body},
+    {k:'sto',t:zh?'数据存储与登录':'Storage & login',d:CLOUD?(zh?'云端同步已启用':'Cloud sync on'):(zh?'本地存储模式':'Local mode'),h:stoBody},
+  ].filter(Boolean);
+  const mobile=window.matchMedia('(max-width:760px)').matches;
+  if(!settingsSel&&!mobile)settingsSel=secs[0].k;
+  if(settingsSel&&!secs.find(q=>q.k===settingsSel))settingsSel=mobile?null:secs[0].k;
+  const cur=secs.find(q=>q.k===settingsSel);
+  const list=`<div class="set-list">${secs.map(q=>`<button class="set-item ${q.k===settingsSel?'on':''}" onclick="setSettingsSel('${q.k}')"><span><b>${q.t}</b><small>${q.d}</small></span><i>›</i></button>`).join('')}</div>`;
+  const detail=cur?`<div class="set-detail">${mobile?`<button class="btn ghost sm" onclick="setSettingsSel(null)">← ${zh?'设置':'Settings'}</button>`:''}<div class="set-title">${cur.t}</div>${cur.h}</div>`:`<div class="set-detail empty" style="text-align:center;">${zh?'选择左边一项':'Select a setting'}</div>`;
+  return `<div class="fb"><h2 class="h" style="margin:0;">${zh?"系统设置":"Settings"}</h2></div>
+  <div class="set-wrap ${mobile&&cur?'on-detail':''}">${mobile&&cur?'':list}${(mobile&&!cur)?'':detail}</div>`;
 }
 
 /* ================= 弹窗表单 ================= */
