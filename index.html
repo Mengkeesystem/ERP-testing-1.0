@@ -796,7 +796,7 @@ function statusOf(d){if(d<=14)return{t:"健康",e:"Fresh",c:"p-g"};if(d<=30)retu
 function stTxt(s){return LANG==="zh"?s.t:s.e;}
 
 /* ================= 数据种子 ================= */
-const BUILD="1111mk71";  // 版本标记：页面右上/网格提示可见，用来确认已载入最新版
+const BUILD="1111mk72";  // 版本标记：页面右上/网格提示可见，用来确认已载入最新版
 const SEED_VERSION="bh-master-2026-09-1";  // 版本变更→下次载入自动重置为最新主数据（仅本店云端）
 function seed(outletId){
   const isCK = outletId==="ck";
@@ -5126,6 +5126,7 @@ function installApp(){
       });
     }).catch(()=>{});
   }
+  setTimeout(()=>{try{startUpdateCheck();}catch(e){}},0); // 不等登录/载入数据：那一步万一卡住，也照样能发现新版本（等整个脚本载入完再启动，否则会碰到还没定义的变量）
   try{window.addEventListener('beforeinstallprompt',function(e){e.preventDefault();_deferredPrompt=e;});}catch(e){}
   try{window.addEventListener('click',function(){if(typeof primeAudio==='function')primeAudio();},{once:true});}catch(e){}
   initCloud();
@@ -5142,7 +5143,6 @@ function installApp(){
   }else{
     await loadDB();await loadRolePerms();showLogin();
   }
-  startUpdateCheck();
   startIdleWatch();
 })();
 /* ================= 自动检查新版本（不用删除重装 App）=================
@@ -5153,11 +5153,15 @@ function installApp(){
    HTML 的 BUILD 版本号，发现比手上这份新，就跳一个"有新版本"的小条，
    点一下才刷新(不会没提示就自己重刷，打字打到一半不会被打断)。 */
 let _updChecking=false,_updShown=false,_updPending=false,_updPendingVer='';
+let _updCheckStart=0;
 async function checkForUpdate(manual){
+  // 上一次检查如果卡住超过 30 秒（手机网络差、App 被系统暂停等），当作失败，别让它永远挡住后面的检查
+  if(_updChecking&&Date.now()-_updCheckStart>30000)_updChecking=false;
   if(_updChecking||_updShown){if(manual)alert(LANG==="zh"?"已经在检查/已经有更新待处理。":"Already checking / update pending.");return;}
-  _updChecking=true;
+  _updChecking=true;_updCheckStart=Date.now();
+  let _ac=null,_acT=null;try{_ac=new AbortController();_acT=setTimeout(()=>{try{_ac.abort();}catch(e){}},15000);}catch(e){}
   try{
-    const res=await fetch(location.pathname+'?_ts='+Date.now(),{cache:'no-store'});
+    const res=await fetch(location.pathname+'?_ts='+Date.now(),{cache:'no-store',signal:_ac?_ac.signal:undefined});
     if(res.ok){
       const txt=await res.text();
       const m=txt.match(/const BUILD\s*=\s*"([^"]+)"/);
@@ -5165,6 +5169,7 @@ async function checkForUpdate(manual){
       else if(manual){alert(LANG==="zh"?`当前版本 v${BUILD}，已是最新版。`:`v${BUILD} — already up to date.`);}
     }
   }catch(e){if(manual)alert(LANG==="zh"?"检查更新失败，请稍后再试。":"Check failed, try again later.");}
+  if(_acT)clearTimeout(_acT);
   _updChecking=false;
 }
 /* 版本更新提示音：模仿 iPhone 内建「Tri-tone」提示音的三声上扬琶音风格
@@ -5205,7 +5210,7 @@ function isBusyEditing(){
   const mbg=document.getElementById('mbg');
   if(mbg&&mbg.classList.contains('show'))return true; // 新增/编辑表单开着
   const ae=document.activeElement;
-  if(ae&&/^(INPUT|TEXTAREA|SELECT)$/.test(ae.tagName))return true; // 正在某个输入框里打字/选择(如採购网格逐格输入)
+  if(ae&&/^(INPUT|TEXTAREA|SELECT)$/.test(ae.tagName)&&!(ae.closest&&ae.closest('.top')))return true; // 正在某个输入框里打字/选择(如採购网格逐格输入)；顶栏的分店/岗位选单选完会一直保持焦点，不算在填表
   return false;
 }
 let _updWaitT=null;

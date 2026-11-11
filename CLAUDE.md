@@ -17,7 +17,7 @@
 
 ### 这是什么
 - 单文件 HTML ERP（`index.html` 约 4600 行，**没有构建步骤**）+ `sw.js`（Service Worker，PWA）+ `order-data.js`（中央厨房订货数据，含图片）+ `manifest.webmanifest` + 图标 + `supabase-schema.sql` / `security-hardening.sql` / `push-schema.sql` + `supabase/functions/send-order-push`（手机推送）。
-- **当前版本：`BUILD="1111mk71"`**（`index.html` 约 668 行），`sw.js` 的 `SW_VERSION` 要**同步改成一样**（每次改动两处一起 +1，右上角版本角标和强制更新弹窗靠它）。版本号格式 `MMDDmkNN`（mk = 明记）。最后一次提交 2026-09-30。
+- **当前版本：`BUILD="1111mk72"`**（`index.html` 约 668 行），`sw.js` 的 `SW_VERSION` 要**同步改成一样**（每次改动两处一起 +1，右上角版本角标和强制更新弹窗靠它）。版本号格式 `MMDDmkNN`（mk = 明记）。最后一次提交 2026-09-30。
 - 部署：GitHub Pages，**直接推 `main` 就上线**（不开分支、不开 PR），网址 `https://mengkeesystem.github.io/ERP-testing-1.0/`。业主要求跟牛室一样：改完测完直接推。
 - 后端 Supabase 项目网址 `https://kmcdokwiyetlmsrdlgqw.supabase.co`；`SUPABASE_ANON_KEY` 是 publishable key（前端公开的，没问题）。**私钥类（service_role、VAPID 私钥）绝对不写进代码/文档**，只放 Supabase Secrets。
 - 数据存哪：登录后用 Supabase（`Store.get/set` → `erp_store` 表，key 是 `erpv2:<分店id>`、`erpv2:roleperms`、`erpv2:orders`）；没登录（演示模式）用浏览器本机。代码改了**不会动到数据**（数据在 Supabase，不在 `index.html` 里）。
@@ -38,7 +38,7 @@
 ### ⚠️ 这个仓库有「两个会话同时在推 main」
 **牛室那边的 Claude 会话也有权限直接推这个仓库的 `main`**（功能经常同步），不会提前打招呼：`git log` 可能看到不是你推的 commit；不先 `git fetch` 比对就推，可能用旧的 BUILD 号覆盖/冲突。
 1. 每次改 `index.html`/`sw.js` 前先 `git fetch origin main`，远端比本地新就先看远端改了什么（尤其 `BUILD`/`SW_VERSION`）再合并，不要盲目覆盖。
-2. `BUILD` 和 `SW_VERSION` 必须**同步手动升级**（格式 `MMDDmkNN`，例如 `1111mk71`），推送前确认两边一致、且比远端当前值大。
+2. `BUILD` 和 `SW_VERSION` 必须**同步手动升级**（格式 `MMDDmkNN`，例如 `1111mk72`），推送前确认两边一致、且比远端当前值大。
 3. 如果被分配了任务分支，要知道 GitHub Pages 只认 `main`；历史上本项目一直是直接 `git push origin main`，没有走 PR，没出过问题。新会话如被分配不同分支，先跟业主确认部署策略。
 4. 看到自己没做过的 commit，大概率是牛室会话推的（例如提示音），先 `git log` 看内容，别当成 bug。
 
@@ -85,6 +85,7 @@ node -e "const fs=require('fs');const html=fs.readFileSync('index.html','utf8');
 - 成本核算三种方式（`costCfg()`，**默认 ② 成本算货**）：① 成本率法　② 进销存实耗法/成本算货（月初库存 + 进货 − 月末库存）　③ 配方法（BOM × 销量）。明记定位：**主力单点/煮炒菜做 BOM + 盘点；杂饭/小菜走月度核算兜底**（牛室相反：整体看月度核算，单点才做 BOM）。
 - **推送平台限制（不是 bug，已跟业主解释过）**：iOS 一定要「加到主屏幕」变成已安装的 PWA 才收得到关掉 App 后的后台推送，单开 Safari 分页收不到；iOS 通知声音要去 系统设置→通知→这个 App→手动开「声音」；声音开了还不响先查专注/勿扰模式和系统提示音量（业主说先不理，搁置）。
 - 手机推送（新订单通知）：`VAPID_PUBLIC`/`PUSH_FN_URL`/`sendOrderPush`；老板/人事经理/区域副经理收「新订单」🔔（Note 风格两声铃）；**所有账号**收「版本更新」小铃铛（Tri-tone 风格三声，`playUpdateChime`）。
+- 版本更新机制（mk72 加固）：`startUpdateCheck()` 在 SW 注册后马上启动，**不等登录/载入数据流程**（那一步万一卡住也照样检查；要用 `setTimeout(...,0)` 等整个脚本载入完再调，否则会碰到还没定义的 `let` 变量）；`checkForUpdate` 的 fetch 有 15 秒超时（`AbortController`），上一次检查卡住超过 30 秒会被丢弃（以前卡住会让 `_updChecking` 永远为 true，之后所有检查都被跳过，只能完全关掉 App 重开）；`isBusyEditing` 不把顶栏里的分店/岗位选单算成「在填表」（选完它们会一直保持焦点，会把强制更新窗无限期推迟）。
 - 版本更新机制：`checkForUpdate()` 每 5 分钟 + 回前台时抓服务器 `index.html` 比对 `BUILD`；有新版就跳**强制更新弹窗**（只有「确认更新」，ESC 关不掉）；**表单弹窗开着/光标在输入框里时延后弹**（`tryShowForcedUpdate`、`isBusyEditing`），避免冲掉正在填的资料。`sw.js` 网络优先 + 缓存名带版本号。
 
 ### 明记 vs 牛室：已经对齐的（2026-09 同步过来的）
