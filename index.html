@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="zh">
+<html lang="zh" class="ui2" data-theme="classic">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
@@ -16,9 +16,8 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="明记家乡小食店">
 <script>
-/* 界面开关：?ui=2 / ?ui=1，或「设置 → 界面风格」；选择存在本机 localStorage。
-   UI_DEFAULT 是「没选过」时用哪个：'1' = 旧界面，'2' = 新界面（业主确认新界面后改成 '2' 就全员切换）。 */
-(function(){var UI_DEFAULT='1';try{var q=location.search.match(/[?&]ui=([12])/);if(q)localStorage.setItem('erpUI',q[1]);var v=localStorage.getItem('erpUI')||UI_DEFAULT;if(v==='2')document.documentElement.classList.add('ui2');}catch(e){}})();
+/* 界面主题：classic（明记暖雅）/ mech（机械风）/ kampung（马来家乡风）；选择存在本机 localStorage，设置页「界面风格」可切换。旧界面已移除。 */
+(function(){try{var t=localStorage.getItem('erpTheme');if(t!=='mech'&&t!=='kampung')t='classic';document.documentElement.setAttribute('data-theme',t);}catch(e){}})();
 </script>
 <style>
   *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
@@ -290,113 +289,157 @@
   .bar-row .val{width:80px;text-align:right;flex-shrink:0;font-weight:700;font-size:11px;}
 </style>
 <style id="ui2css">
-/* ================= 新界面 ui2（BUILD 1111mk71）：暖象牙底 + 明记酒红 + 金色点缀 + 线条图标 =================
-   全部写在 html.ui2 底下，不开启就完全不影响旧界面。 */
+/* ================= 界面样式（BUILD 1111mk73）：三套主题，用 <html data-theme="..."> 切换 =================
+   classic  = 明记暖雅（暖象牙底 + 明记酒红 + 金色点缀）
+   mech     = 机械风（钢灰 + 工业橙 + 等宽字 + 直角 + 警示条纹）
+   kampung  = 马来家乡风（Kopitiam 米色 + 班兰绿 + 参巴红 + 金线织锦纹）
+   所有颜色/圆角/字体都走下面的变量，三套主题只是换变量 + 少量装饰。旧界面已移除，html 固定带 class="ui2"。 */
 html.ui2{
-  --ink:#221C1A;--ink2:#4D4642;--paper:#FAF8F3;--card:#FFFFFF;--line:#E7E2D5;
-  --brand:#7C1619;--brand2:#9B2A2E;--gold:#B68A2C;--red:#C0392B;--amber:#A8731A;--green:#3E7B57;
-  --blue:#3D6A8F;--purple:#6F5A8A;--grey:#7D766B;--soft:#F2EEE5;
-  --serif:"Iowan Old Style","Palatino Linotype",Georgia,"Songti SC",serif;--ease:cubic-bezier(.2,.7,.2,1);
+  --ink:#221C1A;--ink2:#4D4642;--paper:#FAF8F3;--card:#FFFFFF;--line:#E7E2D5;--line2:#D8D1BF;
+  --brand:#7C1619;--brand2:#9B2A2E;--brand-dk:#5C1013;--gold:#B68A2C;--red:#C0392B;--amber:#A8731A;--green:#3E7B57;
+  --blue:#3D6A8F;--purple:#6F5A8A;--grey:#7D766B;--soft:#F2EEE5;--hover:#ECE6D8;--row-hover:#FCFAF5;--row-line:#F0ECE1;--hint-bg:#F6F1E4;
+  --btn:#221C1A;--btn-hover:#3A2F2B;--focus:rgba(124,22,25,.12);--shadow-bub:rgba(124,22,25,.35);
+  --top-bg:rgba(250,248,243,.94);--top-solid:#FAF8F3;--top-ink:#221C1A;--top-line:#E7E2D5;--top-btn-bg:#fff;--top-btn-line:#E7E2D5;--top-btn-hover:#ECE6D8;
+  --sel-bg:#fff;--sel-ink:#221C1A;--sel-line:#D8D1BF;
+  --side-bg:#F5F1E8;--side-ink:#4D4642;--side-hover:#ECE6D8;--side-active-bg:#fff;--side-active-ink:#221C1A;--side-bar:#7C1619;--side-icon-on:#7C1619;--side-grp:#7D766B;
+  --th-ink:#7D766B;--th-line:#E7E2D5;--tab-bg:rgba(250,248,243,.97);
+  --grid-line:#D9D2C0;--grid-line2:#CFC8B6;--grid-head:#F2EEE5;--grid-c1:#F8F5EC;--grid-c2:#F4F0E6;--grid-lab:#ECE6D8;
+  --radius:10px;--radius-sm:8px;--pill:99px;
+  --font-body:-apple-system,BlinkMacSystemFont,"PingFang SC","Noto Sans SC","Microsoft YaHei","Segoe UI",system-ui,sans-serif;
+  --font-head:"Iowan Old Style","Palatino Linotype",Georgia,"Songti SC",serif;--font-num:"Iowan Old Style","Palatino Linotype",Georgia,"Songti SC",serif;
+  --ease:cubic-bezier(.2,.7,.2,1);
 }
-html.ui2 body{font-family:-apple-system,BlinkMacSystemFont,"PingFang SC","Noto Sans SC","Microsoft YaHei","Segoe UI",system-ui,sans-serif;font-size:14px;-webkit-font-smoothing:antialiased;}
+/* ---- 机械风：钢灰 + 工业橙 ---- */
+html.ui2[data-theme="mech"]{
+  --ink:#1E2328;--ink2:#444C54;--paper:#E7EAEE;--card:#FFFFFF;--line:#C5CBD1;--line2:#AEB6BE;
+  --brand:#E8601C;--brand2:#FF8A4A;--brand-dk:#B94A12;--gold:#F2B417;--red:#C62F2F;--amber:#B8800A;--green:#2F7D4F;
+  --blue:#2F6B9A;--purple:#5E5A9A;--grey:#66707A;--soft:#DCE0E5;--hover:#D3D8DE;--row-hover:#F2F4F6;--row-line:#E3E6EA;--hint-bg:#DEE3E8;
+  --btn:#1E2328;--btn-hover:#343C44;--focus:rgba(232,96,28,.2);--shadow-bub:rgba(232,96,28,.45);
+  --top-bg:#1E2328;--top-solid:#1E2328;--top-ink:#E6E9EC;--top-line:#1E2328;--top-btn-bg:rgba(255,255,255,.07);--top-btn-line:rgba(255,255,255,.2);--top-btn-hover:#343C44;
+  --sel-bg:#2B3239;--sel-ink:#E6E9EC;--sel-line:#4A545E;
+  --side-bg:#272D33;--side-ink:#C9CFD6;--side-hover:#323A42;--side-active-bg:#3A444E;--side-active-ink:#FFFFFF;--side-bar:#E8601C;--side-icon-on:#FF8A4A;--side-grp:#7F8A96;
+  --th-ink:#444C54;--th-line:#1E2328;--tab-bg:rgba(231,234,238,.97);
+  --grid-line:#C5CBD1;--grid-line2:#AEB6BE;--grid-head:#DCE0E5;--grid-c1:#EEF0F3;--grid-c2:#E6E9ED;--grid-lab:#D3D8DE;
+  --radius:3px;--radius-sm:2px;--pill:2px;
+  --font-head:ui-monospace,"SF Mono","JetBrains Mono",Menlo,Consolas,"PingFang SC","Noto Sans SC",monospace;--font-num:ui-monospace,"SF Mono","JetBrains Mono",Menlo,Consolas,"PingFang SC",monospace;
+}
+/* ---- 马来家乡风：Kopitiam 米色 + 班兰绿 + 参巴红 + 金线 ---- */
+html.ui2[data-theme="kampung"]{
+  --ink:#3B2A1E;--ink2:#5C4636;--paper:#FBF4E6;--card:#FFFDF8;--line:#E6D8BE;--line2:#D6C3A0;
+  --brand:#A3281E;--brand2:#C04A38;--brand-dk:#7A1F17;--gold:#C9A227;--red:#B3261E;--amber:#B07A12;--green:#2F6B4F;
+  --blue:#3D6A8F;--purple:#7A5A8A;--grey:#8A7560;--soft:#F3E8D2;--hover:#EFE0C4;--row-hover:#FFF9EC;--row-line:#F0E4CC;--hint-bg:#F6E9C9;
+  --btn:#3B2A1E;--btn-hover:#5A4030;--focus:rgba(47,107,79,.2);--shadow-bub:rgba(163,40,30,.4);
+  --top-bg:#1F5A45;--top-solid:#1F5A45;--top-ink:#FBF4E6;--top-line:#1F5A45;--top-btn-bg:rgba(255,255,255,.1);--top-btn-line:rgba(255,255,255,.25);--top-btn-hover:#2B6E57;
+  --sel-bg:rgba(255,255,255,.12);--sel-ink:#FBF4E6;--sel-line:rgba(255,255,255,.3);
+  --side-bg:#F6ECD6;--side-ink:#5C4636;--side-hover:#EADBB9;--side-active-bg:#FFFDF8;--side-active-ink:#3B2A1E;--side-bar:#1F5A45;--side-icon-on:#1F5A45;--side-grp:#8A7560;
+  --th-ink:#8A7560;--th-line:#E6D8BE;--tab-bg:rgba(251,244,230,.97);
+  --grid-line:#E0D0B2;--grid-line2:#D6C3A0;--grid-head:#F3E8D2;--grid-c1:#FAF1DE;--grid-c2:#F6EAD0;--grid-lab:#EFE0C4;
+  --radius:14px;--radius-sm:10px;--pill:99px;
+  --font-head:Georgia,"Songti SC","Noto Serif SC",serif;--font-num:Georgia,"Songti SC",serif;
+}
+html.ui2 body{font-family:var(--font-body);font-size:14px;-webkit-font-smoothing:antialiased;}
 html.ui2 .ic{display:inline-flex;align-items:center;vertical-align:-.2em;}
 html.ui2 .dotc{display:inline-block;width:.62em;height:.62em;border-radius:50%;vertical-align:.04em;margin-right:.2em;}
 html.ui2 .ic svg{width:1.15em;height:1.15em;stroke:currentColor;fill:none;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round;}
 /* 顶栏 */
-html.ui2 .top{background:rgba(250,248,243,.94);-webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px);color:var(--ink);border-bottom:1px solid var(--line);padding:9px 20px;}
-html.ui2 .top h1{font-family:var(--serif);font-weight:600;font-size:17px;letter-spacing:.03em;}
+html.ui2 .top{background:var(--top-bg);-webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px);color:var(--top-ink);border-bottom:1px solid var(--top-line);padding:9px 20px;}
+html.ui2 .top h1{font-family:var(--font-head);font-weight:600;font-size:17px;letter-spacing:.03em;}
 html.ui2 #topBranchTag{display:none;}
-html.ui2 .brand-logo svg{width:32px;height:32px;box-shadow:0 1px 3px rgba(124,22,25,.25);}
-html.ui2 .menu-btn{border:1px solid var(--line);color:var(--ink);background:#fff;font-size:0;}
+html.ui2 .brand-logo svg{width:32px;height:32px;box-shadow:0 1px 3px rgba(0,0,0,.25);}
+html.ui2 .menu-btn{border:1px solid var(--top-btn-line);color:var(--top-ink);background:var(--top-btn-bg);font-size:0;border-radius:var(--radius-sm);}
 html.ui2 .menu-btn .ic{font-size:18px;}
-html.ui2 .lang{border:1px solid transparent;background:transparent;color:var(--ink2);border-radius:8px;min-width:34px;min-height:34px;font-weight:600;display:inline-flex;align-items:center;justify-content:center;font-size:12px;}
-html.ui2 .lang:hover{background:#ECE6D8;}
+html.ui2 .lang{border:1px solid transparent;background:transparent;color:var(--top-ink);border-radius:var(--radius-sm);min-width:34px;min-height:34px;font-weight:600;display:inline-flex;align-items:center;justify-content:center;font-size:12px;}
+html.ui2 .lang:hover{background:var(--top-btn-hover);}
 html.ui2 .lang .ic{font-size:18px;}
-html.ui2 .sel{background:#fff;color:var(--ink);border:1px solid #D8D1BF;border-radius:8px;font-weight:600;padding:6px 8px;}
+html.ui2 .sel{background:var(--sel-bg);color:var(--sel-ink);border:1px solid var(--sel-line);border-radius:var(--radius-sm);font-weight:600;padding:6px 8px;}
+html.ui2 .sel option{color:#000;background:#fff;}
 html.ui2 #xferBellCount,html.ui2 #bellCount{background:var(--brand)!important;}
 html.ui2 #updBellCount{background:var(--gold)!important;}
 html.ui2 #updBellBtn img{display:none;}
 /* 侧栏 */
-html.ui2 .side{background:#F5F1E8;color:var(--ink2);border-right:1px solid var(--line);width:236px;box-shadow:none;}
-html.ui2 .side.open{box-shadow:6px 0 24px rgba(34,28,26,.18);}
-html.ui2 .side .grp{color:var(--grey);letter-spacing:.08em;font-size:11px;font-weight:600;padding:16px 18px 5px;}
-html.ui2 .side button{color:var(--ink2);font-weight:500;border-left:3px solid transparent;}
-html.ui2 .side button:hover{background:#ECE6D8;color:var(--ink);}
-html.ui2 .side button.active{background:#fff;color:var(--ink);font-weight:600;border-left-color:var(--brand);}
-html.ui2 .side button.active .si{color:var(--brand);}
+html.ui2 .side{background:var(--side-bg);color:var(--side-ink);border-right:1px solid var(--line);width:236px;box-shadow:none;}
+html.ui2 .side.open{box-shadow:6px 0 24px rgba(0,0,0,.22);}
+html.ui2 .side .grp{color:var(--side-grp);letter-spacing:.08em;font-size:11px;font-weight:600;padding:16px 18px 5px;}
+html.ui2 .side button{color:var(--side-ink);font-weight:500;border-left:3px solid transparent;}
+html.ui2 .side button:hover{background:var(--side-hover);color:var(--side-active-ink);}
+html.ui2 .side button.active{background:var(--side-active-bg);color:var(--side-active-ink);font-weight:600;border-left-color:var(--side-bar);}
+html.ui2 .side button.active .si{color:var(--side-icon-on);}
 html.ui2 .side .si{width:20px;display:inline-flex;justify-content:center;font-size:17px;}
 html.ui2 .main{max-width:1120px;padding:22px 28px 40px;}
 /* 标题 */
-html.ui2 .h{font-family:var(--serif);font-weight:600;font-size:17px;letter-spacing:0;color:var(--ink);margin:22px 0 10px;}
+html.ui2 .h{font-family:var(--font-head);font-weight:600;font-size:17px;letter-spacing:0;color:var(--ink);margin:22px 0 10px;}
 html.ui2 .page.active>.fb:first-child .h,html.ui2 .page.active>.h:first-child{font-size:26px;font-weight:500;letter-spacing:-.01em;}
 html.ui2 .h .tag{font-family:inherit;font-weight:500;background:var(--soft);}
 html.ui2 .sub{color:var(--grey);}
 /* 卡片/数字 */
-html.ui2 .card,html.ui2 .kpi,html.ui2 .pl,html.ui2 .chart-wrap{border-radius:10px;border-color:var(--line);}
+html.ui2 .card,html.ui2 .kpi,html.ui2 .pl,html.ui2 .chart-wrap{border-radius:var(--radius);border-color:var(--line);background:var(--card);}
 html.ui2 .kpi{padding:14px 16px;}
 html.ui2 .kpi .k{font-size:12px;font-weight:500;}
-html.ui2 .kpi .v{font-family:var(--serif);font-size:25px;font-weight:500;letter-spacing:-.01em;font-variant-numeric:tabular-nums lining-nums;}
+html.ui2 .kpi .v{font-family:var(--font-num);font-size:25px;font-weight:500;letter-spacing:-.01em;font-variant-numeric:tabular-nums lining-nums;}
 html.ui2 .kpi .v.sm{font-size:19px;}
-html.ui2 .pl .row.tot{border-top:1px solid #D8D1BF;}
+html.ui2 .pl .row.tot{border-top:1px solid var(--line2);}
 /* 表格 */
-html.ui2 th{background:transparent;color:var(--grey);font-size:12px;font-weight:500;text-transform:none;letter-spacing:0;border-bottom:1px solid var(--line);padding:10px 12px;}
-html.ui2 td{padding:11px 12px;border-bottom:1px solid #F0ECE1;}
+html.ui2 th{background:transparent;color:var(--th-ink);font-size:12px;font-weight:500;text-transform:none;letter-spacing:0;border-bottom:1px solid var(--th-line);padding:10px 12px;}
+html.ui2 td{padding:11px 12px;border-bottom:1px solid var(--row-line);}
 html.ui2 .card.tbl tbody tr{transition:background .12s;}
-html.ui2 .card.tbl tbody tr:hover td{background:#FCFAF5;}
+html.ui2 .card.tbl tbody tr:hover td{background:var(--row-hover);}
 /* 状态标签 */
-html.ui2 .pill{display:inline-flex;align-items:center;gap:5px;font-size:11.5px;font-weight:500;padding:2px 9px;white-space:nowrap;}
+html.ui2 .pill{display:inline-flex;align-items:center;gap:5px;font-size:11.5px;font-weight:500;padding:2px 9px;white-space:nowrap;border-radius:var(--pill);}
 html.ui2 .pill::before{content:"";width:6px;height:6px;border-radius:50%;background:currentColor;}
 html.ui2 .p-g{background:#E6F0E9;color:var(--green);}html.ui2 .p-a{background:#F7ECD3;color:var(--amber);}
 html.ui2 .p-r{background:#FBE7E3;color:var(--red);}html.ui2 .p-n{background:#EEEAE0;color:var(--grey);}
 html.ui2 .p-b{background:#E5EDF4;color:var(--blue);}html.ui2 .p-p{background:#EEE9F3;color:var(--purple);}
 /* 按钮/输入 */
-html.ui2 .btn{background:var(--ink);border-radius:8px;font-weight:600;padding:8px 14px;transition:transform .08s,background .14s;}
-html.ui2 .btn:hover{background:#3A2F2B;}
-html.ui2 .btn.brand{background:var(--brand);}html.ui2 .btn.brand:hover{background:#5C1013;}
-html.ui2 .btn.gold{background:var(--ink);}
-html.ui2 .btn.ghost{background:#fff;color:var(--ink);border:1px solid #D8D1BF;}html.ui2 .btn.ghost:hover{background:#F8F5EC;}
-html.ui2 .ib{border-radius:8px;border-color:var(--line);background:#fff;color:var(--ink2);}
+html.ui2 .btn{background:var(--btn);border-radius:var(--radius-sm);font-weight:600;padding:8px 14px;transition:transform .08s,background .14s;}
+html.ui2 .btn:hover{background:var(--btn-hover);}
+html.ui2 .btn.brand{background:var(--brand);}html.ui2 .btn.brand:hover{background:var(--brand-dk);}
+html.ui2 .btn.gold{background:var(--btn);}
+html.ui2 .btn.ghost{background:var(--card);color:var(--ink);border:1px solid var(--line2);}html.ui2 .btn.ghost:hover{background:var(--hover);}
+html.ui2 .ib{border-radius:var(--radius-sm);border-color:var(--line);background:var(--card);color:var(--ink2);}
 html.ui2 .ib .ic{font-size:15px;}
 html.ui2 .fr label{font-weight:600;color:var(--ink2);}
-html.ui2 .fr input,html.ui2 .fr select,html.ui2 .fr textarea{border:1px solid #D8D1BF;border-radius:8px;}
-html.ui2 .fr input:focus,html.ui2 .fr select:focus,html.ui2 .fr textarea:focus{border-color:var(--brand);box-shadow:0 0 0 3px rgba(124,22,25,.1);}
-html.ui2 .seg{background:var(--soft);}html.ui2 .seg button{font-weight:600;}
-html.ui2 .hint{background:#F6F1E4;color:var(--ink2);}
-html.ui2 .al-b{background:#F6F1E4;border-color:#E8DFC8;color:var(--ink2);}
+html.ui2 .fr input,html.ui2 .fr select,html.ui2 .fr textarea{border:1px solid var(--line2);border-radius:var(--radius-sm);background:var(--card);color:var(--ink);}
+html.ui2 .fr input:focus,html.ui2 .fr select:focus,html.ui2 .fr textarea:focus{border-color:var(--brand);box-shadow:0 0 0 3px var(--focus);}
+html.ui2 .seg{background:var(--soft);border-radius:var(--radius-sm);}html.ui2 .seg button{font-weight:600;border-radius:var(--radius-sm);}
+html.ui2 .hint{background:var(--hint-bg);color:var(--ink2);border-radius:var(--radius-sm);}
+html.ui2 .al-b{background:var(--hint-bg);border-color:var(--line);color:var(--ink2);}
 html.ui2 .al-a{background:#F7ECD3;border-color:#EBDBB0;color:#6B4A0C;}
 html.ui2 .al-r{background:#FBE7E3;border-color:#F0C6BF;color:#7A2418;}
 /* 弹窗 */
-html.ui2 .mbg{background:rgba(34,28,26,.45);}
-html.ui2 .m{border-radius:16px 16px 0 0;}
-html.ui2 .m h3{font-family:var(--serif);font-weight:600;font-size:18px;}
-@media(min-width:640px){html.ui2 .m{border-radius:14px;}}
+html.ui2 .mbg{background:rgba(20,16,14,.5);}
+html.ui2 .m{border-radius:calc(var(--radius) + 6px) calc(var(--radius) + 6px) 0 0;background:var(--card);color:var(--ink);}
+html.ui2 .m h3{font-family:var(--font-head);font-weight:600;font-size:18px;}
+@media(min-width:640px){html.ui2 .m{border-radius:calc(var(--radius) + 4px);}}
 /* 采购进销入口卡片：去掉彩色粗线 */
 html.ui2 button.card[style*="border-left"]{border-left:1px solid var(--line)!important;transition:border-color .16s,transform .16s var(--ease);}
-html.ui2 button.card[style*="border-left"]:hover{border-color:#D8D1BF;transform:translateY(-1px);}
+html.ui2 button.card[style*="border-left"]:hover{border-color:var(--line2);transform:translateY(-1px);}
 html.ui2 button.card[style*="border-left"]>div:first-child{color:var(--ink2);}
 html.ui2 .obanner{background:var(--brand);}
-/* Excel 风格表格：保留功能，把黑粗线和蓝灰底换成暖灰 */
-html.ui2 .gwrap{border:1px solid #CFC8B6;}
-html.ui2 .gtbl th,html.ui2 .gtbl td{border-right-color:#D9D2C0;border-bottom-color:#D9D2C0;}
-html.ui2 .gtbl thead th{background:#F2EEE5;color:var(--ink);border-bottom:2px solid #CFC8B6;}
-html.ui2 .gtbl td.gcode,html.ui2 .gtbl td.gunit,html.ui2 .gtbl td.gpack,html.ui2 .gtbl td.gprice{background:#F8F5EC;}
-html.ui2 .gtbl td.gname{background:#F4F0E6;box-shadow:1px 0 0 #CFC8B6;}
-html.ui2 .gtbl td.gprice,html.ui2 .gtbl th.gprice,html.ui2 .gtbl td.gdate,html.ui2 .gtbl th.gdate{box-shadow:1px 0 0 #CFC8B6;}
-html.ui2 .gtbl thead th.gcode,html.ui2 .gtbl thead th.gname,html.ui2 .gtbl thead th.gunit,html.ui2 .gtbl thead th.gpack,html.ui2 .gtbl thead th.gprice,html.ui2 .gtbl thead th.gdate{background:#F2EEE5;}
-html.ui2 .gtbl tr.ghdr td{background:#F4F0E6;}html.ui2 .gtbl tr.ghdr td.ghlab{background:#ECE6D8;}
-html.ui2 .gtbl tr.ghdr-end td{border-bottom:2px solid #CFC8B6;}
-html.ui2 .otbl th,html.ui2 .otbl td,html.ui2 .pctbl th,html.ui2 .pctbl td{border-color:#D9D2C0;}
-html.ui2 .otbl thead th,html.ui2 .pctbl thead th,html.ui2 .odtbl thead th{background:#F2EEE5;color:var(--ink);}
-html.ui2 .pctbl td.pcid{background:#F8F5EC;}html.ui2 .pctbl td.pcname{background:#F4F0E6;}
-/* 手机底部导航（仅手机 + 新界面） */
+/* Excel 风格表格：保留功能，只换颜色 */
+html.ui2 .gwrap{border:1px solid var(--grid-line2);}
+html.ui2 .gtbl th,html.ui2 .gtbl td{border-right-color:var(--grid-line);border-bottom-color:var(--grid-line);}
+html.ui2 .gtbl thead th{background:var(--grid-head);color:var(--ink);border-bottom:2px solid var(--grid-line2);}
+html.ui2 .gtbl td.gcode,html.ui2 .gtbl td.gunit,html.ui2 .gtbl td.gpack,html.ui2 .gtbl td.gprice{background:var(--grid-c1);}
+html.ui2 .gtbl td.gname{background:var(--grid-c2);box-shadow:1px 0 0 var(--grid-line2);}
+html.ui2 .gtbl td.gprice,html.ui2 .gtbl th.gprice,html.ui2 .gtbl td.gdate,html.ui2 .gtbl th.gdate{box-shadow:1px 0 0 var(--grid-line2);}
+html.ui2 .gtbl thead th.gcode,html.ui2 .gtbl thead th.gname,html.ui2 .gtbl thead th.gunit,html.ui2 .gtbl thead th.gpack,html.ui2 .gtbl thead th.gprice,html.ui2 .gtbl thead th.gdate{background:var(--grid-head);}
+html.ui2 .gtbl tr.ghdr td{background:var(--grid-c2);}html.ui2 .gtbl tr.ghdr td.ghlab{background:var(--grid-lab);}
+html.ui2 .gtbl tr.ghdr-end td{border-bottom:2px solid var(--grid-line2);}
+html.ui2 .otbl th,html.ui2 .otbl td,html.ui2 .pctbl th,html.ui2 .pctbl td{border-color:var(--grid-line);}
+html.ui2 .otbl thead th,html.ui2 .pctbl thead th,html.ui2 .odtbl thead th{background:var(--grid-head);color:var(--ink);}
+html.ui2 .pctbl td.pcid{background:var(--grid-c1);}html.ui2 .pctbl td.pcname{background:var(--grid-c2);}
+/* 手机底部导航：选中哪一个，哪一个就是深红（主题色）圆圈 */
 #tabbar{display:none;}
 html.ui2 #tabbar button{border:0;background:transparent;display:flex;flex-direction:column;align-items:center;gap:2px;font-size:11px;color:var(--grey);padding:4px 0;position:relative;min-height:46px;font-family:inherit;cursor:pointer;touch-action:manipulation;}
-html.ui2 #tabbar button .ic{font-size:21px;}
+html.ui2 #tabbar .ico{width:44px;height:30px;display:grid;place-items:center;border-radius:50%;transition:transform .22s var(--ease),background .18s,color .18s,box-shadow .22s;}
+html.ui2 #tabbar .ico .ic{font-size:21px;}
 html.ui2 #tabbar button.on{color:var(--brand);font-weight:600;}
-html.ui2 #tabbar .bub{width:44px;height:44px;border-radius:50%;background:var(--brand);color:#fff;display:grid;place-items:center;margin-top:-20px;box-shadow:0 6px 14px rgba(124,22,25,.35),0 0 0 4px var(--paper);transition:transform .14s;}
-html.ui2 #tabbar .bub .ic{font-size:22px;}
-html.ui2 #tabbar button:active .bub{transform:scale(.94);}
+html.ui2 #tabbar button.on .ico{width:44px;height:44px;background:var(--brand);color:#fff;margin-top:-20px;margin-bottom:2px;box-shadow:0 6px 14px var(--shadow-bub),0 0 0 4px var(--paper);animation:tabpop .26s var(--ease);}
+html.ui2 #tabbar button.on .ico .ic{font-size:22px;}
+@keyframes tabpop{from{transform:translateY(8px) scale(.85);opacity:.6;}to{transform:none;opacity:1;}}
+html.ui2 #tabbar button:active .ico{transform:scale(.94);}
 html.ui2 #tabbar .badge{position:absolute;top:0;left:54%;background:var(--brand);color:#fff;font-size:10px;min-width:16px;height:16px;line-height:16px;border-radius:99px;text-align:center;padding:0 4px;}
+html.ui2 #tabbar button.on .badge{top:-14px;left:56%;background:#fff;color:var(--brand);box-shadow:0 0 0 1.5px var(--brand);}
 /* 手机：顶栏收成一行，次要按钮收进「⋯」 */
 #moreBtn,#topMore{display:none;}
 @media(max-width:760px){
@@ -410,18 +453,65 @@ html.ui2 #tabbar .badge{position:absolute;top:0;left:54%;background:var(--brand)
   html.ui2 #moreBtn .ic svg{stroke-width:3;}
   html.ui2 .page.active>.fb:first-child>.h,html.ui2 .page.active>.h:first-child{display:none;}
   html.ui2 .page.active>.fb:first-child{justify-content:flex-end;}
-  html.ui2 #moreBtn.dot::after{content:"";position:absolute;top:5px;right:5px;width:8px;height:8px;border-radius:50%;background:var(--brand);box-shadow:0 0 0 2px var(--paper);}
+  html.ui2 #moreBtn.dot::after{content:"";position:absolute;top:5px;right:5px;width:8px;height:8px;border-radius:50%;background:var(--brand2);box-shadow:0 0 0 2px var(--top-solid);}
   html.ui2 .top.more #topMore{display:flex;}
-  html.ui2 #topMore{flex-direction:column;gap:2px;position:absolute;right:10px;top:calc(100% + 4px);min-width:230px;background:#fff;border:1px solid var(--line);border-radius:12px;padding:6px;box-shadow:0 12px 30px rgba(34,28,26,.18);z-index:90;}
-  html.ui2 #topMore .lang{display:flex;width:100%;justify-content:flex-start;gap:10px;padding:10px 12px;min-height:42px;position:relative;}
+  html.ui2 #topMore{flex-direction:column;gap:2px;position:absolute;right:10px;top:calc(100% + 4px);min-width:230px;background:var(--card);border:1px solid var(--line);border-radius:12px;padding:6px;box-shadow:0 12px 30px rgba(0,0,0,.22);z-index:90;}
+  html.ui2 #topMore .lang{display:flex;width:100%;justify-content:flex-start;gap:10px;padding:10px 12px;min-height:42px;position:relative;color:var(--ink2);}
+  html.ui2 #topMore .lang:hover{background:var(--hover);}
   html.ui2 #topMore .lang::after{content:attr(title);font-size:13.5px;font-weight:500;color:var(--ink2);}
   html.ui2 #topMore .lang span[id$="Count"]{position:static!important;margin-left:auto;order:3;}
-  html.ui2 #topMore select{width:100%;margin-top:4px;}
+  html.ui2 #topMore select{width:100%;margin-top:4px;background:var(--card);color:var(--ink);border-color:var(--line2);}
   html.ui2 .main{padding:14px 14px 20px;}
   html.ui2 body{padding-bottom:calc(86px + env(safe-area-inset-bottom));}
-  html.ui2 #tabbar{display:grid;grid-auto-flow:column;grid-auto-columns:1fr;position:fixed;left:0;right:0;bottom:0;z-index:70;border-top:1px solid var(--line);background:rgba(250,248,243,.97);-webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px);padding:6px 2px calc(8px + env(safe-area-inset-bottom));align-items:end;}
+  html.ui2 #tabbar{display:grid;grid-auto-flow:column;grid-auto-columns:1fr;position:fixed;left:0;right:0;bottom:0;z-index:70;border-top:1px solid var(--line);background:var(--tab-bg);-webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px);padding:6px 2px calc(8px + env(safe-area-inset-bottom));align-items:end;}
   html.ui2 .al[style*="position:fixed"]{bottom:calc(88px + env(safe-area-inset-bottom))!important;}
 }
+/* ===================== 机械风 · 装饰 ===================== */
+html.ui2[data-theme="mech"] body{background-image:linear-gradient(rgba(30,35,40,.05) 1px,transparent 1px),linear-gradient(90deg,rgba(30,35,40,.05) 1px,transparent 1px);background-size:22px 22px;}
+html.ui2[data-theme="mech"] .top{border-bottom:0;padding-bottom:13px;}
+html.ui2[data-theme="mech"] .top::after{content:"";position:absolute;left:0;right:0;bottom:0;height:5px;background:repeating-linear-gradient(-45deg,#E8601C 0 9px,#1E2328 9px 18px);}
+html.ui2[data-theme="mech"] .side{border-right:1px solid #11151A;}
+html.ui2[data-theme="mech"] .side .grp{font-family:var(--font-head);text-transform:uppercase;letter-spacing:.14em;font-size:10.5px;}
+html.ui2[data-theme="mech"] .side button{letter-spacing:.01em;}
+html.ui2[data-theme="mech"] .h{text-transform:none;letter-spacing:.02em;}
+html.ui2[data-theme="mech"] .h:not(.page-h)::before{content:"";display:inline-block;width:5px;height:.95em;background:var(--brand);margin-right:9px;vertical-align:-.12em;}
+html.ui2[data-theme="mech"] .page.active>.fb:first-child .h::before,html.ui2[data-theme="mech"] .page.active>.h:first-child::before{display:none;}
+html.ui2[data-theme="mech"] .page.active>.fb:first-child .h,html.ui2[data-theme="mech"] .page.active>.h:first-child{font-weight:700;font-size:24px;letter-spacing:.01em;border-bottom:3px solid var(--ink);padding-bottom:4px;}
+html.ui2[data-theme="mech"] .kpi{border-left:4px solid var(--brand);border-radius:2px;}
+html.ui2[data-theme="mech"] .kpi .v{font-weight:700;letter-spacing:-.04em;font-size:clamp(15px,4.4vw,20px);white-space:nowrap;}
+html.ui2[data-theme="mech"] .kpi .k{font-family:var(--font-head);text-transform:uppercase;letter-spacing:.06em;font-size:11px;}
+html.ui2[data-theme="mech"] .card,html.ui2[data-theme="mech"] .pl,html.ui2[data-theme="mech"] .chart-wrap{box-shadow:0 1px 0 rgba(30,35,40,.12);}
+html.ui2[data-theme="mech"] th{font-family:var(--font-head);text-transform:uppercase;letter-spacing:.06em;font-size:11px;font-weight:700;border-bottom:2px solid var(--ink);}
+html.ui2[data-theme="mech"] td{font-variant-numeric:tabular-nums;}
+html.ui2[data-theme="mech"] .btn{letter-spacing:.03em;border:1px solid transparent;}
+html.ui2[data-theme="mech"] .btn:active{transform:translateY(1px);}
+html.ui2[data-theme="mech"] .btn.brand{box-shadow:inset 0 -3px 0 rgba(0,0,0,.22);}
+html.ui2[data-theme="mech"] .pill{background:transparent!important;border:1px solid currentColor;font-family:var(--font-head);font-size:11px;font-weight:600;padding:1px 8px;}
+html.ui2[data-theme="mech"] .pill::before{border-radius:0;width:5px;height:5px;}
+html.ui2[data-theme="mech"] .m{border-top:5px solid var(--brand);}
+html.ui2[data-theme="mech"] .seg button.active{box-shadow:inset 0 -2px 0 var(--brand);}
+html.ui2[data-theme="mech"] #tabbar{border-top:3px solid var(--ink);}
+html.ui2[data-theme="mech"] #tabbar button.on .ico{border-radius:6px;}
+html.ui2[data-theme="mech"] .brand-logo svg{border-radius:4px;}
+/* ===================== 马来家乡风 · 装饰 ===================== */
+html.ui2[data-theme="kampung"] body{background-image:radial-gradient(rgba(163,40,30,.07) 1.3px,transparent 1.5px);background-size:20px 20px;}
+html.ui2[data-theme="kampung"] .top{border-bottom:0;padding-bottom:15px;}
+html.ui2[data-theme="kampung"] .top::after{content:"";position:absolute;left:0;right:0;bottom:0;height:8px;background:
+  linear-gradient(135deg,#C9A227 25%,transparent 25%) -6px 0/12px 8px,linear-gradient(225deg,#C9A227 25%,transparent 25%) -6px 0/12px 8px,
+  linear-gradient(315deg,#C9A227 25%,transparent 25%) 0 0/12px 8px,linear-gradient(45deg,#C9A227 25%,transparent 25%) 0 0/12px 8px,#17483A;}
+html.ui2[data-theme="kampung"] .top h1{letter-spacing:.06em;}
+html.ui2[data-theme="kampung"] .side{border-right:1px solid #E0CFA8;background-image:linear-gradient(180deg,rgba(201,162,39,.08),transparent 160px);}
+html.ui2[data-theme="kampung"] .side .grp{font-family:var(--font-head);font-style:italic;letter-spacing:.04em;}
+html.ui2[data-theme="kampung"] .side button.active{border-radius:0 24px 24px 0;margin-right:12px;width:calc(100% - 12px);box-shadow:0 1px 0 rgba(0,0,0,.05);}
+html.ui2[data-theme="kampung"] .page.active>.fb:first-child .h,html.ui2[data-theme="kampung"] .page.active>.h:first-child{font-weight:700;}
+html.ui2[data-theme="kampung"] .page.active>.fb:first-child .h::after,html.ui2[data-theme="kampung"] .page.active>.h:first-child::after{content:"";display:block;width:64px;height:4px;margin-top:6px;border-radius:4px;background:repeating-linear-gradient(90deg,var(--gold) 0 8px,transparent 8px 12px);}
+html.ui2[data-theme="kampung"] .card,html.ui2[data-theme="kampung"] .kpi,html.ui2[data-theme="kampung"] .pl,html.ui2[data-theme="kampung"] .chart-wrap{box-shadow:0 2px 0 rgba(201,162,39,.18);}
+html.ui2[data-theme="kampung"] .kpi .v{font-weight:700;color:var(--ink);}
+html.ui2[data-theme="kampung"] th{font-family:var(--font-head);font-style:italic;font-size:12.5px;}
+html.ui2[data-theme="kampung"] .btn.brand{box-shadow:0 2px 0 var(--brand-dk);}
+html.ui2[data-theme="kampung"] .m{border-top:6px solid var(--gold);}
+html.ui2[data-theme="kampung"] .seg button.active{color:var(--green);}
+html.ui2[data-theme="kampung"] #tabbar{border-top:2px solid var(--gold);}
 </style>
 <!-- Supabase 云端 SDK（未配置 key 时不影响运行，自动回退本地存储）-->
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -796,7 +886,7 @@ function statusOf(d){if(d<=14)return{t:"健康",e:"Fresh",c:"p-g"};if(d<=30)retu
 function stTxt(s){return LANG==="zh"?s.t:s.e;}
 
 /* ================= 数据种子 ================= */
-const BUILD="1111mk72";  // 版本标记：页面右上/网格提示可见，用来确认已载入最新版
+const BUILD="1111mk73";  // 版本标记：页面右上/网格提示可见，用来确认已载入最新版
 const SEED_VERSION="bh-master-2026-09-1";  // 版本变更→下次载入自动重置为最新主数据（仅本店云端）
 function seed(outletId){
   const isCK = outletId==="ck";
@@ -2613,7 +2703,7 @@ function pgReport(){
   <div class="grid g3">
     <div class="kpi"><div class="k">${LANG==="zh"?"库存总值":"Stock Value"}</div><div class="v sm">${money(totalVal)}</div></div>
     <div class="kpi"><div class="k">${LANG==="zh"?"食材成本率":"Food%"}</div><div class="v sm ${f.foodPct>40?'neg':'pos'}">${f.foodPct.toFixed(1)}%</div></div>
-    <div class="kpi"><div class="k">${LANG==="zh"?"损耗率":"Waste%"}</div><div class="v sm ${wasteT/f.net*100>5?'neg':'pos'}">${(wasteT/f.net*100).toFixed(1)}%</div></div>
+    <div class="kpi"><div class="k">${LANG==="zh"?"损耗率":"Waste%"}</div><div class="v sm ${(f.net?wasteT/f.net*100:0)>5?'neg':'pos'}">${(f.net?wasteT/f.net*100:0).toFixed(1)}%</div></div>
     <div class="kpi"><div class="k">${LANG==="zh"?"净利率":"Net%"}</div><div class="v sm ${f.netPct>=10?'pos':'neg'}">${f.netPct.toFixed(1)}%</div></div>
     <div class="kpi"><div class="k">${LANG==="zh"?"死货数":"Dead"}</div><div class="v sm ${dead.length?'neg':'pos'}">${dead.length}</div></div>
     <div class="kpi"><div class="k">${LANG==="zh"?"本月进货":"Purchases"}</div><div class="v sm pos">${money(inT)}</div></div>
@@ -3377,8 +3467,12 @@ function pgSettings(){
     <button class="btn ghost sm" style="margin-top:8px;" onclick="checkForUpdate(true)">🔄 ${LANG==="zh"?"手动检查更新":"Check now"}</button>
   `)}
   ${settingsPanel(LANG==="zh"?"界面风格":"Interface",`
-    <div class="mini">${LANG==="zh"?"新界面（试用中）：暖色、统一线条图标、手机顶栏一行、底部导航。可以随时切回旧界面，切换后页面会自动重新载入。":"New look (beta): warm palette, line icons, one-row mobile header, bottom navigation. Switch back any time."}</div>
-    <div style="display:flex;gap:8px;margin-top:8px;flex-wrap:wrap;"><button class="btn ${UI2?'':'brand'} sm" onclick="setUI(2)">${LANG==="zh"?"使用新界面":"Use new look"}</button><button class="btn ghost sm" onclick="setUI(1)">${LANG==="zh"?"用回旧界面":"Use classic"}</button></div>
+    <div class="mini">${LANG==="zh"?"选一个你喜欢的外观，马上生效；只影响这台手机/电脑，不影响别人。":"Pick a look. Applies instantly; this device only."}</div>
+    <div style="display:grid;gap:8px;margin-top:10px;">${Object.entries(UI2_THEMES).map(([k,t])=>`
+      <button class="card" style="text-align:left;padding:11px 12px;cursor:pointer;display:flex;align-items:center;gap:12px;${ui2Theme()===k?'border:2px solid var(--brand);':''}" onclick="setTheme('${k}')">
+        <span style="display:flex;flex:none;border-radius:8px;overflow:hidden;border:1px solid var(--line);">${t.sw.map(c=>`<span style="width:16px;height:34px;background:${c};display:block;"></span>`).join('')}</span>
+        <span style="flex:1;min-width:0;"><b style="font-size:14px;">${LANG==="zh"?t.zh:t.en}</b>${ui2Theme()===k?` <span class="pill p-g">${LANG==="zh"?"使用中":"Active"}</span>`:''}<div class="mini" style="margin-top:2px;">${t.desc}</div></span>
+      </button>`).join('')}</div>
   `)}
   ${accountPermsSection()}
   ${whitelistHTML()}
@@ -4722,11 +4816,16 @@ function render(){
 }
 
 /* ================= 新界面 ui2（BUILD 1111mk71）=================
-   只在 <html class="ui2"> 时生效（开关见 <head> 里的小脚本 / 设置页「界面风格」）。
+   一直生效（旧界面已移除；三套主题见 <style id="ui2css">，切换见设置页「界面风格」）。
    做三件事：① 把表情符号换成统一的线条图标；② 手机顶栏收成一行（次要按钮收进「⋯」）；③ 手机底部导航。
    用 MutationObserver 统一处理，不用逐页改动原来的页面代码。 */
-const UI2=document.documentElement.classList.contains('ui2');
-function setUI(v){try{localStorage.setItem('erpUI',String(v));}catch(e){}location.reload();}
+const UI2=true; // 旧界面已移除，一直是新界面（样式在 <style id="ui2css">，三套主题）
+const UI2_THEMES={classic:{zh:'明记暖雅',en:'Classic',desc:'暖象牙底、明记酒红、金色点缀；安静、有质感',color:'#FAF8F3',sw:['#7C1619','#B68A2C','#FAF8F3','#221C1A']},
+  mech:{zh:'机械风',en:'Industrial',desc:'钢灰底、工业橙、等宽字、直角和警示条纹；像仪表盘',color:'#1E2328',sw:['#E8601C','#1E2328','#E7EAEE','#F2B417']},
+  kampung:{zh:'马来家乡风',en:'Kampung',desc:'Kopitiam 米色、班兰绿、参巴红、金色织锦纹；亲切、有家的味道',color:'#1F5A45',sw:['#1F5A45','#A3281E','#FBF4E6','#C9A227']}};
+function ui2Theme(){const t=document.documentElement.getAttribute('data-theme');return UI2_THEMES[t]?t:'classic';}
+function ui2ThemeColor(){try{const m=document.querySelector('meta[name=theme-color]');if(m)m.setAttribute('content',UI2_THEMES[ui2Theme()].color);}catch(e){}}
+function setTheme(n){if(!UI2_THEMES[n])n='classic';try{localStorage.setItem('erpTheme',n);}catch(e){}document.documentElement.setAttribute('data-theme',n);ui2ThemeColor();render();}
 const UI2_ICON={
   chart:'M4 20V10M10 20V4M16 20v-7M22 20H2',receipt:'M6 3h12v18l-3-2-3 2-3-2-3 2zM9 8h6M9 12h6',cart:'M3 4h2l2.2 10.2a1 1 0 0 0 1 .8h8.6a1 1 0 0 0 1-.8L20 8H6M9 20h.01M17 20h.01',
   factory:'M3 21V9l6 4V9l6 4V5h6v16zM8 17h2M14 17h2',box:'M3 7l9-4 9 4v10l-9 4-9-4zM3 7l9 4 9-4M12 11v10',pot:'M4 11h16v3a6 6 0 0 1-6 6h-4a6 6 0 0 1-6-6zM3 11h18M9 4c0 1.5 1 1.5 1 3M14 4c0 1.5 1 1.5 1 3',
@@ -4811,11 +4910,11 @@ function ui2Tabs(){
   const top=document.querySelector('.top');if(!top||top.style.display==='none'||!curUser&&CLOUD&&AUTH()){tb.style.display='none';tb.innerHTML='';return;}
   tb.style.display='';
   const zh=LANG==="zh",defs=[];
-  const add=(icon,l1,l2,go,on,ok,key)=>{if(ok)defs.push({icon,label:zh?l1:l2,go,on,key});};
+  const add=(icon,l1,l2,go,on,ok)=>{if(ok)defs.push({icon,label:zh?l1:l2,go,on});};
   const subProc=['ordersheet','grn','waste2','offer','opexlog'];
   add('chart','总览','Home',"nav('dash')",curPage==='dash',pageAllowed('dash'));
   add('cart','采购','Procure',"nav('proc')",curPage==='proc'||subProc.includes(curPage),pageAllowed('proc'));
-  add('inbox','进货','Goods-in',"goProcSub('purchase')",curPage==='purchase',pageAllowed('purchase'),true);
+  add('inbox','进货','Goods-in',"goProcSub('purchase')",curPage==='purchase',pageAllowed('purchase'));
   add('box','库存','Stock',"nav('inv')",curPage==='inv',pageAllowed('inv'));
   add('swap','调拨','Transfer',"goProcSub('transfer')",curPage==='transfer',pageAllowed('transfer'));
   if(defs.length<3){defs.length=0;
@@ -4826,7 +4925,7 @@ function ui2Tabs(){
   tb.innerHTML=defs.map(d=>{
     const badge=(d.icon==='swap'&&pend>0)?`<span class="badge">${pend>9?'9+':pend}</span>`:'';
     const ic=ui2Svg(d.icon);
-    return `<button class="${d.on?'on':''}" onclick="${d.go}">${d.key?`<span class="bub">${ic}</span>`:ic}${d.label}${badge}</button>`;
+    return `<button class="${d.on?'on':''}" onclick="${d.go}"><span class="ico">${ic}</span>${d.label}${badge}</button>`;
   }).join('');
 }
 function ui2AfterRender(){
@@ -4836,7 +4935,7 @@ function ui2AfterRender(){
 }
 function ui2Init(){
   if(!UI2)return;
-  try{const m=document.querySelector('meta[name=theme-color]');if(m)m.setAttribute('content','#FAF8F3');}catch(e){}
+  ui2ThemeColor();
   const top=document.querySelector('.top'),r=top&&top.querySelector('.r');
   if(r&&!document.getElementById('moreBtn')){
     const mb=document.createElement('button');mb.className='lang';mb.id='moreBtn';mb.title='更多 More';mb.innerHTML=ui2Svg('dots');mb.onclick=ui2ToggleMore;r.appendChild(mb);
@@ -5077,6 +5176,7 @@ function startIdleWatch(){
 /* ================= 演示登录（无云端时回退）================= */
 function showLogin(){
   if(AUTH()){showAuthLogin();return;}   // 有云端 → 走真实登录
+  {const tb=document.getElementById('tabbar');if(tb){tb.style.display='none';tb.innerHTML='';}}
   document.querySelector('.top').style.display='none';
   const sb=document.getElementById('sidebar');if(sb)sb.style.display='none';
   document.getElementById('pageHost').innerHTML=`
