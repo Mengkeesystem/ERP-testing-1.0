@@ -483,6 +483,7 @@ html.ui2 .sup-m{font-weight:700;font-size:15px;white-space:nowrap;}
 html.ui2 .sup-go{color:var(--grey);font-size:20px;}
 html.ui2 .sup-act{display:flex;gap:6px;}
 @media(max-width:700px){html.ui2 .sup-sum{grid-template-columns:1fr 1fr;}html.ui2 .sup-sum-3{display:none;}}
+@media(max-width:700px){html.ui2 .grid.g3.sup-sum:not(:has(.sup-sum-3)){grid-template-columns:repeat(3,1fr);gap:8px;}html.ui2 .grid.g3.sup-sum:not(:has(.sup-sum-3)) .kpi{padding:10px 11px;}html.ui2 .grid.g3.sup-sum:not(:has(.sup-sum-3)) .kpi .v.sm{font-size:15px;}html.ui2 .grid.g3.sup-sum:not(:has(.sup-sum-3)) .kpi .k{font-size:11px;}}
 
 /* ---- 手机底部导航：总览在正中间，托在「小山坡」上 ---- */
 @media(max-width:760px){
@@ -727,7 +728,7 @@ html.ui2[data-theme="mech"] .top .r button,html.ui2[data-theme="mech"] .top butt
 .inv-v{font-weight:700;font-size:14px;}.inv-act{display:flex;gap:6px;margin-top:4px;}
 .grn-day{display:flex;justify-content:space-between;align-items:center;margin:14px 2px 8px;font-weight:700;font-size:14px;color:var(--ink2);}
 @media(min-width:761px){.inv-grid{grid-template-columns:1fr 1fr;}.inv-grid .dv-row{grid-template-columns:1fr auto;}}
-html.ui2 .dv-row.inv-card,html.ui2 .dv-row.grn-card,.dv-row.inv-card,.dv-row.grn-card{grid-template-columns:1fr auto;align-items:start;}
+html.ui2 .dv-row.inv-card,html.ui2 .dv-row.grn-card,html.ui2 .dv-row.ap-card,.dv-row.inv-card,.dv-row.grn-card,.dv-row.ap-card{grid-template-columns:1fr auto;align-items:start;}
 
 /* ---- 手机：表格变卡片（ui2Cardify）---- */
 @media(max-width:760px){
@@ -748,9 +749,25 @@ html.ui2 .dv-row.inv-card,html.ui2 .dv-row.grn-card,.dv-row.inv-card,.dv-row.grn
   html.ui2 table.cardy tfoot td{padding:0;border:0;color:#fff!important;background:transparent!important;font-weight:700;}
   html.ui2 table.cardy tbody tr[style*="background"]{background:var(--soft)!important;}
 }
+
+.hintd{margin:6px 0 10px;font-size:12px;color:var(--grey);}.hintd summary{cursor:pointer;list-style:none;font-weight:600;}.hintd summary::-webkit-details-marker{display:none;}.hintd summary::before{content:"ⓘ ";}.hintd div{margin-top:6px;line-height:1.55;}
+.pr-card{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);margin-bottom:9px;overflow:hidden;}
+.pr-card summary{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:13px 14px;cursor:pointer;list-style:none;}.pr-card summary::-webkit-details-marker{display:none;}
+.pr-net{text-align:right;display:grid;justify-items:end;}.pr-net b{font-size:20px;font-weight:800;font-variant-numeric:tabular-nums;}.pr-net small{font-size:10.5px;color:var(--grey);}
+.pr-card[open] summary{border-bottom:1px dashed var(--line);}
+.pr-body{padding:12px 14px 14px;display:grid;gap:12px;}
+.pr-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
+.pr-grid label{display:grid;gap:3px;font-size:11px;color:var(--grey);}.pr-grid label.chk{display:flex;align-items:center;gap:8px;font-size:13px;color:var(--ink);grid-column:auto;}
+.pr-grid input[type=number],.pr-grid select{width:100%;padding:10px 8px;font-size:16px;text-align:right;border:1px solid var(--line2);border-radius:var(--radius-sm);background:var(--card);color:var(--ink);}
+.pr-grid input[type=checkbox]{width:20px;height:20px;}
+.pr-lines{display:grid;gap:5px;background:var(--soft);padding:10px 12px;border-radius:var(--radius-sm);}
+.pr-line{display:flex;justify-content:space-between;font-size:13px;}.pr-line b{font-variant-numeric:tabular-nums;}.pr-line.strong{font-weight:700;border-top:1px dashed var(--line2);padding-top:5px;margin-top:2px;}.pr-line.neg b{color:var(--red);}.pr-line.er b{color:var(--green);}
+@media(min-width:761px){#dvList .pr-card{max-width:760px;}}
+.seg.mtabs{margin-bottom:12px!important;}
+html.ui2 .hint{background:transparent!important;border:0!important;padding:2px 2px 8px!important;font-size:12px;color:var(--grey)!important;}
 /* ---- 进货「按日」视图（SUPY 风格）---- */
 .mtabs{flex-wrap:nowrap!important;overflow-x:auto;max-width:100%;scrollbar-width:none;}.mtabs::-webkit-scrollbar{display:none;}.mtabs button{flex:none;white-space:nowrap;}
-@media(max-width:760px){.mtabs .ib{display:none;}}
+.mtabs.nox .ib{display:none;}
 .dv-bar{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin:6px 0 10px;}
 .dv-bar .seg{margin:0;}
 .dv-strip{display:flex;gap:8px;overflow-x:auto;padding:4px 2px 10px;margin:0 -2px;scroll-snap-type:x proximity;-webkit-overflow-scrolling:auto;}
@@ -1152,7 +1169,7 @@ function statusOf(d){if(d<=14)return{t:"健康",e:"Fresh",c:"p-g"};if(d<=30)retu
 function stTxt(s){return LANG==="zh"?s.t:s.e;}
 
 /* ================= 数据种子 ================= */
-const BUILD="1111mk80";  // 版本标记：页面右上/网格提示可见，用来确认已载入最新版
+const BUILD="1111mk82";  // 版本标记：页面右上/网格提示可见，用来确认已载入最新版
 const SEED_VERSION="bh-master-2026-09-1";  // 版本变更→下次载入自动重置为最新主数据（仅本店云端）
 function seed(outletId){
   const isCK = outletId==="ck";
@@ -2079,15 +2096,15 @@ function pgInv(){
   // —— 供应商列表视图 ——
   if(!invSupplier){
     const keys=Object.keys(groups).sort((a,b)=>groups[b].length-groups[a].length);
+    const allVal=(x.items||[]).reduce((a,i)=>a+i.qty*i.cost,0),allLow=(x.items||[]).filter(i=>i.qty<=i.par).length;
     const cards=keys.map(s=>{const items=groups[s];const val=items.reduce((a,i)=>a+i.qty*i.cost,0);const low=items.filter(i=>i.qty<=i.par).length;
-      return `<div class="card" style="padding:13px;margin-bottom:9px;cursor:pointer;" onclick="setInvSupplier('${s.replace(/'/g,"\\'")}')">
-        <div style="display:flex;justify-content:space-between;align-items:center;">
-          <div><div style="font-weight:800;font-size:15px;">🏢 ${s}</div>
-          <div class="mini">${items.length} ${zh?"个品项":"items"}${low?` · <span class="neg">${low} ${zh?"低于安全库存":"low"}</span>`:''}</div></div>
-          <div style="text-align:right;"><div style="font-weight:800;">${money(val)}</div><span class="mini">${zh?"库存值":"value"} ›</span></div>
-        </div></div>`;
+      return `<div class="dv-row ap-card" data-name="${oEsc(s.toLowerCase())}" style="cursor:pointer;border-left:5px solid ${low?'var(--red)':'var(--green)'};" onclick="setInvSupplier('${s.replace(/\\/g,"\\\\").replace(/'/g,"\\'")}')">
+        <div style="min-width:0;"><div class="dv-name">${oEsc(s)}</div><div class="mini">${items.length} ${zh?"个品项":"items"}${low?` · <span class="neg">${low} ${zh?"低于安全库存":"low"}</span>`:''}</div></div>
+        <div class="inv-qty"><div class="inv-q">${money(val)}</div><div class="mini">${zh?"库存值":"value"} ›</div></div></div>`;
     }).join('')||`<div class="empty">${zh?"暂无品项，先在采购或此页导入。":"No items"}</div>`;
-    return `<div class="fb"><h2 class="h" style="margin:0;">📦 ${zh?"库存清单":"Inventory"} <span class="tag">v${BUILD}</span></h2>${addBtns}</div>
+    return `<div class="fb"><h2 class="h" style="margin:0;">${zh?"库存清单":"Inventory"}</h2></div>
+      <div class="grid g3 sup-sum"><div class="kpi"><div class="k">${zh?"库存总值":"Stock value"}</div><div class="v sm">${money(allVal)}</div></div><div class="kpi"><div class="k">${zh?"品项":"Items"}</div><div class="v sm">${(x.items||[]).length}</div></div><div class="kpi"><div class="k">${zh?"低于安全库存":"Low stock"}</div><div class="v sm ${allLow?'neg':'pos'}">${allLow}</div></div></div>
+      ${addBtns}
       <div class="hint">${zh?"👉 功能：看每样食材还剩多少、值多少钱(按供应商分组)。进货会自动加、卖出/报废/调拨会自动减，剩太少会提醒你订货。":"See how much of each item is left & its value; auto-adjusts on purchase/sale/waste."}</div>
       ${(function(){const al=alertList();const n=al.length;return `<details class="alertBox"${n?'':' '} style="margin:2px 0 6px;">
         <summary style="cursor:pointer;list-style:none;display:flex;align-items:center;justify-content:space-between;gap:8px;padding:10px 12px;border:1.5px solid ${n?'var(--amber)':'var(--line)'};border-radius:10px;background:${n?'rgba(245,158,11,.08)':'#fff'};font-weight:800;font-size:14px;">
@@ -2096,8 +2113,8 @@ function pgInv(){
         </summary>
         <div style="padding-top:8px;">${renderAlerts()}</div>
       </details>`;})()}
-      <h2 class="h" style="margin-top:2px;">${zh?"库存(按供应商)":"Inventory by Supplier"}</h2>
-      ${cards}`;
+      <div class="dv-tools"><input class="dv-search" type="search" placeholder="${zh?'搜索供应商…':'Search suppliers…'}" oninput="dvFilter(this.value)" autocomplete="off"></div>
+      <div id="dvList">${cards}</div>`;
   }
   // —— 单一供应商库存视图 ——
   const items=groups[invSupplier]||[];
@@ -2983,20 +3000,17 @@ function renderCharts(f){
 }
 
 /* ================= M4/M9 报表 ================= */
+let reportTab='ov';
+function reportTabSet(v){reportTab=v;render();window.scrollTo(0,0);}
 function pgReport(){
-  const x=d();const f=calcFin();
+  const x=d();const f=calcFin();const zh=LANG==="zh";
   const inT=x.moves.filter(m=>m.type==='in').reduce((s,m)=>s+m.amt,0);
   const wasteT=x.moves.filter(m=>m.type==='waste').reduce((s,m)=>s+m.amt,0);
   const totalVal=x.items.reduce((s,i)=>s+i.qty*i.cost,0);
   const dead=x.items.filter(i=>{const b=(i.batches||[])[0];return b&&days(TODAY,b.in)>60;});
-  // variance
-  const varRows=x.stocktakes.map(s=>{const it=findItem(s.item);const v=s.theory-s.count;return{name:s.item,theory:s.theory,count:s.count,v,val:Math.abs(v)*(it?it.cost:0),unit:it?it.unit:''};});
+  const varRows=(x.stocktakes||[]).map(s=>{const it=findItem(s.item);const v=s.theory-s.count;return{name:s.item,theory:s.theory,count:s.count,v,val:Math.abs(v)*(it?it.cost:0),unit:it?it.unit:''};}).sort((p1,p2)=>Math.abs(p2.v)-Math.abs(p1.v));
   const reasons={};x.moves.filter(m=>m.type==='waste').forEach(m=>{const r=m.note||'其他';reasons[r]=reasons[r]||{n:0,amt:0};reasons[r].n++;reasons[r].amt+=m.amt;});
-  return `
-  <div class="fb"><h2 class="h" style="margin:0;">📈 ${LANG==="zh"?"报表中心":"Reports"}</h2>
-    <button class="btn ghost sm" onclick="exportCSV()">⬇ CSV</button></div>
-  <div class="hint">${LANG==="zh"?"👉 功能：把库存总值、进货、损耗、盘点差异、月度盈亏等汇总成一页，一眼看清全店状况；可按「⬇ CSV」导出给会计或存档。":"One-page summary of stock, purchases, wastage & monthly P&L; export to CSV."}</div>
-  <div class="grid g3">
+  const kpi=`  <div class="grid g3 sup-sum">
     <div class="kpi"><div class="k">${LANG==="zh"?"库存总值":"Stock Value"}</div><div class="v sm">${money(totalVal)}</div></div>
     <div class="kpi"><div class="k">${LANG==="zh"?"食材成本率":"Food%"}</div><div class="v sm ${f.foodPct>40?'neg':'pos'}">${f.foodPct.toFixed(1)}%</div></div>
     <div class="kpi"><div class="k">${LANG==="zh"?"损耗率":"Waste%"}</div><div class="v sm ${(f.net?wasteT/f.net*100:0)>5?'neg':'pos'}">${(f.net?wasteT/f.net*100:0).toFixed(1)}%</div></div>
@@ -3004,22 +3018,21 @@ function pgReport(){
     <div class="kpi"><div class="k">${LANG==="zh"?"死货数":"Dead"}</div><div class="v sm ${dead.length?'neg':'pos'}">${dead.length}</div></div>
     <div class="kpi"><div class="k">${LANG==="zh"?"本月进货":"Purchases"}</div><div class="v sm pos">${money(inT)}</div></div>
   </div>
-  ${acctCostPanel()}
+`;
+  const tabs=[['ov',zh?'概览':'Overview'],['cost',zh?'成本占比':'Cost mix'],['var',zh?'盘点差异':'Variance'],['waste',zh?'损耗':'Waste'],['dead',zh?'呆滞货':'Dead stock']];
+  const seg=`<div class="seg mtabs">${tabs.map(([k,l])=>`<button class="${reportTab===k?'active':''}" onclick="reportTabSet('${k}')">${l}${k==='dead'&&dead.length?` <span class="pill p-r" style="padding:0 6px;">${dead.length}</span>`:''}</button>`).join('')}</div>`;
+  const card=(title,sub,right,rsub,cls)=>`<div class="dv-row inv-card ${cls||''}"><div style="min-width:0;"><div class="dv-name">${title}</div><div class="mini">${sub}</div></div><div class="inv-qty"><div class="inv-q ${cls==='low'?'neg':''}">${right}</div><div class="mini">${rsub||''}</div></div></div>`;
+  let body='';
+  if(reportTab==='ov')body=kpi+`
   ${(function(){const mp=monthlyPnL(costMonth);const cpc=mp.foodPct<28?'#0891B2':(mp.foodPct<=35?'var(--green)':'var(--red)');return `<div class="fb"><h2 class="h" style="margin:0;">📅 ${LANG==="zh"?"月度核算":"Monthly Costing"} <span class="tag">${monthLabel2(costMonth)}${monthLocked(costMonth)?' 🔒':''}</span></h2><button class="btn ghost sm" onclick="nav('monthly')">${LANG==="zh"?"打开":"Open"} ›</button></div>
   <div class="grid g4"><div class="kpi"><div class="k">${LANG==="zh"?"月营收":"Revenue"}</div><div class="v sm pos">${money(mp.rev)}</div></div><div class="kpi"><div class="k">COGS</div><div class="v sm neg">${money(mp.cogs)}</div></div><div class="kpi"><div class="k">${LANG==="zh"?"毛利":"Gross"}</div><div class="v sm">${money(mp.gp)}</div></div><div class="kpi"><div class="k">${LANG==="zh"?"成本率/毛利率":"Food/GM%"}</div><div class="v sm" style="color:${cpc}">${mp.foodPct.toFixed(1)}%/${mp.margin.toFixed(1)}%</div></div></div>`;})()}
-  ${renderCharts(f)}
-  <h2 class="h">📋 ${LANG==="zh"?"盘点差异 (理论 vs 实盘)":"Stock Variance"}</h2>
-  <div class="card tbl"><table><thead><tr><th>${LANG==="zh"?"品项":"Item"}</th><th>${LANG==="zh"?"理论":"Theory"}</th><th>${LANG==="zh"?"实盘":"Actual"}</th><th>${LANG==="zh"?"盘差":"Var"}</th><th>${LANG==="zh"?"盘差额":"Val"}</th></tr></thead><tbody>
-  ${varRows.map(r=>`<tr><td>${oEsc(r.name)}</td><td>${num(r.theory)} ${oEsc(r.unit)}</td><td>${num(r.count)} ${oEsc(r.unit)}</td><td><span class="pill ${Math.abs(r.v)>0.4?'p-r':'p-g'}">${r.v>0?'+':''}${num(r.v)}</span></td><td class="${Math.abs(r.v)>0.4?'neg':''}">${money(r.val)}</td></tr>`).join('')}
-  </tbody></table></div>
-  <h2 class="h">🗑 ${LANG==="zh"?"报废原因统计":"Wastage by Reason"}</h2>
-  <div class="card tbl"><table><thead><tr><th>${LANG==="zh"?"原因":"Reason"}</th><th>${LANG==="zh"?"次数":"Count"}</th><th>${LANG==="zh"?"损失":"Loss"}</th></tr></thead><tbody>
-  ${Object.entries(reasons).map(([k,v])=>`<tr><td>${oEsc(k)}</td><td>${v.n}</td><td class="neg">${money(v.amt)}</td></tr>`).join('')||`<tr><td colspan="3" class="empty">—</td></tr>`}
-  </tbody></table></div>
-  <h2 class="h">💀 ${LANG==="zh"?"呆滞/死货报表":"Dead Stock"}</h2>
-  <div class="card tbl"><table><thead><tr><th>${LANG==="zh"?"品项":"Item"}</th><th>${LANG==="zh"?"在库天数":"Age"}</th><th>${LANG==="zh"?"占用金额":"Value"}</th></tr></thead><tbody>
-  ${dead.map(i=>`<tr><td>${oEsc(i.name)}</td><td>${days(TODAY,i.batches[0].in)} ${LANG==="zh"?"天":"d"}</td><td class="neg">${money(i.qty*i.cost)}</td></tr>`).join('')||`<tr><td colspan="3" class="empty">✅ ${LANG==="zh"?"无死货":"None"}</td></tr>`}
-  </tbody></table></div>`;
+  ${renderCharts(f)}`;
+  else if(reportTab==='cost')body='${acctCostPanel()}'.replace('${acctCostPanel()}',acctCostPanel());
+  else if(reportTab==='var')body=varRows.length?`<div class="inv-grid">${varRows.map(r=>card(oEsc(r.name),(zh?'理论 ':'Theory ')+num(r.theory)+' → '+(zh?'实盘 ':'Actual ')+num(r.count)+' '+oEsc(r.unit),(r.v>0?'+':'')+num(r.v)+' <small>'+oEsc(r.unit)+'</small>',money(r.val),Math.abs(r.v)>0.4?'low':'')).join('')}</div>`:`<div class="empty">${zh?'还没有盘点记录':'No stock counts'}</div>`;
+  else if(reportTab==='waste'){const ent=Object.entries(reasons).sort((p1,p2)=>p2[1].amt-p1[1].amt);body=ent.length?`<div class="inv-grid">${ent.map(([k,v])=>card(oEsc(k),v.n+(zh?' 次':' times'),money(v.amt),zh?'损失':'loss','low')).join('')}</div>`:`<div class="empty">${zh?'没有报废记录':'No wastage'}</div>`;}
+  else body=dead.length?`<div class="inv-grid">${dead.map(i=>card(oEsc(i.name),(zh?'在库 ':'Age ')+days(TODAY,i.batches[0].in)+(zh?' 天':' d'),money(i.qty*i.cost),zh?'占用金额':'value','low')).join('')}</div>`:`<div class="empty">${zh?'没有呆滞货':'None'}</div>`;
+  return `<div class="fb"><h2 class="h" style="margin:0;">${zh?"报表中心":"Reports"}</h2><button class="btn ghost sm" onclick="exportCSV()">${zh?'导出 CSV':'CSV'}</button></div>
+  ${seg}${body}`;
 }
 
 /* ================= M10 设置&审计 ================= */
@@ -4586,8 +4599,8 @@ function pgLedger(mod){
   const supHead=`<div class="fb"><h2 class="h" style="margin:0;">${cfg.icon} ${selSupplier}</h2><button class="btn ghost sm" onclick="backSupplier()">← ${LANG==="zh"?"供应商列表":"Suppliers"}</button></div>`;
   const tabs=`<div class="seg mtabs" style="flex-wrap:wrap;margin-bottom:8px;">${months.map(m=>`<button class="${m===curM?'active':''}" onclick="setLedgerMonth('${m}')">${monthLabel(m)}${writable&&!dataMonths.includes(m)?` <span class="ib" title="${LANG==="zh"?'从列表移除(空月)':'remove'}" onclick="event.stopPropagation();delGridMonth('${m}')">×</span>`:''}</button>`).join('')}${writable?`<button onclick="addGridMonth()">+ ${LANG==="zh"?"月份":"Month"}</button>`:''}</div>`;
   const hint=`<div class="hint">${LANG==="zh"?"选月份 → 直接在表格里填『数量』(输入即时算金额、即时更新总计)。品项>10个用『行=品项 列=日期』，≤10个用『行=日期 列=品项』。可『+品项』『+日期』或用 × / 🗑️ 删除，随时改。":"Pick a month, type quantities in the grid."} <span class="mini" style="opacity:.6;">build ${BUILD}</span></div>`;
-  if(mod==='monthend'&&curLedgerView()==='day')return `${supHead}${tabs}${monthEndViewHTML(selSupplier,curM)}`;
-  if(mod==='purchase'&&curLedgerView()==='day')return `${supHead}${tabs}${dayViewHTML(selSupplier,curM)}<div id="gridSummary">${gridSummaryHTML(mod,selSupplier,curM)}</div>`;
+  if(mod==='monthend'&&curLedgerView()==='day')return `${supHead}${tabs.replace('seg mtabs','seg mtabs nox')}${monthEndViewHTML(selSupplier,curM)}`;
+  if(mod==='purchase'&&curLedgerView()==='day')return `${supHead}${tabs.replace('seg mtabs','seg mtabs nox')}${dayViewHTML(selSupplier,curM)}<div id="gridSummary">${gridSummaryHTML(mod,selSupplier,curM)}</div>`;
   const _vseg=(mod==='purchase'||mod==='monthend')?`<div class="dv-bar"><div class="seg"><button onclick="setLedgerView('day')">${LANG==="zh"?'按日':'Daily'}</button><button class="active" onclick="setLedgerView('grid')">${LANG==="zh"?'表格':'Grid'}</button></div></div>`:'';
   return `${supHead}${tabs}${_vseg}${hint}${gridTable(mod,selSupplier,curM)}<div id="gridSummary">${gridSummaryHTML(mod,selSupplier,curM)}</div>`;
 }
@@ -4880,7 +4893,7 @@ function pgGRN(){
       return `<div class="grn-day"><span>${zh?`${dd.getMonth()+1}月${dd.getDate()}日 · 周${wd[dd.getDay()]}`:dt}${dt===TODAY?` <span class="pill p-g">${zh?'今天':'Today'}</span>`:''}</span><b>${money(t)}</b></div>`+byDate[dt].map(r=>grnCard(r,writable,false)).join('');}).join('');
   }
   return `<div class="fb"><h2 class="h" style="margin:0;">${zh?"退货 / 补货":"Returns / Restock"}</h2><button class="btn ghost sm" onclick="nav('proc')">← ${zh?"进销存作业":"Operations"}</button></div>
-  ${logMonthTabs(months,cur,'setGrnMonth').replace('class="seg"','class="seg mtabs"')}
+  ${logMonthTabs(months,cur,'setGrnMonth').replace('class="seg"','class="seg mtabs nox"')}
   <div class="grid g3 sup-sum"><div class="kpi"><div class="k">${zh?"本月笔数":"Records"}</div><div class="v sm">${mrs.length}</div><div class="mini">${zh?"退":"Ret"} ${nRet} · ${zh?"补":"Res"} ${nRes}</div></div>
     <div class="kpi"><div class="k">${zh?"本月金额":"Amount"}</div><div class="v sm">${money(tot)}</div></div></div>
   <div class="dv-tools">${writable?`<button class="btn brand sm" onclick="formGRN()">+ ${zh?"新增退货/补货":"Add"}</button>`:''}
@@ -5175,6 +5188,11 @@ function openPayslipSelected(){const ids=Object.keys(payslipPick).filter(k=>pays
 function openPayslipAll(){const list=(d().staff||[]);if(!list.length)return;if(!confirm(LANG==="zh"?("下载/打印全部 "+list.length+" 位员工的 Payslip？"):"Download/print all payslips?"))return;openForm(payHead('🧾 Payslip · '+(LANG==="zh"?'全体员工':'All')+' ×'+list.length)+`<div style="max-height:76vh;overflow:auto;">${list.map((e,i)=>payslipHTML(e,i<list.length-1)).join('')}</div>`);const mb=document.getElementById('mbox');if(mb)mb.classList.add('m-wide');}
 function setPayslipMode(m){payslipMode=m;if(m!=='single')payslipPick={};render();window.scrollTo(0,0);}
 function togglePayslipPick(id){payslipPick[id]=!payslipPick[id];render();}
+let payView=(()=>{try{return localStorage.getItem('erpPayView')||'';}catch(e){return '';}})();
+function curPayView(){return payView||(window.matchMedia('(max-width:760px)').matches?'card':'grid');}
+function setPayView(v){payView=v;try{localStorage.setItem('erpPayView',v);}catch(e){}render();}
+const prOpen=new Set();
+function prToggle(id,el){if(el.open)prOpen.add(id);else prOpen.delete(id);}
 function pgPayrun(){
   const zh=LANG==="zh";const w=canW('payroll')&&canSeeSalary();const staff=(d().staff||[]);
   if(!canSeeSalary())return `<h2 class="h">🧮 ${zh?'薪资发放 Payroll':'Payroll Run'}</h2><div class="al al-a"><div class="t">🔒 ${zh?'权限限制':'Restricted'}</div>${zh?'只有老板 / 人事经理(HR)可以查看与编辑薪资发放。':'Only Owner/HR can access Payroll.'}</div>`;
@@ -5230,6 +5248,37 @@ function pgPayrun(){
     <td style="text-align:right;" class="mini">${num2(c.levy)}</td>
     <td class="pstickR" style="text-align:right;font-weight:800;"><span id="po-net-${e.id}">${num2(c.net)}</span></td>
   </tr>`;}).join('')||`<tr><td colspan="22" class="empty">${zh?'暂无员工（请先到人事档案添加）':'No staff'}</td></tr>`;
+  const viewSeg=`<div class="dv-bar"><div class="seg"><button class="${curPayView()==='card'?'active':''}" onclick="setPayView('card')">${zh?'按员工':'By staff'}</button><button class="${curPayView()==='grid'?'active':''}" onclick="setPayView('grid')">${zh?'表格':'Grid'}</button></div></div>`;
+  if(curPayView()==='card'){
+    const RCc=id=>`payLiveRecalc(${id})`;
+    const cards=rows.map(({e,c})=>{const ov=run.ov[e.id]||{};const pcbShown=ov.pcb!=null?ov.pcb:c.pcbAuto;const R=RCc(e.id);
+      const inp=(idp,label,val,step,ph)=>`<label>${label}<input id="${idp}-${e.id}" type="number" inputmode="decimal" step="${step||0.01}" ${dis} value="${val}" ${ph?`placeholder="${ph}"`:''} oninput="${R}"></label>`;
+      const line=(l,id,v,cls)=>`<div class="pr-line ${cls||''}"><span>${l}</span><b id="${id}-${e.id}">${num2(v)}</b></div>`;
+      return `<details class="pr-card" ${prOpen.has(e.id)?'open':''} ontoggle="prToggle(${e.id},this)">
+        <summary><div style="min-width:0;"><div class="dv-name">${oEsc(e.name)}</div><div class="mini">${e.empNo?oEsc(e.empNo)+' · ':''}${oEsc(e.role)||''}</div></div>
+          <div class="pr-net"><b id="po-net-${e.id}">${num2(c.net)}</b><small>${zh?'实发 RM':'Net RM'}</small></div></summary>
+        <div class="pr-body">
+          <div class="pr-grid">${inp('pi-allow',zh?'津贴':'Allowance',c.allowance)}${inp('pi-inc',zh?'奖励':'Incentive',c.incentive)}${inp('pi-ph',zh?'公共假期':'Public hol.',c.ph)}
+            ${inp('pi-oth',zh?'OT 时数':'OT hours',c.otHours,0.5)}
+            <label>${zh?'OT 倍数':'OT ×'}<select id="pi-otm-${e.id}" ${dis} onchange="${R}">${[1.0,1.5,2.0,2.5,3.0].map(x=>`<option value="${x}" ${c.otMult==x?'selected':''}>${x.toFixed(1)}×</option>`).join('')}</select></label>
+            <label>PCB <span class="mini" id="po-pcblbl-${e.id}">${ov.pcb!=null?(zh?'手改':'edit'):(zh?'自动':'auto')}</span><input id="pi-pcb-${e.id}" type="number" inputmode="decimal" step="0.01" ${dis} value="${pcbShown}" placeholder="auto" oninput="${R}"></label>
+            <label class="chk"><input type="checkbox" id="pi-sl-${e.id}" ${dis} ${ov.sl24jOn!==false?'checked':''} onchange="${R}"> SL24J <span class="mini">${c.slLabel}</span></label>
+            <label class="chk"><input type="checkbox" id="pi-marr-${e.id}" ${dis} ${e.married?'checked':''} onchange="${R}"> ${zh?'已婚':'Married'}</label>
+            ${inp('pi-child',zh?'孩子数':'Children',+e.children||0,1)}</div>
+          <div class="pr-lines">${line(zh?'底薪':'Basic','po-basic',c.basic)}${line('OT','po-ot',c.otAmt)}${line(zh?'应发 Gross':'Gross','po-gross',c.gross,'strong')}
+            ${line('EPF '+(zh?'员工':'EE'),'po-epf',c.epf.ee,'neg')}${line('SOCSO '+(zh?'员工':'EE'),'po-soc',c.soc.ee,'neg')}${line('EIS '+(zh?'员工':'EE'),'po-eis',c.eis.ee,'neg')}${line('SL24J','po-sl',c.sl,'neg')}
+            ${line('EPF '+(zh?'雇主':'ER'),'po-epfer',c.epf.er,'er')}${line('SOCSO '+(zh?'雇主':'ER'),'po-socer',c.soc.er,'er')}${line('EIS '+(zh?'雇主':'ER'),'po-eiser',c.eis.er,'er')}</div>
+        </div></details>`;}).join('')||`<div class="empty">${zh?'暂无员工（请先到人事档案添加）':'No staff'}</div>`;
+    return `<div class="fb"><h2 class="h" style="margin:0;">${zh?'薪资发放':'Payroll Run'} <span class="tag">${monthLabel2(payrunMonth)}${fin?' 🔒':''}</span></h2></div>
+  ${yearSeg.replace('class="seg"','class="seg mtabs"')}
+  ${monthSeg.replace('class="seg"','class="seg mtabs"')}
+  <div class="grid g2 sup-sum"><div class="kpi"><div class="k">${zh?'员工实发总额':'Total Net'}</div><div class="v sm" id="pt-netbig">${money(T.net)}</div><div class="mini">${rows.length} ${zh?'位员工':'staff'}</div></div>
+    <div class="kpi"><div class="k">${zh?'雇主总成本':'Employer Cost'}</div><div class="v sm" id="pt-erbig">${money(T.er)}</div><div class="mini">${zh?'含 EPF/SOCSO/EIS 雇主':'incl. ER contributions'}</div></div></div>
+  ${viewSeg}
+  <details class="hintd"><summary>${zh?'说明':'Notes'}</summary><div>${zh?'底薪从「员工档案」自动带入；点开员工卡片可改津贴/奖励/OT 时数，一填数字即时结算。OT = 时数 × (底薪÷26÷8) × 倍数。EPF/SOCSO/EIS 按官方附表；SL24J 按工龄自动；PCB 为估算（可手改，留空=自动），正式以 LHDN e-PCB 为准。':'Basic comes from Staff profile; open a card to edit. OT = hours × (basic÷26÷8) × multiplier.'}</div></details>
+  <div id="dvList">${cards}</div>
+  ${payActionsHTML(w,fin,zh)}`;
+  }
   const th=(t)=>`<th style="padding:5px 6px;white-space:nowrap;">${t}</th>`;
   const thE=(t)=>`<th style="padding:5px 6px;white-space:nowrap;background:#E6F2EC;color:#0F5C4E;">${t}</th>`;
   const head=`<tr>${[zh?'员工':'Staff',zh?'底薪':'Basic',zh?'津贴':'Allow',zh?'奖励':'Incent',zh?'公共假期':'Pub.Hol.','OT时','OT倍','OT额',zh?'应发':'Gross','EPF员','SOCSO员','EIS员'].map(t=>`<th style="padding:5px 6px;white-space:nowrap;">${t}</th>`).join('')}${thE('EPF雇')}${thE('SOCSO雇')}${thE('EIS雇')}${['SL24J',zh?'已婚':'Marr',zh?'孩':'Child','PCB',zh?'人头税':'Levy',zh?'实发':'Net'].map(t=>`<th style="padding:5px 6px;white-space:nowrap;">${t}</th>`).join('')}</tr>`;
@@ -5237,12 +5286,16 @@ function pgPayrun(){
     <span class="mini" style="opacity:.7;">SL24J ${zh?'按工龄自动 (0.75→1.0→1.25%)':'auto by tenure'}</span></div>
   ${yearSeg}
   ${monthSeg}
+  ${viewSeg}
   <div class="hint">${zh?'月份会跟着日期自动往前增加、历史月份都会保留；也可以按上面『+ 月份』先手动建未来的月份。底薪从『员工档案』自动带入；津贴/奖励/OT时数可改，一填数字即时结算。OT = 时数 × (底薪÷26÷8) × 倍数。EPF/SOCSO/EIS 按官方附表；SL24J 员工承担(按工龄自动)；PCB 为估算(可手改，留空=自动)，正式以 LHDN e-PCB 为准。人头税暂为 0。':'Basic auto from staff profile; edits settle instantly. Statutory per official schedules; PCB estimate.'}</div>
   <div class="gwrap" style="max-height:66vh;"><table class="gtbl ptbl" style="font-size:12.5px;"><thead>${head}</thead><tbody>${body}
     <tr class="gsum" style="font-weight:800;"><td class="pstick">${zh?'合计':'Total'}</td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td style="text-align:right;"><span id="pt-gross">${num2(T.gross)}</span></td><td style="text-align:right;"><span id="pt-epf">${num2(T.epfEe)}</span></td><td style="text-align:right;"><span id="pt-soc">${num2(T.socEe)}</span></td><td style="text-align:right;"><span id="pt-eis">${num2(T.eisEe)}</span></td><td style="text-align:right;background:#F3FAF7;"><span id="pt-epfer">${num2(T.epfEr)}</span></td><td style="text-align:right;background:#F3FAF7;"><span id="pt-socer">${num2(T.socEr)}</span></td><td style="text-align:right;background:#F3FAF7;"><span id="pt-eiser">${num2(T.eisEr)}</span></td><td style="text-align:right;"><span id="pt-sl">${num2(T.sl)}</span></td><td></td><td></td><td style="text-align:right;"><span id="pt-pcb">${num2(T.pcb)}</span></td><td></td><td class="pstickR" style="text-align:right;"><span id="pt-net">${num2(T.net)}</span></td></tr>
   </tbody></table></div>
   <div class="pl" style="margin-top:10px;"><div class="row"><span>${zh?'员工实发总额 Net':'Total Net'}</span><b id="pt-netbig">${money(T.net)}</b></div><div class="row"><span>${zh?'雇主总成本 (含EPF/SOCSO/EIS雇主)':'Employer Cost'}</span><b id="pt-erbig">${money(T.er)}</b></div></div>
-  ${w?`<div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:12px;">
+  ${w?payActionsHTML(w,fin,zh):''}`;
+}
+function payActionsHTML(w,fin,zh){
+  return w?`<div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:12px;">
     ${fin?`<button class="btn ghost" onclick="unlockPayrun()">🔓 ${zh?'解锁修改':'Unlock'}</button>
       <button class="btn brand" onclick="openPayrollPrint()">🖨️ ${zh?'下载/打印 Payroll':'Download/Print Payroll'}</button>
       <button class="btn gold" onclick="setPayslipMode('menu')">🧾 ${zh?'创建 Payslip':'Create Payslip'}</button>`
@@ -5256,8 +5309,9 @@ function pgPayrun(){
     <button class="btn ghost sm" onclick="exportBorang8A()">📄 Borang 8A (SOCSO/EIS)</button>
     <button class="btn ghost sm" onclick="exportBankFile()">🏦 ${zh?'银行代发文件':'Bank Salary File'}</button>
     <button class="btn gold sm" onclick="openEaFormPanel()">🧾 EA ${zh?'表(年结)':'Form (Annual)'}</button>
-  </div>`:''}`;
+  </div>`:'';
 }
+
 
 /* 页面路由补充（ap/opex 不在底部tab，用函数导航） */
 const _pages={dash:pgDash,sales:pgSales,inv:pgInv,proc:pgProc,bom:pgBom,report:pgReport,settings:pgSettings,ap:pgAp,opex:pgOpex,opexm:pgOpexM,payroll:pgPayroll,payrun:pgPayrun,hr:pgHR,attend:pgAttend,schedule:pgSchedule,leave:pgLeave,ck:pgCK,stock:pgStock,
@@ -5586,7 +5640,9 @@ function drawDragon(ctx,P,v,ts,Wmax,alpha,clipY){
   {const f=th,px=h0.x+Math.cos(f)*Wmax*5.2,py=h0.y+Math.sin(f)*Wmax*5.2+Math.sin(ts*.006)*4,r=Wmax*.95;ctx.shadowColor='#FFE070';ctx.shadowBlur=24;const g=ctx.createRadialGradient(px-r*.3,py-r*.3,0,px,py,r);g.addColorStop(0,'#fff');g.addColorStop(.5,'#FFE98A');g.addColorStop(1,'#F0A020');ctx.fillStyle=g;ctx.beginPath();ctx.arc(px,py,r,0,7);ctx.fill();ctx.shadowBlur=0;}
   ctx.restore();
 }
+const FISH_ON=false;
 function ui2Fish(){
+  if(!FISH_ON)return;   // 鱼跃龙门动画暂时关闭（业主 2026-11 要求）；要恢复把 FISH_ON 改 true
   try{if(ui2Theme()!=='classic'||window.matchMedia('(prefers-reduced-motion:reduce)').matches)return;}catch(e){return;}
   const old=document.getElementById('fishFx');if(old)old.remove();
   const W=window.innerWidth,H=window.innerHeight,mobile=W<=760;
