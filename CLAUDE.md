@@ -9,7 +9,7 @@
 ### 三个仓库的分工（三份 CLAUDE.md 各管各的）
 | | 仓库 | 是什么 | Supabase |
 |---|---|---|---|
-| ① **明记 ERP（本仓库）** | `Mengkeesystem/ERP-testing-1.0` | 明记（马来西亚中餐小食店，11 间分店 + 中央厨房）的内部 ERP，单文件 `index.html` | 明记自己的项目 `kmcdokwiyetlmsrdlgqw`（Pro）——**同一个项目里还放着官网后台的 `web_*` 表/函数，ERP 的 SQL 不能碰它们** |
+| ① **明记 ERP（本仓库）** | `Mengkeesystem/ERP-testing-1.0` | 明记（马来西亚中餐小食店，11 间分店 + 中央厨房）的内部 ERP，单文件 `index.html` | 明记自己的项目 `kmcdokwiyetlmsrdlgqw`（⚠️ **Free 免费版，不是 Pro**：Supabase 后台组织名「ERP (明记和Beefhouse)」，两家共用同一个免费组织；免费版 7 天没活动会被暂停、没有每日备份）——**同一个项目里还放着官网后台的 `web_*` 表/函数，ERP 的 SQL 不能碰它们**。仓库里 `.github/workflows/keep-supabase-alive.yml` 每 2 天戳一次防暂停（2026-11-13 加） |
 | ② 牛室 ERP | `Beefhousesystem/BeefHouse_ERP_1.0` | 牛室（Western buffet 牛排店）的 ERP，**新功能一般先在牛室做，再搬来明记** | 牛室**完全独立**的另一个项目，**绝不能混** |
 | ③ 明记官网 | `Mengkeesystem/restoranmengkee` | 客人看的官网：网上点餐/外送/HitPay 付款、员工后台 `admin.html`、订位 | 用明记 ERP 的同一个 Supabase 项目，只用 `web_*` 开头的东西 |
 

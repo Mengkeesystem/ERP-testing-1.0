@@ -1,0 +1,25 @@
+# 明记 ERP：定时「戳」一下 Supabase，避免免费版项目 7 天没人用被自动暂停。
+# 只用公开的 publishable key（跟网页里的一样，浏览器本来就看得到），不放任何私钥。
+name: keep-supabase-alive
+
+on:
+  schedule:
+    - cron: "17 3 */2 * *"   # 每 2 天一次（UTC 03:17）
+  workflow_dispatch: {}       # 也可以在 Actions 页面手动点 Run workflow
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Ping Supabase REST (reaches the database)
+        run: |
+          URL="https://kmcdokwiyetlmsrdlgqw.supabase.co"
+          KEY="sb_publishable_HVJ_hcFmSDU-N2kFUg5CRw_LH-X_phO"
+          # 走到 PostgREST → Postgres 就算「有活动」；有登录权限限制时回 [] 或 401/403 都没关系，只要不是 5xx / 连不上
+          code=$(curl -sS -o /tmp/out.txt -w "%{http_code}" --max-time 30 \
+            "$URL/rest/v1/erp_users?select=email&limit=1" \
+            -H "apikey: $KEY" -H "Authorization: Bearer $KEY")
+          echo "HTTP $code"; head -c 200 /tmp/out.txt; echo
+          if [ "$code" -ge 500 ] || [ "$code" -eq 0 ]; then
+            echo "Supabase 没有正常回应（可能已被暂停或在维护）"; exit 1
+          fi
