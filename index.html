@@ -804,6 +804,12 @@ html.ui2 .hint{background:transparent!important;border:0!important;padding:2px 2
 @media(max-width:700px){.cc-row{grid-template-columns:92px 1fr 84px;}.cc-in{grid-template-columns:1fr 1fr 1fr!important;gap:8px!important;}.cc-in input{padding:9px 6px;font-size:15px;}}
 .os-row .os-desc{font-weight:600;line-height:1.45;white-space:pre-line;word-break:break-word;}
 .os-row .odesc-edit{min-height:24px;outline:none;border-bottom:1px dashed var(--line2);}
+
+.ck-main{display:flex;gap:12px;align-items:flex-start;min-width:0;}
+.ck-thumb{display:flex;gap:4px;flex:none;max-width:132px;overflow:hidden;}.ck-thumb img{width:62px;height:62px;object-fit:cover;border-radius:var(--radius-sm);background:var(--soft);}.ck-thumb:empty{display:none;}
+.ck-div{display:flex;justify-content:space-between;align-items:center;margin:14px 0 8px;padding:8px 12px;border-radius:var(--radius-sm);color:#fff;font-weight:700;font-size:13px;letter-spacing:.04em;}.ck-div .ib{background:rgba(255,255,255,.85);}
+.ck-sec{display:grid;gap:8px;}
+@media(min-width:761px){.ck-sec{grid-template-columns:1fr 1fr;}.ck-sec .ck-div{grid-column:1/-1;}.ck-sec>.btn{grid-column:1/-1;justify-self:start;}}
 /* ---- 进货「按日」视图（SUPY 风格）---- */
 .mtabs{flex-wrap:nowrap!important;overflow-x:auto;max-width:100%;scrollbar-width:none;}.mtabs::-webkit-scrollbar{display:none;}.mtabs button{flex:none;white-space:nowrap;}
 .mtabs.nox .ib{display:none;}
@@ -1210,7 +1216,7 @@ function statusOf(d){if(d<=14)return{t:"健康",e:"Fresh",c:"p-g"};if(d<=30)retu
 function stTxt(s){return LANG==="zh"?s.t:s.e;}
 
 /* ================= 数据种子 ================= */
-const BUILD="1111mk88";  // 版本标记：页面右上/网格提示可见，用来确认已载入最新版
+const BUILD="1111mk89";  // 版本标记：页面右上/网格提示可见，用来确认已载入最新版
 const SEED_VERSION="bh-master-2026-09-1";  // 版本变更→下次载入自动重置为最新主数据（仅本店云端）
 function seed(outletId){
   const isCK = outletId==="ck";
@@ -2040,8 +2046,8 @@ function pgDash(){
   const f=calcFin();const o=outletObj();
   const rangeLabel={day:"日均",week:"每周",month:"每月"};
   const compare=OUTLETS.filter(o=>!o.ck).filter(o=>ROLES[curRole].allBranch||o.id===curOutlet).map(ob=>{
-    const net=outletRevenue(ob.id)/1.06;const np=net*0.1*(0.6+Math.random());
-    return {name:nm(ob),net,np};
+    const net=outletRevenue(ob.id)/1.06;
+    return {name:nm(ob),net};
   });
   return `
   <div class="fb"><h2 class="h" style="margin:0;">💰 ${nm(o)} · ${LANG==="zh"?"利润大盘":"P&L Dashboard"}</h2>
@@ -2059,6 +2065,7 @@ function pgDash(){
   </div>
 
   ${dashCostHTML()}
+  ${trendChartHTML()}
   ${(function(){const mp=monthlyPnL(costMonth);if(!(mp.rev||mp.cogs))return '';const cpc=mp.foodPct<28?'#0891B2':(mp.foodPct<=35?'var(--green)':'var(--red)');return `
   <h2 class="h">📅 ${LANG==="zh"?"月度核算":"Monthly Costing"} <span class="tag">${monthLabel2(costMonth)}${monthLocked(costMonth)?' 🔒':''}</span></h2>
   <div class="pl">
@@ -2083,10 +2090,11 @@ function pgDash(){
     <div class="row tot"><span>= ${LANG==="zh"?"净利润 Net Profit":"Net Profit"}</span><span class="${f.netProfit>=0?'pos':'r-neg'}">${money(f.netProfit)}</span></div>
   </div>
 
-  <h2 class="h">🏪 ${LANG==="zh"?"各分店对比":"Branch Comparison"}</h2>
-  <div class="card tbl"><table><thead><tr><th>${LANG==="zh"?"分店":"Branch"}</th><th>${LANG==="zh"?"净营业额":"Net Sales"}</th><th>${LANG==="zh"?"估算净利":"Est. Profit"}</th></tr></thead><tbody>
-    ${compare.map(c=>`<tr><td>${c.name}</td><td>${money(c.net)}</td><td class="${c.np>=0?'pos':'neg'}">${money(c.np)}</td></tr>`).join('')}
-  </tbody></table></div>
+  ${(function(){const zh=LANG==="zh";const mx=Math.max(0,...compare.map(c=>c.net));
+    const head=`<div class="fb" style="margin-top:14px;"><h2 class="h" style="margin:0;">${zh?"各分店营业额":"Branch sales"}</h2></div>`;
+    if(compare.length<2)return '';
+    if(!mx)return head+`<div class="mini" style="margin:6px 2px 12px;">${zh?'各分店还没有营业额数据（录入销量或接上 POS 后会出现）。':'No sales data yet.'}</div>`;
+    return head+`<div class="card" style="padding:6px 14px;margin-top:8px;">${compare.slice().sort((x1,y1)=>y1.net-x1.net).map(c=>`<div style="display:grid;grid-template-columns:96px 1fr 104px;gap:10px;align-items:center;padding:9px 0;border-bottom:1px solid var(--row-line);font-size:13px;"><span>${c.name}</span><span class="cc-bar"><i style="display:block;height:100%;width:${(c.net/mx*100).toFixed(0)}%;background:var(--brand);border-radius:99px;"></i></span><b style="text-align:right;font-variant-numeric:tabular-nums;">${money(c.net)}</b></div>`).join('')}</div>`;})()}
   `;
 }
 function alertList(){
@@ -2984,16 +2992,22 @@ function pgPayroll(){
 }
 
 /* ---- 可视化图表（营业额趋势线 + 成本结构 + 各店对比）---- */
+/* 近 6 个月：营业额 vs 食材成本（真实：月度核算里录的月销量×当月成本；没数据的月份留空，不再用示范数字） */
+function trendChartHTML(){
+  const zh=LANG==="zh";
+  const ms=[];{let y=+TODAY.slice(0,4),m=+TODAY.slice(5,7);for(let i=0;i<6;i++){ms.unshift(y+'-'+String(m).padStart(2,'0'));m--;if(m<1){m=12;y--;}}}
+  const data=ms.map(m=>{const p=monthlyPnL(m);return {m,rev:p.rev,cogs:p.cogs,pct:p.foodPct};});
+  const has=data.some(x=>x.rev>0||x.cogs>0);
+  const head=`<div class="fb" style="margin-top:6px;"><h2 class="h" style="margin:0;">${zh?"营业额与食材成本":"Sales vs Food cost"} <span class="tag">${zh?'近 6 个月':'6 months'}</span></h2></div>`;
+  if(!has)return head+`<div class="card" style="padding:22px 16px;text-align:center;margin:8px 0 12px;"><div style="font-weight:700;margin-bottom:4px;">${zh?'还没有月度销售数据':'No monthly sales yet'}</div><div class="mini">${zh?'到「月度核算」录入每月菜品销量后，这里会自动画出趋势。':'Enter monthly sales in Monthly Costing.'}</div></div>`;
+  const W=320,H=150,pt=14,pb=22,pl=6,pr=6;const mx=Math.max(...data.map(x=>Math.max(x.rev,x.cogs)),1);const bw=(W-pl-pr)/data.length;
+  const bars=data.map((x,i)=>{const x0=pl+i*bw+bw*.14,w=bw*.34;const hr=(H-pt-pb)*x.rev/mx,hc=(H-pt-pb)*x.cogs/mx;
+    return `<rect x="${x0.toFixed(1)}" y="${(H-pb-hr).toFixed(1)}" width="${w.toFixed(1)}" height="${hr.toFixed(1)}" rx="2" fill="var(--brand)"/><rect x="${(x0+w+3).toFixed(1)}" y="${(H-pb-hc).toFixed(1)}" width="${w.toFixed(1)}" height="${hc.toFixed(1)}" rx="2" fill="var(--amber)"/><text x="${(pl+i*bw+bw/2).toFixed(1)}" y="${H-6}" text-anchor="middle" font-size="10" fill="var(--grey)">${+x.m.slice(5)}${zh?'月':''}</text>`;}).join('');
+  const last=data[data.length-1];
+  return head+`<div class="card" style="padding:14px 14px 12px;margin:8px 0 12px;"><svg viewBox="0 0 ${W} ${H}" style="width:100%;height:auto;display:block;">${bars}</svg>
+    <div style="display:flex;gap:16px;justify-content:center;font-size:12px;color:var(--ink2);margin-top:6px;flex-wrap:wrap;"><span><i style="display:inline-block;width:10px;height:10px;border-radius:2px;background:var(--brand);margin-right:5px;"></i>${zh?'营业额':'Sales'}</span><span><i style="display:inline-block;width:10px;height:10px;border-radius:2px;background:var(--amber);margin-right:5px;"></i>${zh?'食材成本':'Food cost'}</span><span class="mini">${zh?'最近一个月成本率':'Latest food %'} <b>${last.pct.toFixed(1)}%</b></span></div></div>`;
+}
 function renderCharts(f){
-  // 6个月营业额趋势（示范数据 + 本月）
-  const base=f.net;
-  const trend=[base*0.82,base*0.9,base*0.86,base*0.95,base*1.02,base].map(v=>Math.round(v));
-  const labels=["3月","4月","5月","6月","7月","8月"];
-  const maxT=Math.max(...trend),minT=Math.min(...trend);
-  const W=300,H=90,pad=6;
-  const pts=trend.map((v,i)=>{const x=pad+i*(W-2*pad)/(trend.length-1);const y=H-pad-((v-minT)/(maxT-minT||1))*(H-2*pad);return [x,y];});
-  const path=pts.map((p,i)=>(i?'L':'M')+p[0].toFixed(1)+' '+p[1].toFixed(1)).join(' ');
-  const area=path+` L${pts[pts.length-1][0].toFixed(1)} ${H-pad} L${pts[0][0].toFixed(1)} ${H-pad} Z`;
   // 成本结构（本月）
   const ro=curOpex(costMonth);
   const costParts=[
@@ -3009,17 +3023,7 @@ function renderCharts(f){
   const maxB=Math.max(...branches.map(b=>b.net));
 
   return `
-  <h2 class="h">📈 ${LANG==="zh"?"营业额趋势（近6月）":"Sales Trend"}</h2>
-  <div class="chart-wrap">
-    <svg viewBox="0 0 ${W} ${H}" style="width:100%;height:auto;">
-      <defs><linearGradient id="tg" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#14876F" stop-opacity="0.25"/><stop offset="1" stop-color="#14876F" stop-opacity="0"/></linearGradient></defs>
-      <path d="${area}" fill="url(#tg)"/>
-      <path d="${path}" fill="none" stroke="#0F5C4E" stroke-width="2"/>
-      ${pts.map(p=>`<circle cx="${p[0].toFixed(1)}" cy="${p[1].toFixed(1)}" r="2.5" fill="#0F5C4E"/>`).join('')}
-    </svg>
-    <div style="display:flex;justify-content:space-between;font-size:10px;color:var(--grey);margin-top:2px;">${labels.map(l=>`<span>${l}</span>`).join('')}</div>
-    <div class="mini" style="text-align:center;margin-top:4px;">${LANG==="zh"?"最新":"Latest"}: ${money(trend[trend.length-1])}</div>
-  </div>
+  ${trendChartHTML()}
 
   <h2 class="h">🥧 ${LANG==="zh"?"成本结构":"Cost Structure"}</h2>
   <div class="chart-wrap">
@@ -3319,15 +3323,31 @@ function uniformHTML(){
 }
 function ordSize(){return localStorage.getItem('ordSize')||'m';}
 function setOrdSize(s){localStorage.setItem('ordSize',s);render();}
+let ckOnlyFilled=false;
+function ckOnlyFilledSet(v){ckOnlyFilled=v;render();}
+function ckCountFilled(){const o=orderView();let n=0,t=0;['A','B','C'].forEach(k=>(o[k]||[]).forEach(it=>{if(it.divider)return;t++;if(String(it.q||'').trim()!=='')n++;}));(o.uniform||[]).forEach(u=>{t++;if(String(u.q||'').trim()!=='')n++;});return {n,t};}
+function ckQtyIn(inp,kind,k,i){if(kind==='u')setUniformQty(i,inp.value);else setOrderQty(k,i,inp.value);const row=inp.closest('.os-row');if(row)row.classList.toggle('has',String(inp.value).trim()!=='');const c=ckCountFilled();['os-n','os-n2'].forEach(id=>{const e=document.getElementById(id);if(e)e.textContent=c.n;});}
 function orderListHTML(){
-  const wDesc=ckCanOrderDesc();const wQty=ckCanOrderQty();const sz=ordSize();
-  const submitBtn=wQty?`<button class="btn brand sm" onclick="submitOrder()">🛒 ${LANG==="zh"?"下单":"Place Order"}</button>`:'';
-  const sizeCtl=`<div class="seg sm" style="margin:0;"><button class="${sz==='s'?'active':''}" onclick="setOrdSize('s')">${LANG==="zh"?"小":"S"}</button><button class="${sz==='m'?'active':''}" onclick="setOrdSize('m')">${LANG==="zh"?"中":"M"}</button><button class="${sz==='l'?'active':''}" onclick="setOrdSize('l')">${LANG==="zh"?"大":"L"}</button></div>`;
-  const bar=`<div class="fb" style="align-items:center;flex-wrap:wrap;gap:8px;"><div class="obanner">TCY OKR SDN BHD · ${LANG==="zh"?"中央厨房订货表":"Central Kitchen Order List"}</div><div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;"><span class="mini" style="opacity:.7;">${LANG==="zh"?"大小":"Size"}</span>${sizeCtl}${submitBtn}<button class="btn ghost sm" onclick="printOrder()">🖨️ ${LANG==="zh"?"打印":"Print"}</button>${['owner','area','hrmgr'].includes(curRole)?`<button class="btn ghost sm" onclick="openOrdersPanel()">📥 ${LANG==="zh"?"收到的订单":"Orders"}${orderUnreadCount()?` (${orderUnreadCount()})`:''}</button>`:''}${wDesc?`<button class="btn ghost sm" onclick="orderFillImages()">🖼️ ${LANG==="zh"?"统一品名+补图片":"Sync names+images"}</button><button class="btn ghost sm" onclick="orderResetSeed()">↩︎ ${LANG==="zh"?"还原原表":"Reset"}</button>`:''}</div></div>`;
-  const note=wDesc?(LANG==="zh"?"照订货表填『数量 QTY』；DESCRIPTION 与数量都能改，也能『+品项』或 🗑️ 删除。填好按『🛒 下单』提交。":"Fill QTY; description & rows editable. Press Place Order to submit.")
-                  :(LANG==="zh"?"填『数量 QTY』后按『🛒 下单』提交（会通知老板与区域副经理）。品名与描述由区域副经理及以上维护。":"Fill QTY then Place Order (owner & area manager get notified).");
-  const hint=`<div class="hint">${note} ${LANG==="zh"?"图片/文字大小可用右上『小/中/大』调整。":"Use S/M/L to resize."} <span class="mini" style="opacity:.6;">build ${BUILD}</span></div>`;
-  return bar+hint+`<div class="orderroot size-${sz}"><div class="owrap">${orderColHTML('A')}${orderColHTML('B')}${orderColHTML('C')}</div><div style="margin-top:12px;">${uniformHTML()}</div></div>`;
+  const zh=LANG==="zh";const wDesc=ckCanOrderDesc();const wQty=ckCanOrderQty();
+  const o=orderView();const c=ckCountFilled();
+  const submitBtn=wQty?`<button class="btn brand sm" onclick="submitOrder()">${zh?"下单":"Place order"}</button>`:'';
+  const sec=(k,title)=>{const arr=o[k]||[];
+    const body=arr.map((it,i)=>{
+      if(it.divider)return `<div class="ck-div" style="${divStyle(it.divider)}"><span>${oEsc(it.divider)}</span>${wDesc?`<button class="ib" onclick="delOrderItem('${k}',${i})">✕</button>`:''}</div>`;
+      const filled=String(it.q||'').trim()!=='';if(ckOnlyFilled&&!filled)return '';
+      const descHTML=wDesc?`<div class="odesc-edit os-desc" contenteditable="true" spellcheck="false" onblur="setOrderDesc('${k}',${i},this.innerText)">${oEsc(it.d)}</div>`:`<div class="os-desc">${oEsc(it.d)}</div>`;
+      return `<div class="dv-row os-row ck-row ${filled?'has':''}" data-name="${oEsc(String(it.d||'').toLowerCase())}">
+        <div class="ck-main"><div class="ck-thumb">${orderImgs(it)}</div><div style="min-width:0;flex:1;">${descHTML}</div></div>
+        <div class="dv-in gcw"><label>${zh?'数量 QTY':'QTY'}<input inputmode="decimal" value="${oEsc(it.q)}" ${wQty?'':'disabled'} oninput="ckQtyIn(this,'o','${k}',${i})"></label>${wDesc?`<button class="ib" style="margin-bottom:6px;" onclick="delOrderItem('${k}',${i})">🗑️</button>`:''}</div></div>`;}).join('');
+    return `<div class="ck-sec">${body||''}${wDesc?`<button class="btn ghost sm" onclick="addOrderItem('${k}')">+ ${zh?'品项':'Item'}</button>`:''}</div>`;};
+  const uni=(o.uniform||[]);const uimg=o.uniformImg||ORDER_SEED.uniformImg;
+  const uniHTML=uni.length?`<div class="ck-div" style="background:#7c3aed;"><span>*** UNIFORM ORDER ***</span></div>${uimg?`<div class="card" style="padding:8px;text-align:center;margin-bottom:8px;"><img src="${uimg}" alt="" style="max-width:100%;max-height:240px;"></div>`:''}`+uni.map((u,i)=>{const filled=String(u.q||'').trim()!=='';if(ckOnlyFilled&&!filled)return '';
+    return `<div class="dv-row os-row ${filled?'has':''}" data-name="uniform size ${oEsc(String(u.size||'').toLowerCase())}"><div class="os-desc"><b>Size : ${oEsc(u.size)}</b>${u.pre?` <span class="pill p-a">${zh?"预订":"Pre-order"}</span>`:''}</div><div class="dv-in gcw"><label>${zh?'数量 QTY':'QTY'}<input inputmode="decimal" value="${oEsc(u.q)}" ${wQty?'':'disabled'} oninput="ckQtyIn(this,'u','',${i})"></label></div></div>`;}).join(''):'';
+  return `<div class="grid g2 sup-sum"><div class="kpi"><div class="k">${zh?"品项":"Items"}</div><div class="v sm">${c.t}</div></div><div class="kpi"><div class="k">${zh?"已填数量":"Filled"}</div><div class="v sm pos"><span id="os-n">${c.n}</span></div></div></div>
+    <div class="dv-tools"><input class="dv-search" type="search" placeholder="${zh?'搜索品项…':'Search items…'}" oninput="dvFilter(this.value)" autocomplete="off"><div class="seg"><button class="${ckOnlyFilled?'':'active'}" onclick="ckOnlyFilledSet(false)">${zh?'全部':'All'}</button><button class="${ckOnlyFilled?'active':''}" onclick="ckOnlyFilledSet(true)">${zh?'只看已填':'Filled'}</button></div></div>
+    <details class="hintd"><summary>${zh?'说明':'Notes'}</summary><div>${wDesc?(zh?"照订货表填「数量 QTY」；品名与数量都能改，也能「+ 品项」或 🗑️ 删除。填好按「下单」提交。":"Fill QTY; rows editable."):(zh?"填「数量 QTY」后按「下单」提交（会通知老板与区域副经理）。品名与描述由区域副经理及以上维护。":"Fill QTY then place order.")}</div></details>
+    <div id="dvList">${sec('A')}${sec('B')}${sec('C')}${uniHTML}</div>
+    <div class="dv-foot"><span>${zh?'已填':'Filled'} <b id="os-n2">${c.n}</b> / ${c.t}</span>${submitBtn}</div>`;
 }
 
 /* ---------- 订单提交 + 通知 ---------- */
