@@ -810,6 +810,29 @@ html.ui2 .hint{background:transparent!important;border:0!important;padding:2px 2
 .ck-div{display:flex;justify-content:space-between;align-items:center;margin:14px 0 8px;padding:8px 12px;border-radius:var(--radius-sm);color:#fff;font-weight:700;font-size:13px;letter-spacing:.04em;}.ck-div .ib{background:rgba(255,255,255,.85);}
 .ck-sec{display:grid;gap:8px;}
 @media(min-width:761px){.ck-sec{grid-template-columns:1fr 1fr;}.ck-sec .ck-div{grid-column:1/-1;}.ck-sec>.btn{grid-column:1/-1;justify-self:start;}}
+
+/* ---- 弹窗表单（mk90）：固定标题 + 固定保存按钮 + 大一点的关闭键 + 16px 输入（iPhone 不会自动放大）---- */
+html.ui2 .m h3{position:sticky;top:0;z-index:5;background:var(--card);padding:8px 0 12px;margin:0 0 6px;border-bottom:1px solid var(--row-line);}
+html.ui2 .m h3 .x{flex:none;width:36px;height:36px;display:grid;place-items:center;border-radius:50%;background:var(--soft);color:var(--ink2);font-size:20px;}
+html.ui2 .m h3 .x:active{background:var(--hover);}
+html.ui2 .m .fr{margin-bottom:12px;}
+html.ui2 .m .fr label{display:block;font-size:12px;font-weight:600;color:var(--ink2);margin-bottom:5px;}
+html.ui2 .m .fr input,html.ui2 .m .fr select,html.ui2 .m .fr textarea{font-size:16px;padding:11px 12px;min-height:46px;width:100%;box-sizing:border-box;}
+html.ui2 .m .fg2,html.ui2 .m .fg3{gap:10px;}
+html.ui2 .m>button.btn.block.brand,html.ui2 .m>div>button.btn.block.brand:last-child{position:sticky;bottom:0;z-index:5;margin-top:14px;padding:14px;font-size:16px;box-shadow:0 -14px 12px 4px var(--card);}
+@media(max-width:639px){
+  html.ui2 .m::before{content:"";display:block;width:38px;height:4px;border-radius:99px;background:var(--line2);margin:-6px auto 8px;}
+  html.ui2 .mbg.show .m{animation:sheetup .2s var(--ease);}
+  @keyframes sheetup{from{transform:translateY(40px);opacity:.6;}to{transform:none;opacity:1;}}
+  html.ui2 .m .fg3{grid-template-columns:1fr 1fr;}
+  html.ui2 .m .fg3>.fr:last-child:nth-child(odd){grid-column:1/-1;}
+}
+@media(prefers-reduced-motion:reduce){html.ui2 .mbg.show .m{animation:none;}}
+html.ui2[data-theme="mech"] .m h3,html.ui2[data-theme="mech"] .m .fr input,html.ui2[data-theme="mech"] .m .fr select{color:#14181C;}
+html.ui2[data-theme="mech"] .m h3{background:#E9ECEF;border-bottom:2px solid #14181C;}
+html.ui2[data-theme="mech"] .m>button.btn.block.brand{box-shadow:0 -14px 12px 4px #E9ECEF,0 4px 0 #4A0A3E;}
+html.ui2[data-theme="cn"] .m h3{background:#FFFAEB;}
+html.ui2[data-theme="cn"] .m>button.btn.block.brand{box-shadow:0 -14px 12px 4px #FFFAEB,0 2px 0 var(--brand-dk);}
 /* ---- 进货「按日」视图（SUPY 风格）---- */
 .mtabs{flex-wrap:nowrap!important;overflow-x:auto;max-width:100%;scrollbar-width:none;}.mtabs::-webkit-scrollbar{display:none;}.mtabs button{flex:none;white-space:nowrap;}
 .mtabs.nox .ib{display:none;}
@@ -1216,7 +1239,7 @@ function statusOf(d){if(d<=14)return{t:"健康",e:"Fresh",c:"p-g"};if(d<=30)retu
 function stTxt(s){return LANG==="zh"?s.t:s.e;}
 
 /* ================= 数据种子 ================= */
-const BUILD="1111mk89";  // 版本标记：页面右上/网格提示可见，用来确认已载入最新版
+const BUILD="1111mk90";  // 版本标记：页面右上/网格提示可见，用来确认已载入最新版
 const SEED_VERSION="bh-master-2026-09-1";  // 版本变更→下次载入自动重置为最新主数据（仅本店云端）
 function seed(outletId){
   const isCK = outletId==="ck";
