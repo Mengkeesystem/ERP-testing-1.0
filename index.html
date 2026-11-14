@@ -1200,7 +1200,7 @@ function statusOf(d){if(d<=14)return{t:"健康",e:"Fresh",c:"p-g"};if(d<=30)retu
 function stTxt(s){return LANG==="zh"?s.t:s.e;}
 
 /* ================= 数据种子 ================= */
-const BUILD="1111mk86";  // 版本标记：页面右上/网格提示可见，用来确认已载入最新版
+const BUILD="1111mk87";  // 版本标记：页面右上/网格提示可见，用来确认已载入最新版
 const SEED_VERSION="bh-master-2026-09-1";  // 版本变更→下次载入自动重置为最新主数据（仅本店云端）
 function seed(outletId){
   const isCK = outletId==="ck";
@@ -4864,20 +4864,36 @@ async function saveStaffLoan(editIdx){const g=id=>document.getElementById(id);co
 async function delStaffLoan(i){if(!confirm(LANG==="zh"?"删除此借调？":"Delete?"))return;const old=d().staffLoans[i]||{};d().staffLoans.splice(i,1);auditLog("删除借调",(old.staff||'')+" →"+(old.to||''),"","");await save();render();}
 
 /* ================= 报废损耗（独立）================= */
+let wasteReason='all',wasteSort='date';
+function wasteReasonSet(v){wasteReason=v;render();}function wasteSortSet(v){wasteSort=v;render();}
 function pgWaste2(){
-  const x=d();const writable=subCanW('waste2');
+  const zh=LANG==="zh";const x=d();const writable=subCanW('waste2');
   const all=(x.wasteLog||[]).slice();
   const months=logMonths(all);const cur=(wasteMonth&&months.includes(wasteMonth))?wasteMonth:months[0];
-  const rs=all.filter(r=>(r.date||'').slice(0,7)===cur).sort((a,b)=>(b.date||'').localeCompare(a.date||''));
-  const tot=rs.reduce((s,r)=>s+(+r.cost||0)*(+r.qty||0),0);
-  return `<div class="fb"><h2 class="h" style="margin:0;">🗑 ${LANG==="zh"?"报废损耗":"Wastage"} <span class="tag">v${BUILD}</span></h2><button class="btn ghost sm" onclick="nav('proc')">← ${LANG==="zh"?"进销存作业":"Operations"}</button></div>
-  <div class="hint">${LANG==="zh"?"按月分开。记录 日期·物品·成本价·数量·总额·原因·备注。总额=成本价×数量。":"By month. Date, item, cost, qty, total, reason & note."}</div>
-  ${writable?`<button class="btn brand sm" style="margin-bottom:8px;" onclick="formWaste2()">+ ${LANG==="zh"?"新增报废":"Add"}</button>`:''}
-  ${logMonthTabs(months,cur,'setWasteMonth')}
-  <div class="grid g2" style="margin-bottom:10px;"><div class="kpi"><div class="k">${LANG==="zh"?"本月报废笔数":"Records"}</div><div class="v sm">${rs.length}</div></div><div class="kpi"><div class="k">${LANG==="zh"?"本月损耗总额":"Total Loss"}</div><div class="v sm neg">${money(tot)}</div></div></div>
-  <div class="card tbl"><table><thead><tr><th>${LANG==="zh"?"日期":"Date"}</th><th>${LANG==="zh"?"物品名称":"Item"}</th><th>Code</th><th>${LANG==="zh"?"成本价":"Cost"}</th><th>${LANG==="zh"?"数量":"Qty"}</th><th>Total</th><th>${LANG==="zh"?"原因":"Reason"}</th><th>${LANG==="zh"?"备注":"Note"}</th>${writable?'<th></th>':''}</tr></thead><tbody>
-  ${rs.map(r=>{const gi=x.wasteLog.indexOf(r);const line=(+r.cost||0)*(+r.qty||0);return `<tr><td class="mini">${r.date}</td><td><b>${oEsc(r.item)}</b></td><td class="mini">${oEsc(r.code)||'—'}</td><td>${money(r.cost)}</td><td>${num(r.qty,2)}</td><td class="neg">${money(line)}</td><td>${oEsc(r.reason)||'—'}</td><td class="mini">${oEsc(r.note)}</td>${writable?`<td style="white-space:nowrap;"><button class="ib" onclick="formWaste2(${gi})">✏️</button> <button class="ib" onclick="delWaste2(${gi})">🗑️</button></td>`:''}</tr>`;}).join('')||`<tr><td colspan="9" class="empty">${LANG==="zh"?"暂无报废":"None"}</td></tr>`}
-  </tbody><tfoot><tr style="background:#FAFBFC;font-weight:800;"><td colspan="5">${LANG==="zh"?"合计":"Total"}</td><td class="neg">${money(tot)}</td><td colspan="${writable?3:2}"></td></tr></tfoot></table></div>`;
+  const mrs=all.filter(r=>(r.date||'').slice(0,7)===cur);
+  const line=r=>(+r.cost||0)*(+r.qty||0);
+  const tot=mrs.reduce((q,r)=>q+line(r),0);
+  const reasons={};mrs.forEach(r=>{const k=r.reason||(zh?'未填原因':'No reason');reasons[k]=(reasons[k]||0)+line(r);});
+  const top=Object.entries(reasons).sort((p1,p2)=>p2[1]-p1[1])[0];
+  let rs=mrs.filter(r=>wasteReason==='all'||(r.reason||(zh?'未填原因':'No reason'))===wasteReason);
+  const wd=zh?['日','一','二','三','四','五','六']:['Su','Mo','Tu','We','Th','Fr','Sa'];
+  const card=(r,showDate)=>{const gi=x.wasteLog.indexOf(r);return `<div class="dv-row inv-card low" data-name="${oEsc(((r.item||'')+' '+(r.code||'')+' '+(r.reason||'')+' '+(r.note||'')).toLowerCase())}">
+      <div style="min-width:0;"><div class="dv-name">${oEsc(r.item)}</div><div class="mini">${num(r.qty,2)} × ${money(r.cost)}${r.code?' · '+oEsc(r.code):''}${showDate?' · '+oEsc(r.date||''):''}</div>
+        <div style="margin-top:4px;"><span class="pill p-r">${oEsc(r.reason)||(zh?'未填原因':'No reason')}</span></div>${r.note?`<div class="mini">${oEsc(r.note)}</div>`:''}</div>
+      <div class="inv-qty"><div class="inv-q neg">${money(line(r))}</div>${writable?`<div class="inv-act"><button class="ib" onclick="formWaste2(${gi})">✏️</button><button class="ib" onclick="delWaste2(${gi})">🗑️</button></div>`:''}</div></div>`;};
+  let body='';
+  if(wasteSort==='amt'){body=`<div class="inv-grid">${rs.slice().sort((p1,p2)=>line(p2)-line(p1)).map(r=>card(r,true)).join('')}</div>`;}
+  else{const byDate={};rs.forEach(r=>{(byDate[r.date||'']=byDate[r.date||'']||[]).push(r);});
+    body=Object.keys(byDate).sort().reverse().map(dt=>{const dd=new Date(dt+'T00:00:00');const t=byDate[dt].reduce((q,r)=>q+line(r),0);
+      return `<div class="grn-day"><span>${zh?`${dd.getMonth()+1}月${dd.getDate()}日 · 周${wd[dd.getDay()]}`:dt}${dt===TODAY?` <span class="pill p-g">${zh?'今天':'Today'}</span>`:''}</span><b>${money(t)}</b></div><div class="inv-grid">${byDate[dt].map(r=>card(r,false)).join('')}</div>`;}).join('');}
+  return `<div class="fb"><h2 class="h" style="margin:0;">${zh?"报废损耗":"Wastage"}</h2><div style="display:flex;gap:8px;align-items:center;">${writable?`<button class="btn brand sm" onclick="formWaste2()">+ ${zh?"新增报废":"Add"}</button>`:''}<button class="btn ghost sm" onclick="nav('proc')">← ${zh?"返回":"Back"}</button></div></div>
+  ${logMonthTabs(months,cur,'setWasteMonth').replace('class="seg"','class="seg mtabs nox"')}
+  <div class="grid g3 sup-sum"><div class="kpi"><div class="k">${zh?"本月笔数":"Records"}</div><div class="v sm">${mrs.length}</div></div><div class="kpi"><div class="k">${zh?"本月损耗总额":"Total loss"}</div><div class="v sm neg">${money(tot)}</div></div><div class="kpi"><div class="k">${zh?"最大原因":"Top reason"}</div><div class="v sm" style="font-size:14px;">${top?oEsc(top[0]):'—'}</div><div class="mini">${top?money(top[1]):''}</div></div></div>
+  <details class="hintd"><summary>${zh?'说明':'Notes'}</summary><div>${zh?"按月分开。记录 日期·物品·成本价·数量·原因·备注，总额＝成本价×数量。":"By month. Total = cost × qty."}</div></details>
+  ${mrs.length?`<div class="dv-tools"><input class="dv-search" type="search" placeholder="${zh?'搜索物品/原因…':'Search…'}" oninput="dvFilter(this.value)" autocomplete="off"><div class="seg"><button class="${wasteSort==='date'?'active':''}" onclick="wasteSortSet('date')">${zh?'按日期':'By date'}</button><button class="${wasteSort==='amt'?'active':''}" onclick="wasteSortSet('amt')">${zh?'按金额':'By amount'}</button></div></div>
+  ${Object.keys(reasons).length>1?`<div class="seg mtabs nox" style="margin-bottom:10px;"><button class="${wasteReason==='all'?'active':''}" onclick="wasteReasonSet('all')">${zh?'全部':'All'}</button>${Object.keys(reasons).map(k=>`<button class="${wasteReason===k?'active':''}" onclick="wasteReasonSet(this.dataset.k)" data-k="${oEsc(k)}">${oEsc(k)}</button>`).join('')}</div>`:''}`:''}
+  <div id="dvList">${body||`<div class="empty">${zh?"本月暂无报废记录":"None"}</div>`}</div>
+  <div class="dv-foot"><span>${monthLabel(cur)} ${zh?'损耗合计':'total'}</span><b>${money(tot)}</b></div>`;
 }
 function formWaste2(editIdx){
   const r=(editIdx!=null)?(d().wasteLog||[])[editIdx]:null;const isEdit=!!r;
@@ -4959,20 +4975,33 @@ async function saveOpexLog(editIdx){const g=id=>document.getElementById(id);
 async function delOpexLog(gi){if(!confirm(LANG==="zh"?"删除此开销记录？":"Delete?"))return;const old=d().opexLog[gi]||{};d().opexLog.splice(gi,1);auditLog("删除运营开销记录",opexLogCatLabel(old.cat)+" · "+(old.date||''),money(old.amount||0),"");await save();render();}
 
 /* ================= 招待 / 赠送（独立）================= */
+let offerType='all',offerSort='date';
+function offerTypeSet(v){offerType=v;render();}function offerSortSet(v){offerSort=v;render();}
 function pgOffer(){
-  const x=d();const writable=subCanW('offer');
+  const zh=LANG==="zh";const x=d();const writable=subCanW('offer');
   const all=(x.offers||[]).slice();
   const months=logMonths(all);const cur=(offerMonth&&months.includes(offerMonth))?offerMonth:months[0];
-  const rs=all.filter(r=>(r.date||'').slice(0,7)===cur).sort((a,b)=>(b.date||'').localeCompare(a.date||''));
-  const tot=rs.reduce((s,r)=>s+(+r.total||0),0);
-  return `<div class="fb"><h2 class="h" style="margin:0;">🎁 ${LANG==="zh"?"招待 / 赠送":"Offers / ENT"} <span class="tag">v${BUILD}</span></h2><button class="btn ghost sm" onclick="nav('proc')">← ${LANG==="zh"?"进销存作业":"Operations"}</button></div>
-  <div class="hint">${LANG==="zh"?"按月分开。日期 · 收据号码 · 类别(ENT/Offer) · 品项 · 当事人 · 金额(含SST6%) · 原因（跟随明记 ENT/Offer 表）。":"By month. Date · Receipt · Type · Item · P.I.C · Amount · Reason."}</div>
-  ${writable?`<button class="btn brand sm" style="margin-bottom:8px;" onclick="formOffer()">+ ${LANG==="zh"?"新增招待":"Add"}</button>`:''}
-  ${logMonthTabs(months,cur,'setOfferMonth')}
-  <div class="grid g2" style="margin-bottom:10px;"><div class="kpi"><div class="k">${LANG==="zh"?"本月招待笔数":"Records"}</div><div class="v sm">${rs.length}</div></div><div class="kpi"><div class="k">${LANG==="zh"?"本月招待总额":"Total"}</div><div class="v sm warnc">${money(tot)}</div></div></div>
-  <div class="card tbl"><table><thead><tr><th>${LANG==="zh"?"日期":"Date"}</th><th>${LANG==="zh"?"收据号":"Receipt"}</th><th>${LANG==="zh"?"类别":"Type"}</th><th>${LANG==="zh"?"品项":"Item"}</th><th>${LANG==="zh"?"当事人":"P.I.C"}</th><th>${LANG==="zh"?"金额":"Amount"}</th><th>${LANG==="zh"?"原因":"Reason"}</th>${writable?'<th></th>':''}</tr></thead><tbody>
-  ${rs.map(r=>{const gi=x.offers.indexOf(r);return `<tr><td class="mini">${r.date}</td><td class="mini">${oEsc(r.receipt)||'—'}</td><td><span class="pill ${r.type==='ENT'?'p-a':'p-b'}">${oEsc(r.type)}</span></td><td><b>${oEsc(r.item)}</b></td><td>${oEsc(r.person)||'—'}</td><td>${money(r.total)}</td><td class="mini">${oEsc(r.reason||r.note)}</td>${writable?`<td style="white-space:nowrap;"><button class="ib" onclick="formOffer(${gi})">✏️</button> <button class="ib" onclick="delOffer(${gi})">🗑️</button></td>`:''}</tr>`;}).join('')||`<tr><td colspan="8" class="empty">${LANG==="zh"?"暂无招待":"None"}</td></tr>`}
-  </tbody><tfoot><tr style="background:#FAFBFC;font-weight:800;"><td colspan="5">${LANG==="zh"?"合计":"Total"}</td><td class="warnc">${money(tot)}</td><td colspan="${writable?2:1}"></td></tr></tfoot></table></div>`;
+  const mrs=all.filter(r=>(r.date||'').slice(0,7)===cur);
+  const sumT=l=>l.reduce((q,r)=>q+(+r.total||0),0);
+  const tot=sumT(mrs),ent=mrs.filter(r=>r.type==='ENT'),off=mrs.filter(r=>r.type!=='ENT');
+  let rs=mrs.filter(r=>offerType==='all'||(offerType==='ENT')===(r.type==='ENT'));
+  const wd=zh?['日','一','二','三','四','五','六']:['Su','Mo','Tu','We','Th','Fr','Sa'];
+  const card=(r,showDate)=>{const gi=x.offers.indexOf(r);return `<div class="dv-row inv-card" data-name="${oEsc(((r.item||'')+' '+(r.person||'')+' '+(r.receipt||'')+' '+(r.reason||r.note||'')).toLowerCase())}">
+      <div style="min-width:0;"><div class="dv-name">${oEsc(r.item)} <span class="pill ${r.type==='ENT'?'p-a':'p-b'}">${oEsc(r.type)}</span></div><div class="mini">${r.person?oEsc(r.person)+' · ':''}${r.receipt?(zh?'收据 ':'Rcpt ')+oEsc(r.receipt):(zh?'无收据号':'No receipt')}${showDate?' · '+oEsc(r.date||''):''}</div>${(r.reason||r.note)?`<div class="mini">${oEsc(r.reason||r.note)}</div>`:''}</div>
+      <div class="inv-qty"><div class="inv-q">${money(r.total)}</div><div class="mini">${zh?'含 SST 6%':'incl. SST'}</div>${writable?`<div class="inv-act"><button class="ib" onclick="formOffer(${gi})">✏️</button><button class="ib" onclick="delOffer(${gi})">🗑️</button></div>`:''}</div></div>`;};
+  let body='';
+  if(offerSort==='amt'){body=`<div class="inv-grid">${rs.slice().sort((p1,p2)=>(+p2.total||0)-(+p1.total||0)).map(r=>card(r,true)).join('')}</div>`;}
+  else{const byDate={};rs.forEach(r=>{(byDate[r.date||'']=byDate[r.date||'']||[]).push(r);});
+    body=Object.keys(byDate).sort().reverse().map(dt=>{const dd=new Date(dt+'T00:00:00');
+      return `<div class="grn-day"><span>${zh?`${dd.getMonth()+1}月${dd.getDate()}日 · 周${wd[dd.getDay()]}`:dt}${dt===TODAY?` <span class="pill p-g">${zh?'今天':'Today'}</span>`:''}</span><b>${money(sumT(byDate[dt]))}</b></div><div class="inv-grid">${byDate[dt].map(r=>card(r,false)).join('')}</div>`;}).join('');}
+  return `<div class="fb"><h2 class="h" style="margin:0;">${zh?"招待 / 赠送":"Offers / ENT"}</h2><div style="display:flex;gap:8px;align-items:center;">${writable?`<button class="btn brand sm" onclick="formOffer()">+ ${zh?"新增招待":"Add"}</button>`:''}<button class="btn ghost sm" onclick="nav('proc')">← ${zh?"返回":"Back"}</button></div></div>
+  ${logMonthTabs(months,cur,'setOfferMonth').replace('class="seg"','class="seg mtabs nox"')}
+  <div class="grid g3 sup-sum"><div class="kpi"><div class="k">${zh?"本月总额":"Total"}</div><div class="v sm warnc">${money(tot)}</div><div class="mini">${mrs.length} ${zh?'笔':''}</div></div><div class="kpi"><div class="k">ENT ${zh?"招待":""}</div><div class="v sm">${money(sumT(ent))}</div><div class="mini">${ent.length} ${zh?'笔':''}</div></div><div class="kpi"><div class="k">Offer ${zh?"赠送":""}</div><div class="v sm">${money(sumT(off))}</div><div class="mini">${off.length} ${zh?'笔':''}</div></div></div>
+  <details class="hintd"><summary>${zh?'说明':'Notes'}</summary><div>${zh?"按月分开。日期 · 收据号码 · 类别(ENT/Offer) · 品项 · 当事人 · 金额(含SST6%) · 原因（跟随明记 ENT/Offer 表）。":"By month."}</div></details>
+  ${mrs.length?`<div class="dv-tools"><input class="dv-search" type="search" placeholder="${zh?'搜索品项/当事人/收据号…':'Search…'}" oninput="dvFilter(this.value)" autocomplete="off"><div class="seg"><button class="${offerSort==='date'?'active':''}" onclick="offerSortSet('date')">${zh?'按日期':'By date'}</button><button class="${offerSort==='amt'?'active':''}" onclick="offerSortSet('amt')">${zh?'按金额':'By amount'}</button></div></div>
+  <div class="seg mtabs nox" style="margin-bottom:10px;"><button class="${offerType==='all'?'active':''}" onclick="offerTypeSet('all')">${zh?'全部':'All'}</button><button class="${offerType==='ENT'?'active':''}" onclick="offerTypeSet('ENT')">ENT</button><button class="${offerType==='Offer'?'active':''}" onclick="offerTypeSet('Offer')">Offer</button></div>`:''}
+  <div id="dvList">${body||`<div class="empty">${zh?"本月暂无招待/赠送":"None"}</div>`}</div>
+  <div class="dv-foot"><span>${monthLabel(cur)} ${zh?'合计':'total'}</span><b>${money(tot)}</b></div>`;
 }
 function formOffer(editIdx){
   const r=(editIdx!=null)?(d().offers||[])[editIdx]:null;const isEdit=!!r;
