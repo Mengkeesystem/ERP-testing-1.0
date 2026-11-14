@@ -845,6 +845,15 @@ html.ui2 .hint{background:transparent!important;border:0!important;padding:2px 2
 .odc-f input.odnum{width:100%;box-sizing:border-box;font-size:16px;padding:10px;min-height:44px;text-align:right;border:1px solid var(--line2);border-radius:var(--radius-sm);background:var(--card);color:var(--ink);}
 .odc-a{grid-column:1/-1;display:flex;justify-content:space-between;align-items:center;font-size:12.5px;color:var(--ink2);border-top:1px dashed var(--line2);padding-top:8px;}.odc-a b{font-size:16px;color:var(--ink);font-variant-numeric:tabular-nums;}
 .odtot{position:sticky;bottom:0;display:flex;justify-content:space-between;gap:10px;margin-top:10px;padding:12px 14px;border-radius:var(--radius);background:var(--ink);color:#fff;font-size:13px;}.odtot b{font-size:17px;margin-left:4px;}
+
+/* ---- 小弹窗补充（mk93）---- */
+html.ui2 .m input[type=file]{width:100%;box-sizing:border-box;font-size:14px;padding:10px;border:1.5px dashed var(--line2);border-radius:var(--radius-sm);background:var(--soft);color:var(--ink2);}
+html.ui2 .m input[type=file]::file-selector-button{border:0;border-radius:99px;padding:8px 14px;margin-right:10px;background:var(--brand);color:#fff;font-weight:600;font-size:13px;}
+html.ui2 .m textarea{font-size:16px;padding:12px;border-radius:var(--radius-sm);width:100%;box-sizing:border-box;}
+html.ui2 .m .fg2>*,html.ui2 .m .fg3>*{min-width:0;}html.ui2 .m input[type=date],html.ui2 .m input[type=month],html.ui2 .m input[type=time]{min-width:0;max-width:100%;-webkit-appearance:none;appearance:none;}
+html.ui2 .m h3 .tag{font-size:12px;font-weight:600;margin-left:8px;}
+html.ui2 .m .hint{font-size:12.5px;line-height:1.55;color:var(--grey);background:var(--soft);padding:9px 11px;border-radius:var(--radius-sm);margin:6px 0 10px;}
+html.ui2 .m .fr input:disabled{background:var(--soft);color:var(--grey);}
 /* ---- 弹窗表单（mk90）：固定标题 + 固定保存按钮 + 大一点的关闭键 + 16px 输入（iPhone 不会自动放大）---- */
 html.ui2 .m h3{position:sticky;top:0;z-index:5;background:var(--card);padding:8px 0 12px;margin:0 0 6px;border-bottom:1px solid var(--row-line);}
 html.ui2 .m h3 .x{flex:none;width:36px;height:36px;display:grid;place-items:center;border-radius:50%;background:var(--soft);color:var(--ink2);font-size:20px;}
@@ -1273,7 +1282,7 @@ function statusOf(d){if(d<=14)return{t:"健康",e:"Fresh",c:"p-g"};if(d<=30)retu
 function stTxt(s){return LANG==="zh"?s.t:s.e;}
 
 /* ================= 数据种子 ================= */
-const BUILD="1111mk92";  // 版本标记：页面右上/网格提示可见，用来确认已载入最新版
+const BUILD="1111mk93";  // 版本标记：页面右上/网格提示可见，用来确认已载入最新版
 const SEED_VERSION="bh-master-2026-09-1";  // 版本变更→下次载入自动重置为最新主数据（仅本店云端）
 function seed(outletId){
   const isCK = outletId==="ck";
@@ -4142,13 +4151,13 @@ function openM(type,editId){
       <button class="btn block brand" onclick="saveEmp()">${LANG==="zh"?"保存员工":"Save"}</button>`,
     opex:`<h3>✎ ${LANG==="zh"?"编辑运营开销":"Edit OpEx"} <span class="tag">${monthLabel2(costMonth)}</span> <span class="x" onclick="closeM()">×</span></h3>
       <div class="hint" style="margin-bottom:6px;">${LANG==="zh"?"仅修改本月（"+monthLabel2(costMonth)+"）的开销，其他月份不受影响。营销/维修/Wi-Fi/垃圾清理/POS月租/会计费/维修杂项这7项已改成实时读取「运营开销记录」，这里不能改，要去那边加/改记录。":"Edits this month only. Marketing/Maintenance/Misc items are live from the OpEx Log and can't be edited here."}</div>
-      ${Object.entries(curOpex(costMonth)).map(([k,v])=>{const fromLog=typeof OPEXLOG_CATS!=='undefined'&&OPEXLOG_CATS.some(c=>c[0]===k);return `<div class="fr"><label>${k}${fromLog?' 🔗':''}</label><input id="ox_${k}" type="number" value="${fromLog?opexEffective(curOpex(costMonth),costMonth,k):v}" ${fromLog?'disabled':''}></div>`;}).join('')}
+      ${Object.entries(curOpex(costMonth)).map(([k,v])=>{const fromLog=typeof OPEXLOG_CATS!=='undefined'&&OPEXLOG_CATS.some(c=>c[0]===k);return `<div class="fr"><label>${OPEX_ZH[k]&&LANG==='zh'?OPEX_ZH[k]+' · ':''}${k}${fromLog?' （来自开销记录，不能在此改）':''}</label><input id="ox_${k}" type="number" value="${fromLog?opexEffective(curOpex(costMonth),costMonth,k):v}" ${fromLog?'disabled':''}></div>`;}).join('')}
       <button class="btn block brand" onclick="saveOpex()">${LANG==="zh"?"保存":"Save"}</button>`,
     suggest:`<h3>🤖 ${LANG==="zh"?"建议订货清单":"Suggested Reorder"} <span class="x" onclick="closeM()">×</span></h3>
       <div class="hint">${LANG==="zh"?"依「安全库存×1.5 − 现有」自动算建议量。":"Par×1.5 − on-hand."}</div>
       <div id="sugList"></div>`,
   };
-  document.getElementById('mbox').innerHTML=F[type]||'';
+  document.getElementById('mbox').innerHTML=F[type]||'';tidyModalTitle();
   document.getElementById('mbg').classList.add('show');
   if(type==='stocktake')stTheory();
   if(type==='suggest')sugList();
@@ -4358,7 +4367,10 @@ function backSupplier(){selSupplier=null;ledgerMonth='all';render();window.scrol
 function goProcSub(p){selSupplier=null;nav(p);}
 
 /* ---- 简易表单弹窗（复用既有 #mbox/#mbg，不干扰 openM）---- */
-function openForm(html){const mb=document.getElementById('mbox');mb.classList.remove('m-wide');mb.innerHTML=html;document.getElementById('mbg').classList.add('show');}
+const OPEX_ZH={rent:'租金',commission:'佣金',salaries:'薪水',epf:'EPF 公积金',socso:'SOCSO 社险',levy:'外劳税 Levy',ot:'加班 OT',utilities:'水电',water:'水费',electric:'电费',gas:'煤气',marketing:'营销',maintenance:'维修',wifi:'Wi-Fi',misc:'杂项',insurance:'保险',accounting:'会计费',pos:'POS 月租',cleaning:'垃圾清理'};
+/* 弹窗标题前的表情/符号统一去掉（mk93）*/
+function tidyModalTitle(){const h=document.querySelector('#mbox h3');if(!h)return;const n=h.firstChild;if(n&&n.nodeType===3){const t=n.nodeValue.replace(/^[\s\u2190-\u2BFF\u{1F000}-\u{1FFFF}\uFE0F\u200D+]+/u,'');if(t!==n.nodeValue)n.nodeValue=t;}}
+function openForm(html){const mb=document.getElementById('mbox');mb.classList.remove('m-wide');mb.innerHTML=html;document.getElementById('mbg').classList.add('show');tidyModalTitle();}
 
 /* ---- 供应商主档（复用 vendors）---- */
 function supplierList(){return d().vendors||[];}
