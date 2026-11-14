@@ -811,6 +811,29 @@ html.ui2 .hint{background:transparent!important;border:0!important;padding:2px 2
 .ck-sec{display:grid;gap:8px;}
 @media(min-width:761px){.ck-sec{grid-template-columns:1fr 1fr;}.ck-sec .ck-div{grid-column:1/-1;}.ck-sec>.btn{grid-column:1/-1;justify-self:start;}}
 
+
+/* ---- 登录页（mk91）---- */
+.lgcard{width:calc(100% - 32px);max-width:380px;position:fixed;left:50%;top:50%;transform:translate(-50%,-50%);max-height:94vh;overflow:auto;padding:30px 22px 24px;background:var(--card);border:1px solid var(--line);border-radius:20px;text-align:center;box-shadow:0 18px 50px rgba(20,20,30,.16);color:var(--ink);}
+.lgcard>div:nth-child(2){font-weight:800;font-size:20px;letter-spacing:.02em;}
+.lgcard .fr{margin-bottom:12px;}.lgcard .fr label{display:block;font-size:12px;font-weight:600;color:var(--ink2);margin-bottom:5px;}
+.lgcard .fr input,.lgcard .fr select{font-size:16px;padding:12px 13px;min-height:48px;width:100%;box-sizing:border-box;}
+.lgcard .btn.block{min-height:48px;font-size:16px;}
+.lgcard .al{font-size:13px;margin-bottom:12px;}
+.lg-reg{text-align:left;margin:0 0 10px;}.lg-reg summary{font-size:12.5px;color:var(--ink2);cursor:pointer;padding:6px 0;list-style:none;}.lg-reg summary::after{content:" ▾";}.lg-reg[open] summary::after{content:" ▴";}
+.lg-reg summary::-webkit-details-marker{display:none;}
+/* ---- 订单面板（mk91）---- */
+.ordc{padding:12px 14px;margin-bottom:10px;cursor:pointer;border-left:4px solid var(--gold);}
+.ordc.ok{border-left-color:var(--pos,#1f9d55);}
+.ordc .r1{display:flex;justify-content:space-between;gap:8px;align-items:center;}
+.ordc .nm{font-weight:800;font-size:15px;}.ordc .meta{font-size:12.5px;color:var(--ink2);margin-top:4px;display:flex;gap:6px;flex-wrap:wrap;align-items:center;}
+.ordc .cnt{font-weight:700;color:var(--ink);}
+/* ---- 中央厨房订货照片：和旧格子一样大（104px），完整显示不裁切，点开放大 ---- */
+.ck-main{align-items:flex-start;}
+.ck-thumb{flex-direction:column;max-width:none;overflow:visible;gap:6px;}
+.ck-thumb img{width:104px;height:104px;object-fit:contain;background:#fff;border:1px solid var(--line);padding:2px;box-sizing:border-box;image-rendering:-webkit-optimize-contrast;cursor:zoom-in;}
+#imgZoom{position:fixed;inset:0;z-index:300;background:rgba(10,12,20,.82);display:none;align-items:center;justify-content:center;padding:20px;}
+#imgZoom.show{display:flex;}#imgZoom img{width:min(86vw,340px);height:auto;max-height:80vh;object-fit:contain;background:#fff;border-radius:12px;padding:8px;box-sizing:border-box;}
+
 /* ---- 弹窗表单（mk90）：固定标题 + 固定保存按钮 + 大一点的关闭键 + 16px 输入（iPhone 不会自动放大）---- */
 html.ui2 .m h3{position:sticky;top:0;z-index:5;background:var(--card);padding:8px 0 12px;margin:0 0 6px;border-bottom:1px solid var(--row-line);}
 html.ui2 .m h3 .x{flex:none;width:36px;height:36px;display:grid;place-items:center;border-radius:50%;background:var(--soft);color:var(--ink2);font-size:20px;}
@@ -1239,7 +1262,7 @@ function statusOf(d){if(d<=14)return{t:"健康",e:"Fresh",c:"p-g"};if(d<=30)retu
 function stTxt(s){return LANG==="zh"?s.t:s.e;}
 
 /* ================= 数据种子 ================= */
-const BUILD="1111mk90";  // 版本标记：页面右上/网格提示可见，用来确认已载入最新版
+const BUILD="1111mk91";  // 版本标记：页面右上/网格提示可见，用来确认已载入最新版
 const SEED_VERSION="bh-master-2026-09-1";  // 版本变更→下次载入自动重置为最新主数据（仅本店云端）
 function seed(outletId){
   const isCK = outletId==="ck";
@@ -3321,7 +3344,8 @@ async function orderFillImages(){
 }
 function printOrder(){window.print();}
 function divStyle(txt){txt=txt||'';if(/VEGE/i.test(txt))return'background:#16a34a;';if(/MEAT/i.test(txt))return'background:#eab308;color:#3b2f00;';return'background:#7c3aed;';}
-function orderImgs(it){const a=(it.imgs&&it.imgs.length)?it.imgs:(it.img?[it.img]:[]);return a.map(u=>`<img src="${u}" alt="" loading="lazy">`).join('');}
+function orderImgs(it){const a=(it.imgs&&it.imgs.length)?it.imgs:(it.img?[it.img]:[]);return a.map(u=>`<img src="${u}" alt="" loading="lazy" onclick="zoomImg(this)">`).join('');}
+function zoomImg(el){let z=document.getElementById('imgZoom');if(!z){z=document.createElement('div');z.id='imgZoom';z.onclick=()=>z.classList.remove('show');document.body.appendChild(z);}z.innerHTML='<img src="'+el.src+'" alt="">';z.classList.add('show');}
 function orderColHTML(k){
   const o=orderView();const wDesc=ckCanOrderDesc();const wQty=ckCanOrderQty();const arr=o[k]||[];
   const cols=1+1+1+(wDesc?1:0);
@@ -3500,19 +3524,18 @@ function openOrdersPanel(){
     const dt=new Date(o.ts);const when=dt.toLocaleString('en-MY',{hour12:false});
     const cnt=(o.lines||[]).length+(o.uniform||[]).length;
     const badge=o.status==='confirmed'?`<span class="pill p-g">${LANG==="zh"?"已确认":"Confirmed"}${o.invoiceNo?(' '+o.invoiceNo):''}</span>`:`<span class="pill p-a">${LANG==="zh"?"待确认":"Pending"}</span>`;
-    return `<div class="card" style="padding:10px 12px;margin-bottom:8px;cursor:pointer;" onclick="openOrderDetail('${o.id}')">
-      <div style="display:flex;justify-content:space-between;gap:8px;align-items:center;flex-wrap:wrap;">
-        <div style="font-weight:800;">🧑 ${oEsc(o.by&&o.by.name||'-')} <span class="mini" style="font-weight:400;">(${oEsc(ROLES[o.by&&o.by.role]?ROLES[o.by.role].name:(o.by&&o.by.role||''))})</span></div>
-        <div class="mini">${when} ›</div></div>
-      <div class="mini" style="margin-top:2px;">${o.supplier?`🏢 ${oEsc(o.supplier)} · `:''}${oEsc(o.outletName||'')} · ${LANG==="zh"?"共":"Total"} ${cnt} ${LANG==="zh"?"项":"items"} · ${badge}</div>
+    return `<div class="card ordc ${o.status==='confirmed'?'ok':''}" onclick="openOrderDetail('${o.id}')">
+      <div class="r1"><div class="nm">${oEsc(o.by&&o.by.name||'-')} <span class="mini" style="font-weight:400;">${oEsc(ROLES[o.by&&o.by.role]?ROLES[o.by.role].name:(o.by&&o.by.role||''))}</span></div>${badge}</div>
+      <div class="meta"><span>${oEsc(o.outletName||'')}</span>${o.supplier?`<span>· ${oEsc(o.supplier)}</span>`:''}<span>· <span class="cnt">${cnt}</span> ${LANG==="zh"?"项":"items"}</span></div>
+      <div class="mini" style="margin-top:4px;">${when} ›</div>
     </div>`;}).join(''):`<div class="empty">${LANG==="zh"?"暂无订单":"No orders yet"}</div>`;
   const perm=('Notification'in window)?Notification.permission:'unsupported';
   const permTxt=perm==='granted'?(LANG==="zh"?'✅ 通知已允许':'✅ granted'):perm==='denied'?(LANG==="zh"?'❌ 通知被拒绝（去浏览器设置里允许）':'❌ denied'):(LANG==="zh"?'尚未开启':'not set');
   const notifBtn=('Notification'in window)?`<button class="btn gold sm" onclick="reqNotify()">🔔 ${LANG==="zh"?"开启/登记本机接收通知":"Enable / register this device"}</button> <span class="mini" id="notifStatus">${permTxt}</span>`:'';
-  openForm(`<h3>📥 ${LANG==="zh"?"收到的订单":"Received Orders"} <span class="x" onclick="closeM()">×</span></h3>
+  openForm(`<h3>${LANG==="zh"?"收到的订单":"Received Orders"} <span class="x" onclick="closeM()">×</span></h3>
     <div style="margin-bottom:8px;">${notifBtn}</div>
     <div class="hint" style="margin-top:0;">${LANG==="zh"?"点一张订单进去 → 可改数量/删项/填单价 → 确定订单 → 生成 Invoice。":"Tap an order to edit & confirm."}</div>
-    <div style="max-height:58vh;overflow:auto;">${body}</div>`);
+    <div style="max-height:62vh;overflow:auto;">${body}</div>`);
 }
 function orderById(id){return ORDERS.find(o=>o.id===id);}
 function orderTotals(o){let tq=0,ta=0;const add=arr=>(o[arr]||[]).forEach(l=>{const q=+l.q||0,p=+l.price||0;tq+=q;ta+=q*p;});add('lines');add('uniform');return{tq,ta};}
@@ -3541,7 +3564,7 @@ function openOrderDetail(id){
   const dt=new Date(o.ts);const when=dt.toLocaleString('en-MY',{hour12:false});
   const badge=o.status==='confirmed'?`<span class="pill p-g">${zh?"已确认":"Confirmed"} ${o.invoiceNo||''}</span>`:`<span class="pill p-a">${zh?"待确认":"Pending"}</span>`;
   openForm(`<div style="display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap;">
-      <h3 style="margin:0;">🧾 ${zh?"订单详情":"Order"} <span class="x" onclick="closeM()">×</span></h3>
+      <h3 style="margin:0;">${zh?"订单详情":"Order"} <span class="x" onclick="closeM()">×</span></h3>
       <button class="btn ghost sm" onclick="openOrdersPanel()">← ${zh?"返回列表":"Back"}</button>
     </div>
     <div class="mini" style="margin:6px 0;">🧑 ${oEsc(o.by&&o.by.name||'')} · ${o.supplier?oEsc(o.supplier)+' · ':''}${oEsc(o.outletName||'')} · ${when} · ${badge}</div>
@@ -5946,17 +5969,17 @@ function showAuthLogin(msg){
   document.querySelector('.top').style.display='none';
   const sb=document.getElementById('sidebar');if(sb)sb.style.display='none';
   document.getElementById('pageHost').innerHTML=`
-  <div style="width:calc(100% - 32px);max-width:380px;position:fixed;left:50%;top:6vh;transform:translateX(-50%);max-height:88vh;overflow:auto;padding:28px 22px;background:#fff;border:1px solid var(--line);border-radius:16px;text-align:center;">
-    <div style="margin-bottom:10px;"><span class="bh-logo" style="width:118px;height:118px;border-radius:20px;"></span></div>
+  <div class="lgcard">
+    <div style="margin-bottom:10px;"><span class="bh-logo" style="width:88px;height:88px;border-radius:18px;"></span></div>
     <div style="font-weight:800;font-size:19px;color:var(--ink);">明记家乡小食店</div>
     <div class="mini" style="margin:4px 0 16px;">${LANG==="zh"?"多分店进销存系统 · 请登录":"Please sign in"}</div>
     ${msg?`<div class="al al-r" style="text-align:left;">${msg}</div>`:''}
     <div class="fr" style="text-align:left;margin-bottom:8px;"><label>${LANG==="zh"?"邮箱":"Email"}</label><input id="au_email" type="email" placeholder="you@example.com" autocomplete="username"></div>
     <div class="fr" style="text-align:left;"><label>${LANG==="zh"?"密码":"Password"}</label><input id="au_pw" type="password" placeholder="••••••" autocomplete="current-password" onkeydown="if(event.key==='Enter')doAuthLogin()"></div>
     <div style="text-align:right;margin:-2px 0 10px;"><a href="#" onclick="event.preventDefault();doForgotPassword()" style="font-size:12px;color:var(--brand2);">${LANG==="zh"?"忘记密码？":"Forgot password?"}</a></div>
-    <div class="fr" style="text-align:left;margin-bottom:8px;"> <label>邀请码 / 口令 (仅首次注册需要)</label> <input id="au_code" type="text" placeholder="按职位填写邀请码，向管理员索取" autocomplete="off"> </div>
-    <button class="btn block brand" style="margin-top:6px;" onclick="doAuthLogin()">🔓 ${LANG==="zh"?"登录":"Sign In"}</button>
-    <button class="btn block ghost" style="margin-top:8px;" onclick="doAuthSignup()">🆕 ${LANG==="zh"?"首次使用？注册账号":"First time? Sign Up"}</button>
+    <details class="lg-reg"><summary>首次注册？展开填邀请码</summary><div class="fr" style="text-align:left;margin:8px 0 0;"><label>邀请码 / 口令</label><input id="au_code" type="text" placeholder="按职位填写邀请码，向管理员索取" autocomplete="off"></div></details>
+    <button class="btn block brand" style="margin-top:6px;" onclick="doAuthLogin()">${LANG==="zh"?"登录":"Sign In"}</button>
+    <button class="btn block ghost" style="margin-top:8px;" onclick="doAuthSignup()">${LANG==="zh"?"首次使用？注册账号":"First time? Sign Up"}</button>
     <div id="au_msg" class="mini" style="margin-top:10px;min-height:16px;"></div>
     <div class="mini" style="margin-top:8px;line-height:1.5;">🔒 ${LANG==="zh"?"仅白名单邮箱可进入；未登录无法读取任何数据。岗位与分店由管理员分配。":"Whitelist-only. Role & branch assigned by admin."}</div>
   </div>`;
@@ -5987,8 +6010,8 @@ function showResetPassword(){
   const sb=document.getElementById('sidebar');if(sb)sb.style.display='none';
   const zh=LANG==="zh";
   document.getElementById('pageHost').innerHTML=`
-  <div style="width:calc(100% - 32px);max-width:380px;position:fixed;left:50%;top:6vh;transform:translateX(-50%);max-height:88vh;overflow:auto;padding:28px 22px;background:#fff;border:1px solid var(--line);border-radius:16px;text-align:center;">
-    <div style="margin-bottom:10px;"><span class="bh-logo" style="width:118px;height:118px;border-radius:20px;"></span></div>
+  <div class="lgcard">
+    <div style="margin-bottom:10px;"><span class="bh-logo" style="width:88px;height:88px;border-radius:18px;"></span></div>
     <div style="font-weight:800;font-size:19px;color:var(--ink);">🔑 ${zh?"设置新密码":"Set New Password"}</div>
     <div class="mini" style="margin:4px 0 16px;">${zh?"请输入你的新密码（至少6位）":"Enter a new password (min 6 characters)"}</div>
     <div class="fr" style="text-align:left;"><label>${zh?"新密码":"New Password"}</label><input id="rp_pw1" type="password" placeholder="••••••" autocomplete="new-password"></div>
@@ -6156,13 +6179,13 @@ function showLogin(){
   document.querySelector('.top').style.display='none';
   const sb=document.getElementById('sidebar');if(sb)sb.style.display='none';
   document.getElementById('pageHost').innerHTML=`
-  <div style="width:calc(100% - 32px);max-width:380px;position:fixed;left:50%;top:6vh;transform:translateX(-50%);max-height:88vh;overflow:auto;padding:28px 22px;background:#fff;border:1px solid var(--line);border-radius:16px;text-align:center;">
-    <div style="margin-bottom:10px;"><span class="bh-logo" style="width:118px;height:118px;border-radius:20px;"></span></div>
+  <div class="lgcard">
+    <div style="margin-bottom:10px;"><span class="bh-logo" style="width:88px;height:88px;border-radius:18px;"></span></div>
     <div style="font-weight:800;font-size:19px;color:var(--ink);">明记家乡小食店</div>
     <div class="mini" style="margin:4px 0 20px;">${LANG==="zh"?"多分店进销存系统 · 演示登录（未连云端）":"Demo login (no cloud)"}</div>
     <div class="fr" style="text-align:left;"><label>${LANG==="zh"?"选择登录角色（演示）":"Login as (demo)"}</label>
       <select id="loginRole">${Object.entries(ROLES).map(([k,v])=>`<option value="${k}">${LANG==="zh"?v.name:v.en}</option>`).join('')}</select></div>
-    <button class="btn block brand" style="margin-top:6px;" onclick="doLogin()">🔓 ${LANG==="zh"?"登录进入系统":"Sign In"}</button>
+    <button class="btn block brand" style="margin-top:6px;" onclick="doLogin()">${LANG==="zh"?"登录进入系统":"Sign In"}</button>
     <div class="mini" style="margin-top:16px;line-height:1.5;">🔒 ${LANG==="zh"?"填入 Supabase 后即启用真实邮箱登录 + 白名单。":"Configure Supabase to enable real login + whitelist."}</div>
   </div>`;
 }
