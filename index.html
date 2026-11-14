@@ -846,6 +846,9 @@ html.ui2 .hint{background:transparent!important;border:0!important;padding:2px 2
 .odc-a{grid-column:1/-1;display:flex;justify-content:space-between;align-items:center;font-size:12.5px;color:var(--ink2);border-top:1px dashed var(--line2);padding-top:8px;}.odc-a b{font-size:16px;color:var(--ink);font-variant-numeric:tabular-nums;}
 .odtot{position:sticky;bottom:0;display:flex;justify-content:space-between;gap:10px;margin-top:10px;padding:12px 14px;border-radius:var(--radius);background:var(--ink);color:#fff;font-size:13px;}.odtot b{font-size:17px;margin-left:4px;}
 
+
+.inv-ck{display:flex;gap:10px;align-items:flex-start;cursor:pointer;flex:1;min-width:0;}.inv-ck input{width:22px;height:22px;margin-top:1px;flex:none;}
+.odc.inv-off{opacity:.55;}
 /* ---- 小弹窗补充（mk93）---- */
 html.ui2 .m input[type=file]{width:100%;box-sizing:border-box;font-size:14px;padding:10px;border:1.5px dashed var(--line2);border-radius:var(--radius-sm);background:var(--soft);color:var(--ink2);}
 html.ui2 .m input[type=file]::file-selector-button{border:0;border-radius:99px;padding:8px 14px;margin-right:10px;background:var(--brand);color:#fff;font-weight:600;font-size:13px;}
@@ -1282,7 +1285,7 @@ function statusOf(d){if(d<=14)return{t:"健康",e:"Fresh",c:"p-g"};if(d<=30)retu
 function stTxt(s){return LANG==="zh"?s.t:s.e;}
 
 /* ================= 数据种子 ================= */
-const BUILD="1111mk93";  // 版本标记：页面右上/网格提示可见，用来确认已载入最新版
+const BUILD="1111mk94";  // 版本标记：页面右上/网格提示可见，用来确认已载入最新版
 const SEED_VERSION="bh-master-2026-09-1";  // 版本变更→下次载入自动重置为最新主数据（仅本店云端）
 function seed(outletId){
   const isCK = outletId==="ck";
@@ -4760,7 +4763,7 @@ function dayViewHTML(sup,month){
   const dayLabel=zh?`${dd.getMonth()+1}月${dd.getDate()}日 · 周${wd[dd.getDay()]}`:dvDay;
   const mTot=recs.reduce((s,r)=>s+(+r.price||0),0);
   return `<div class="dv-bar"><div class="seg"><button onclick="setLedgerView('day')" class="active">${zh?'按日':'Daily'}</button><button onclick="setLedgerView('grid')">${zh?'表格':'Grid'}</button></div>
-      ${w?actm([{l:'+ '+(zh?'新增品项':'Add item'),on:"addGridItem('"+S+"')"},{l:zh?'复制上一次进货':'Copy last purchase',on:"dvCopyPrev('"+S+"','"+dvDay+"')"}]):''}</div>
+      <div style="display:flex;gap:8px;align-items:center;">${w&&AUTH()?`<button class="btn brand sm" onclick="invScan('${S}')">${zh?'拍照识别':'Scan invoice'}</button>`:''}${w?actm([{l:'+ '+(zh?'新增品项':'Add item'),on:"addGridItem('"+S+"')"},{l:zh?'复制上一次进货':'Copy last purchase',on:"dvCopyPrev('"+S+"','"+dvDay+"')"}]):''}</div></div>
     <div class="dv-strip" id="dvStrip">${chips}</div>
     <div class="card dv-head"><div style="flex:1;min-width:0;"><div class="dv-date">${dayLabel}${dvDay===TODAY?` <span class="pill p-g">${zh?'今天':'Today'}</span>`:''}</div>
       <input class="dv-inv" placeholder="Invoice No." value="${oEsc(gridInv(mod,sup,dvDay))}" ${w?'':'disabled'} onchange="setGridInv('${mod}','${S}','${dvDay}',this.value)"></div>
@@ -4769,6 +4772,86 @@ function dayViewHTML(sup,month){
       <div class="seg"><button class="${dvSort==='used'?'active':''}" onclick="dvSortSet('used')">${zh?'已录入优先':'Filled'}</button><button class="${dvSort==='name'?'active':''}" onclick="dvSortSet('name')">${zh?'品名':'Name'}</button><button class="${dvSort==='amt'?'active':''}" onclick="dvSortSet('amt')">${zh?'金额':'Amount'}</button></div></div>
     <div id="dvList">${rows}</div>
     <div class="dv-foot"><span>${monthLabel(month)} ${zh?'进货合计':'total'}</span><b id="dv-foot">${money(mTot)}</b></div>`;
+}
+
+/* ============ 进货单拍照识别（mk94）============
+   拍照 → 压缩 → Edge Function invoice-ocr（Claude 读图）→ 人工核对 → 写进「进货单」按日记录。
+   识别结果只是「建议」，必须按「写入」才会动数据。 */
+const INV_OCR_URL=SUPABASE_URL?(SUPABASE_URL+"/functions/v1/invoice-ocr"):"";
+let _inv=null;
+function invNorm(t){return String(t||'').toLowerCase().replace(/[^a-z0-9一-鿿]+/g,'');}
+function invBigrams(t){const n=invNorm(t),o=new Set();for(let i=0;i<n.length-1;i++)o.add(n.slice(i,i+2));if(n.length===1)o.add(n);return o;}
+function invGuess(name,cat){const a=invBigrams(name);if(!a.size)return '';let best='',bs=0;for(const c of cat){const b=invBigrams(c.name);if(!b.size)continue;let x=0;a.forEach(g=>{if(b.has(g))x++;});const sc=x/Math.min(a.size,b.size)*0.6+x/(a.size+b.size-x)*0.4;if(sc>bs){bs=sc;best=c.cid;}}return bs>=0.55?best:'';}
+function invScan(sup){
+  if(!AUTH()||!INV_OCR_URL)return alert(LANG==="zh"?"拍照识别需要登录云端账号后才能用":"Sign in to use invoice scan");
+  const inp=document.createElement('input');inp.type='file';inp.accept='image/*';inp.setAttribute('capture','environment');
+  inp.onchange=()=>{const f=inp.files&&inp.files[0];if(f)invScanFile(sup,f);};inp.click();
+}
+async function invShrink(file){
+  const bmp=await createImageBitmap(file,{imageOrientation:'from-image'});
+  const max=1800,sc=Math.min(1,max/Math.max(bmp.width,bmp.height));
+  const c=document.createElement('canvas');c.width=Math.round(bmp.width*sc);c.height=Math.round(bmp.height*sc);
+  c.getContext('2d').drawImage(bmp,0,0,c.width,c.height);
+  return c.toDataURL('image/jpeg',0.85).split(',')[1];
+}
+async function invScanFile(sup,file){
+  const zh=LANG==="zh";
+  openForm(`<h3>${zh?'识别进货单':'Scan invoice'} <span class="x" onclick="closeM()">×</span></h3><div style="text-align:center;padding:26px 0;"><div class="skel" style="height:10px;width:60%;margin:0 auto 12px;"></div><div class="mini">${zh?'正在读取发票，约 5–15 秒…':'Reading invoice…'}</div></div>`);
+  try{
+    const image=await invShrink(file);
+    let token=SUPABASE_ANON_KEY;try{const {data}=await _sb.auth.getSession();if(data&&data.session&&data.session.access_token)token=data.session.access_token;}catch(e){}
+    const cat=ensureGridCat(sup);
+    const r=await fetch(INV_OCR_URL,{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+token,'apikey':SUPABASE_ANON_KEY},body:JSON.stringify({image,mediaType:'image/jpeg',supplier:sup,items:cat.map(c=>c.name)})});
+    let j={};try{j=await r.json();}catch(e){}
+    if(!r.ok||!j.lines){
+      const msg=j.message||(r.status===404?(zh?'识别功能还没部署（找管理员）':'Function not deployed'):(zh?'识别失败，请重试':'Scan failed'));
+      return openForm(`<h3>${zh?'识别进货单':'Scan invoice'} <span class="x" onclick="closeM()">×</span></h3><div class="al al-r">${oEsc(msg)}</div><button class="btn block brand" onclick="closeM();invScan('${gEsc(sup)}')">${zh?'重新拍照':'Retake'}</button>`);
+    }
+    _inv={sup,date:j.date&&/^\d{4}-\d{2}-\d{2}$/.test(j.date)?j.date:(dvDay||TODAY),invoiceNo:j.invoiceNo||'',total:j.total,note:j.note||'',
+      lines:j.lines.map(l=>{let cid='';if(l.match){const c=cat.find(x=>x.name===l.match);if(c)cid=c.cid;}if(!cid)cid=invGuess(l.name,cat);
+        let price=l.unitPrice;if((price==null||price===0)&&l.amount!=null&&l.qty)price=+(l.amount/l.qty).toFixed(2);
+        return {name:l.name,unit:l.unit||'',qty:l.qty,price,amount:l.amount,cid,on:!!cid};})};
+    invReview();
+  }catch(e){
+    openForm(`<h3>${zh?'识别进货单':'Scan invoice'} <span class="x" onclick="closeM()">×</span></h3><div class="al al-r">${oEsc(String(e.message||e))}</div>`);
+  }
+}
+function invReview(){
+  const zh=LANG==="zh",v=_inv,sup=v.sup,cat=ensureGridCat(sup);
+  const opts=sel=>`<option value="">${zh?'— 不导入 —':'— skip —'}</option>`+cat.map(c=>`<option value="${oEsc(c.cid)}" ${c.cid===sel?'selected':''}>${oEsc(c.name)}</option>`).join('');
+  const rows=v.lines.map((l,i)=>`<div class="odc ${l.on?'':'inv-off'}" id="ivr-${i}">
+    <div class="odc-h"><label class="inv-ck"><input type="checkbox" ${l.on?'checked':''} onchange="invSet(${i},'on',this.checked)"><span class="odc-n">${oEsc(l.name)}${l.unit?` <span class="mini">${oEsc(l.unit)}</span>`:''}</span></label></div>
+    <div class="fr" style="margin:8px 0 0;"><label>${zh?'对应库存品项':'Matches item'}</label><select onchange="invSet(${i},'cid',this.value)">${opts(l.cid)}</select></div>
+    <div class="odc-f"><label>${zh?'数量/重量':'Qty'}<input class="odnum" inputmode="decimal" value="${l.qty==null?'':l.qty}" oninput="invSet(${i},'qty',this.value)"></label>
+      <label>${zh?'单价 RM':'Price'}<input class="odnum" inputmode="decimal" value="${l.price==null?'':l.price}" oninput="invSet(${i},'price',this.value)"></label>
+      <div class="odc-a"><span>${zh?'金额':'Amt'}</span><b id="ivamt-${i}">${money((+l.qty||0)*(+l.price||0))}</b></div></div></div>`).join('')||`<div class="empty">${zh?'没读到货品行':'No lines'}</div>`;
+  openForm(`<h3>${zh?'核对识别结果':'Review scan'} <span class="x" onclick="closeM()">×</span></h3>
+    <div class="hint">${zh?'这是 AI 读出来的，可能有错——请对照发票核对数量和单价。勾选的品项按「写入」才会记进进货单；没对上的可手动选品项或取消勾选。':'AI result — please verify before saving.'}${v.note?`<br><b>${zh?'提示：':'Note: '}</b>${oEsc(v.note)}`:''}</div>
+    <div class="fg2"><div class="fr"><label>${zh?'进货日期':'Date'}</label><input type="date" value="${v.date}" onchange="_inv.date=this.value"></div>
+      <div class="fr"><label>Invoice No.</label><input value="${oEsc(v.invoiceNo)}" oninput="_inv.invoiceNo=this.value"></div></div>
+    <div class="odl" style="max-height:48vh;">${rows}</div>
+    <div class="odtot" style="position:static;margin-bottom:4px;"><span>${zh?'将写入':'Will save'} <b id="iv-n">0</b> ${zh?'项':'items'}</span><span>${zh?'金额':'Amt'} <b id="iv-t">RM 0.00</b>${v.total!=null?` <span class="mini" style="color:#ddd;">${zh?'发票合计':'invoice'} ${money(v.total)}</span>`:''}</span></div>
+    <button class="btn block brand" style="margin-top:10px;" onclick="invApply()">${zh?'写入进货单':'Save to purchases'}</button>`);
+  invTotals();
+}
+function invSet(i,f,val){const l=_inv.lines[i];if(f==='on')l.on=!!val;else if(f==='cid'){l.cid=val;l.on=!!val;const ck=document.querySelector('#ivr-'+i+' input[type=checkbox]');if(ck)ck.checked=l.on;}else l[f]=val===''?null:+val;
+  const a=document.getElementById('ivamt-'+i);if(a)a.textContent=money((+l.qty||0)*(+l.price||0));const row=document.getElementById('ivr-'+i);if(row)row.classList.toggle('inv-off',!l.on);invTotals();}
+function invTotals(){const on=_inv.lines.filter(l=>l.on&&l.cid&&(+l.qty||0)>0);const n=document.getElementById('iv-n'),t=document.getElementById('iv-t');if(n)n.textContent=on.length;if(t)t.textContent=money(on.reduce((s,l)=>s+(+l.qty||0)*(+l.price||0),0));}
+async function invApply(){
+  const zh=LANG==="zh",v=_inv,sup=v.sup;const on=v.lines.filter(l=>l.on&&l.cid&&(+l.qty||0)>0);
+  if(!on.length)return alert(zh?'没有可写入的品项（要勾选、选好品项、数量大于 0）':'Nothing to save');
+  if(!/^\d{4}-\d{2}-\d{2}$/.test(v.date))return alert(zh?'请选进货日期':'Pick a date');
+  const dup=on.filter(l=>gridRec('purchase',sup,l.cid,v.date)).length;
+  if(dup&&!confirm(zh?`其中 ${dup} 项在 ${v.date} 已经有进货记录，写入会覆盖它们的数量和单价。继续？`:`${dup} items already have records on ${v.date}; overwrite?`))return;
+  const fish=FISH_SUPPLIERS.includes(sup);
+  if(v.invoiceNo)await setGridInv('purchase',sup,v.date,v.invoiceNo);
+  for(const l of on){
+    if(fish)await setGridCell('purchase',sup,l.cid,v.date,'weight',+l.qty);else await setGridCell('purchase',sup,l.cid,v.date,'qty',+l.qty);
+    await setGridCell('purchase',sup,l.cid,v.date,'price',+l.price||0);
+  }
+  try{auditLog&&auditLog('拍照识别进货',sup+' '+v.date+' '+on.length+'项');}catch(e){}
+  dvDay=v.date;closeM();render();
+  alert(zh?`已写入 ${on.length} 项到 ${v.date} 的进货单`:`Saved ${on.length} items`);
 }
 function dvAfter(){const s=document.getElementById('dvStrip'),c=s&&s.querySelector('.dv-chip.on');if(s&&c)s.scrollLeft=c.offsetLeft-s.clientWidth/2+c.offsetWidth/2;}
 
