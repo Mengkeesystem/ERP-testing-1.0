@@ -786,6 +786,14 @@ html.ui2 .hint{background:transparent!important;border:0!important;padding:2px 2
 .stf-av{width:44px;height:44px;border-radius:50%;display:grid;place-items:center;background:var(--soft);color:var(--brand);font-weight:800;font-size:17px;flex:none;}
 .bar-lv{height:6px;border-radius:99px;background:var(--soft);overflow:hidden;margin-top:6px;}.bar-lv i{display:block;height:100%;background:var(--green);border-radius:99px;}
 .dc-share{height:5px;border-radius:99px;background:var(--soft);overflow:hidden;margin-top:6px;}.dc-share i{display:block;height:100%;background:var(--brand);}
+
+.sch-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:8px;}
+.sch-day{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);padding:8px;min-width:0;}
+.sch-day.today{border-color:var(--brand);box-shadow:0 0 0 1px var(--brand);}
+.sch-h{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:6px;font-size:12px;color:var(--grey);}.sch-h b{color:var(--ink);font-size:13px;}
+.sch-chip{display:flex;justify-content:space-between;align-items:center;gap:4px;background:var(--soft);border-radius:var(--radius-sm);padding:5px 7px;margin-bottom:5px;font-size:12px;}.sch-chip span{min-width:0;}.sch-chip b{display:block;font-size:12.5px;word-break:break-word;}.sch-chip small{color:var(--grey);}
+.sch-empty{color:var(--line2);text-align:center;font-size:12px;padding:6px 0;}
+@media(max-width:760px){.sch-grid{grid-template-columns:1fr;gap:8px;}.sch-day{padding:10px 12px;}.sch-h{justify-content:flex-start;gap:8px;font-size:13px;}.sch-chip{display:inline-flex;margin:0 6px 6px 0;min-width:44%;}.sch-empty{text-align:left;padding:0;}}
 /* ---- 进货「按日」视图（SUPY 风格）---- */
 .mtabs{flex-wrap:nowrap!important;overflow-x:auto;max-width:100%;scrollbar-width:none;}.mtabs::-webkit-scrollbar{display:none;}.mtabs button{flex:none;white-space:nowrap;}
 .mtabs.nox .ib{display:none;}
@@ -1112,16 +1120,16 @@ const DISH_CATALOG=[
 
 const ROLES={
   owner:{name:"老板 Owner",en:"Owner",
-    can:["dash","sales","inv","proc","transfer","ck","stock","waste","ent","bom","ap","opex","report","hr","attend","schedule","leave","payroll","settings"],
+    can:["dash","sales","inv","proc","transfer","ck","stock","waste","ent","bom","ap","opex","report","hr","attend","schedule","leave","settings"],
     allBranch:true, hrScope:"all", salaryView:"full", salaryLock:true, approveLeave:true, canEditPerms:true}, // 全权：含财务、人力财务(个人明细)、所有分店、系统设置；薪资发放只读(锁死)，实际发放交人事经理处理
   hrmgr:{name:"人事经理 HR Manager",en:"HR Manager",
-    can:["dash","sales","inv","proc","transfer","ck","stock","waste","ent","bom","ap","opex","report","hr","attend","schedule","leave","payroll","settings"],
+    can:["dash","sales","inv","proc","transfer","ck","stock","waste","ent","bom","ap","opex","report","hr","attend","schedule","leave","settings"],
     allBranch:true, hrScope:"all", salaryView:"full", approveLeave:true, canEditPerms:true}, // 权限与老板相同；唯一能实际处理『薪资发放』的角色(不锁死)；后台手动分配，不走邀请码注册
   area:{name:"区域副经理 Area A.M.",en:"Area Assistant Manager",
-    can:["dash","sales","inv","proc","transfer","stock","waste","ent","bom","ap","opex","report","hr","attend","schedule","leave","payroll","settings"],
+    can:["dash","sales","inv","proc","transfer","stock","waste","ent","bom","ap","opex","report","hr","attend","schedule","leave","settings"],
     allBranch:true, hrScope:"all", salaryView:"total", salaryLock:true, approveLeave:true, canEditPerms:true}, // 全分店(不含中央厨房)；人力财务只看总数(不看个人薪水)；薪资发放锁死只读，实际发放只交给人事经理(hrmgr)独占处理
   outletmgr:{name:"店面经理 Outlet P.I.C",en:"Outlet P.I.C",
-    can:["dash","inv","proc","stock","waste","ent","bom","opex","report","ap","hr","attend","schedule","leave","payroll"],
+    can:["dash","inv","proc","stock","waste","ent","bom","opex","report","ap","hr","attend","schedule","leave"],
     allBranch:false, hrScope:"branch", salaryView:"full", salaryLock:true, approveLeave:true}, // 本店负责人：可看本店每位员工薪水(锁死只读，不能处理发放)；不含中央厨房、不跨店
   manager:{name:"店长 Manager",en:"Manager",
     can:["dash","inv","proc","stock","waste","opex","report","ap"],
@@ -1130,13 +1138,13 @@ const ROLES={
     can:["dash","inv","transfer","stock","ap"],
     allBranch:false, hrScope:"self", salaryView:"self", approveLeave:false}, // 生产工单/成品入库/配送调拨；可核对/更改应付账款(不能删除)
   staff:{name:"员工 Staff",en:"Staff",
-    can:["attend","leave","payroll"],
+    can:["attend","leave"],
     allBranch:false, hrScope:"self", salaryView:"self", approveLeave:false}, // 只有人事自助：打卡、请假、查看自己薪资/Payslip
   ckmgr:{name:"中央经理 Central Manager",en:"Central Manager",
-    can:["dash","inv","proc","ck","stock","waste","opex","report","ap","hr","attend","schedule","leave","payroll"],
+    can:["dash","inv","proc","ck","stock","waste","opex","report","ap","hr","attend","schedule","leave"],
     allBranch:false, hrScope:"self", salaryView:"self", approveLeave:true, ckOnly:true}, // 中央厨房专属：权限同店长 + 自己的档案/考勤/请假/薪资(只看自己)；不能看薪资发放Payroll
   ckstaff:{name:"中央员工 Central Staff",en:"Central Staff",
-    can:["dash","inv","ck","transfer","stock","hr","attend","schedule","leave","payroll"],
+    can:["dash","inv","ck","transfer","stock","hr","attend","schedule","leave"],
     allBranch:false, hrScope:"self", salaryView:"self", approveLeave:false, ckOnly:true}, // 中央厨房专属：权限同厨师长 + 自己的档案/考勤/请假/薪资(只看自己)；不能看薪资发放Payroll
 };
 // 可编辑权限的角色（老板/人事经理、区域副经理）
@@ -1146,7 +1154,9 @@ function isAdminUser(){return curUser?!!(ROLES[curUser.role]&&ROLES[curUser.role
 function isPreviewing(){return !!(curUser&&curRole!==curUser.role);}
 function exitPreview(){if(curUser){curRole=curUser.role;if(!ROLES[curRole].allBranch)curOutlet=curUser.outlet||curOutlet;curPage=firstAllowedPage();render();}}
 // 薪资可见范围：full=全部个人明细, total=只看总数, self=只看自己
-function canSeeSalary(){return ROLES[curRole].salaryView==="full";}
+/* 2026-11：业主要把系统专做 ERP → 人事薪资/薪资发放已移除（PAYROLL_ON=false）。薪资相关数据仍原样留在数据库，没有删；要恢复把 PAYROLL_ON 改 true 并把菜单/权限加回来 */
+const PAYROLL_ON=false;
+function canSeeSalary(){return PAYROLL_ON&&ROLES[curRole].salaryView==="full";}
 function salaryScope(){return ROLES[curRole].salaryView;}
 function hrScope(){return ROLES[curRole].hrScope;} // all/branch/self
 function canApproveLeave(){return ROLES[curRole].approveLeave;}
@@ -1190,7 +1200,7 @@ function statusOf(d){if(d<=14)return{t:"健康",e:"Fresh",c:"p-g"};if(d<=30)retu
 function stTxt(s){return LANG==="zh"?s.t:s.e;}
 
 /* ================= 数据种子 ================= */
-const BUILD="1111mk85";  // 版本标记：页面右上/网格提示可见，用来确认已载入最新版
+const BUILD="1111mk86";  // 版本标记：页面右上/网格提示可见，用来确认已载入最新版
 const SEED_VERSION="bh-master-2026-09-1";  // 版本变更→下次载入自动重置为最新主数据（仅本店云端）
 function seed(outletId){
   const isCK = outletId==="ck";
@@ -1869,8 +1879,8 @@ function auditLog(act,detail,oldv,newv){
 function can(p){return ROLES[curRole].can.includes(p);}
 // 作业中心(proc)只要拥有任一子作业权限即可进入；子页与页面级访问统一由 pageAllowed 判定
 function hasAnyOp(){return ['proc','transfer','waste','ent','stock'].some(p=>can(p));}
-function pageAllowed(p){if(p==='proc')return hasAnyOp();if(p==='monthly')return can('report');if(p==='opexm')return can('opex');if(p==='payrun')return can('payroll')&&canSeeSalary();if(p==='orderinv')return ['owner','area','hrmgr','manager','headchef'].includes(curRole);if(typeof PROC_SUB!=='undefined'&&PROC_SUB[p])return can(PROC_SUB[p]);return can(p);}
-function firstAllowedPage(){const order=['dash','attend','leave','payroll','hr','schedule','sales','inv','proc','ck','stock','opex','ap','bom','report','settings'];for(const p of order)if(pageAllowed(p))return p;return 'dash';}
+function pageAllowed(p){if(p==='proc')return hasAnyOp();if(p==='monthly')return can('report');if(p==='opexm')return can('opex');if(p==='payrun'||p==='payroll')return PAYROLL_ON&&can('payroll');if(p==='orderinv')return ['owner','area','hrmgr','manager','headchef'].includes(curRole);if(typeof PROC_SUB!=='undefined'&&PROC_SUB[p])return can(PROC_SUB[p]);return can(p);}
+function firstAllowedPage(){const order=['dash','attend','leave','hr','schedule','sales','inv','proc','ck','stock','opex','ap','bom','report','settings'];for(const p of order)if(pageAllowed(p))return p;return 'dash';}
 function canW(p){if(isAgg())return false;if((p==='payroll'||p==='payrun')&&ROLES[curRole].salaryLock)return false;return can(p);} // 汇总视图只读；店面经理薪资只读(锁死)
 function renderTop(){
   document.getElementById('appTitle').textContent=t('appTitle');
@@ -1914,7 +1924,7 @@ const MENU=[
   ["营运 Operations",[["dash","💰","dash"],["sales","🧾","sales"],["proc","🔄","proc"],["orderinv","🧾","orderinv"],["ck","🏭","ck"]]],
   ["库存 Inventory",[["inv","📦","inv"],["bom","🍲","bom"],["stock","🔎","stock"],["monthend","📋","monthend"],["opexm","💵","opexm"]]],
   ["财务 Finance",[["ap","💳","ap"],["opex","💵","opex"],["monthly","📅","monthly"],["report","📈","report"]]],
-  ["人事 HR",[["hr","👤","hr"],["attend","🕐","attend"],["schedule","📅","schedule"],["leave","🌴","leave"],["payroll","💴","payroll"],["payrun","🧮","payrun"]]],
+  ["人事 HR",[["hr","👤","hr"],["attend","🕐","attend"],["schedule","📅","schedule"],["leave","🌴","leave"]]],
   ["系统 System",[["settings","⚙️","settings"]]],
 ];
 const MENU_LABELS={sales:{zh:"销售 (POS)",en:"Sales (POS)"},orderinv:{zh:"订单发票",en:"Order Invoices"},ck:{zh:"中央厨房",en:"Central Kitchen"},stock:{zh:"盘点",en:"Stock Take"},hr:{zh:"员工档案",en:"Staff Profiles"},attend:{zh:"打卡考勤",en:"Attendance"},schedule:{zh:"排班",en:"Schedule"},leave:{zh:"请假",en:"Leave"},monthly:{zh:"月度核算",en:"Monthly Cost"},bom:{zh:"配方成本",en:"Recipe Cost"},opexm:{zh:"运营开销录入",en:"OpEx Entry"},monthend:{zh:"月末盘点",en:"Month-End Count"},payrun:{zh:"薪资发放 Payroll",en:"Payroll Run"}};
@@ -2747,14 +2757,14 @@ function pgOpex(){
     [LANG==="zh"?"日常杂费":"Misc",[["wifi","Wi-Fi","Wifi"],["rubbish","垃圾清理","Rubbish"],["possaas","POS 月租","POS SaaS"],["accounting","会计费","Accounting"],["repair","维修","Repair"]]],
   ];
   const total=opexTotal(m);
-  const hideSalary=!canSeeSalary();
+  const hideSalary=PAYROLL_ON&&!canSeeSalary();
   const labourKeys=["salaries","epf","socso","eis","levy","ot"];
   const pl=payrollLabour();const plMap={salaries:pl.salaries,epf:pl.epf,socso:pl.socso,eis:pl.eis,levy:pl.levy,ot:pl.ot};
   const labourSynced=labourKeys.every(k=>Math.round((+o[k]||0))===Math.round((plMap[k]||0)));
   return `<div class="fb"><h2 class="h" style="margin:0;">${LANG==="zh"?"运营开销 OpEx":"Operating Expenses"}</h2>${canW('opex')&&!locked?`<div style="display:flex;gap:8px;align-items:center;"><button class="btn brand sm" onclick="openM('opex')">${LANG==="zh"?"编辑":"Edit"}</button>${canSeeSalary()?actm([{l:LANG==="zh"?"同步人事薪资":"Sync payroll",on:'syncOpexFromPayroll()'}]):''}</div>`:''}</div>
   <div class="seg mtabs" style="margin-bottom:12px;">${availMonths().map(mm=>`<button class="${mm===m?'active':''}" onclick="setCostMonth('${mm}')">${monthLabel2(mm)}${monthLocked(mm)?' 🔒':''}</button>`).join('')}</div>
   <div class="grid g2 sup-sum"><div class="kpi"><div class="k">${LANG==="zh"?"本月 OpEx 总额":"Total OpEx"}</div><div class="v sm neg">${money(total)}</div><div class="mini">${monthLabel2(m)}${locked?(LANG==="zh"?' · 已锁定':' · locked'):''}</div></div><div class="kpi"><div class="k">${LANG==="zh"?"最大一项":"Largest"}</div><div class="v sm">${(function(){let best=['',0];groups.forEach(([g,rows])=>rows.forEach(([k,z,e])=>{const v=opexEffective(o,m,k);if(v>best[1])best=[LANG==="zh"?z:e,v];}));return best[1]?money(best[1]):'—';})()}</div><div class="mini">${(function(){let best=['',0];groups.forEach(([g,rows])=>rows.forEach(([k,z,e])=>{const v=opexEffective(o,m,k);if(v>best[1])best=[LANG==="zh"?z:e,v];}));return best[0]||'';})()}</div></div></div>
-  <div class="hint">${LANG==="zh"?"运营开销按自然月独立核算，直接带入该月损益与净利。人工成本随『人事薪资』自动联动（也可手动改）；营销/维修/Wi-Fi/垃圾清理/POS月租/会计费/维修杂项这7项直接实时读取「运营开销记录」，加一笔立刻反映，不用同步。":"Per-month OpEx feeds that month's P&L. Labour auto-links to Payroll. Marketing/Maintenance/Misc items live-read from the OpEx Log — no sync needed."}${hideSalary?(LANG==="zh"?" ⚠️ 你的角色只能看人工总数。":" ⚠️ Labour total only."):""}</div>
+  <div class="hint">${LANG==="zh"?"运营开销按自然月独立核算，直接带入该月损益与净利。人工成本现在手动填；营销/维修/Wi-Fi/垃圾清理/POS月租/会计费/维修杂项这7项直接实时读取「运营开销记录」，加一笔立刻反映，不用同步。":"Per-month OpEx feeds that month's P&L. Labour auto-links to Payroll. Marketing/Maintenance/Misc items live-read from the OpEx Log — no sync needed."}${hideSalary?(LANG==="zh"?" ⚠️ 你的角色只能看人工总数。":" ⚠️ Labour total only."):""}</div>
   ${locked?`<div class="al al-b" style="margin-bottom:8px;"><div class="t">🔒 ${LANG==="zh"?monthLabel2(m)+" 已月末锁定":"Locked"}</div>${LANG==="zh"?"该月开销已归档固定；如需修改请到『月度核算』解锁。":"Archived; unlock in Monthly."}</div>`:`<div class="hint" style="margin-bottom:8px;">${own?(LANG==="zh"?"📌 本月为专属开销（与其他月独立）。":"📌 Month-specific."):(LANG==="zh"?"📄 本月沿用默认开销；一旦编辑/同步即建立本月专属副本。":"📄 Using default template.")}</div>`}
   ${(!hideSalary&&canSeeSalary())?`<div class="al ${labourSynced?'al-b':'al-a'}" style="margin-bottom:8px;"><div class="t">${labourSynced?('🔗 '+(LANG==="zh"?"人工成本 已与人事薪资一致":"Labour matches payroll")):('⚠️ '+(LANG==="zh"?"人工成本与人事薪资不一致":"Labour differs from payroll"))}</div>${LANG==="zh"?"人事薪资实际：薪资"+money(pl.salaries)+" · OT"+money(pl.ot)+" · EPF"+money(pl.epf)+" · SOCSO"+money(pl.socso)+" · EIS"+money(pl.eis)+" · 人头税"+money(pl.levy)+(labourSynced?"":"　→ 点『🔗同步人事薪资』填入"):""}</div>`:''}
   ${groups.map(([g,rows])=>{
@@ -2766,7 +2776,7 @@ function pgOpex(){
         <div class="row"><span class="mini">${LANG==="zh"?"🔒 个别项目已隐藏（权限限制）":"🔒 Breakdown hidden"}</span><span></span></div></div>`;
     }
     return `<h2 class="h" style="margin-top:14px;">${g} <span class="tag">${money(gtotal)}</span></h2>
-    <div class="pl">${rows.map(([k,z,e])=>{const linked=labourKeys.includes(k);const fromLog=typeof OPEXLOG_CATS!=='undefined'&&OPEXLOG_CATS.some(c=>c[0]===k);const ref=plMap[k];const diff=linked&&Math.round((+o[k]||0))!==Math.round(ref||0);return `<div class="row"><span>${LANG==="zh"?z:e}${linked?` <span class="pill p-b" title="${LANG==="zh"?"可从人事薪资联动":"payroll-linked"}">🔗</span>`:''}${fromLog?` <span class="pill p-b" title="${LANG==="zh"?"实时读取运营开销记录":"live from OpEx Log"}">🔗</span>`:''}</span><b${diff?' style="color:var(--amber)"':''}>${money(opexEffective(o,m,k))}${diff?`<br><span class="mini">${LANG==="zh"?"薪资":"HR"} ${money(ref)}</span>`:''}</b></div>`;}).join('')}</div>`;
+    <div class="pl">${rows.map(([k,z,e])=>{const linked=PAYROLL_ON&&labourKeys.includes(k);const fromLog=typeof OPEXLOG_CATS!=='undefined'&&OPEXLOG_CATS.some(c=>c[0]===k);const ref=plMap[k];const diff=linked&&Math.round((+o[k]||0))!==Math.round(ref||0);return `<div class="row"><span>${LANG==="zh"?z:e}${linked?` <span class="pill p-b" title="${LANG==="zh"?"可从人事薪资联动":"payroll-linked"}">🔗</span>`:''}${fromLog?` <span class="pill p-b" title="${LANG==="zh"?"实时读取运营开销记录":"live from OpEx Log"}">🔗</span>`:''}</span><b${diff?' style="color:var(--amber)"':''}>${money(opexEffective(o,m,k))}${diff?`<br><span class="mini">${LANG==="zh"?"薪资":"HR"} ${money(ref)}</span>`:''}</b></div>`;}).join('')}</div>`;
   }).join('')}
   <div class="pl" style="margin-top:12px;"><div class="row tot"><span>${LANG==="zh"?"每月 OpEx 总额":"Total OpEx"}</span><span>${money(total)}</span></div></div>`;
 }
@@ -2873,7 +2883,7 @@ function materializeOpex(month){ // 首次编辑某月→从"≤当月的最近�
 function opexTotal(month){const o=curOpex(month)||{};return Object.keys(o).reduce((s,k)=>s+opexEffective(o,month,k),0);}
 const LABOUR_KEYS=["salaries","ot","epf","socso","eis","levy"];
 function applyLabour(o,pl){o.salaries=pl.salaries;o.ot=pl.ot;o.epf=pl.epf;o.socso=pl.socso;o.eis=pl.eis;o.levy=pl.levy;}
-function autoSyncLabour(){ if(!PAY_LOADED.has(curOutlet))return; // 没有薪资数据(或没权限)时绝不能同步，否则会把人工成本写成 0
+function autoSyncLabour(){ if(!PAYROLL_ON||!PAY_LOADED.has(curOutlet))return; // 没有薪资数据(或没权限)时绝不能同步，否则会把人工成本写成 0
   // 员工薪资变动→自动更新「默认模板 + 当前未锁定月」的人工成本（其他手动项与其它月不动）
   const pl=payrollLabour();
   applyLabour(opexTemplate(),pl);
@@ -3114,20 +3124,30 @@ function pgHR(){
 
 /* 打卡考勤（GPS 3km 范围内才能打卡）*/
 function haversine(la1,lo1,la2,lo2){const R=6371;const dLa=(la2-la1)*Math.PI/180,dLo=(lo2-lo1)*Math.PI/180;const a=Math.sin(dLa/2)**2+Math.cos(la1*Math.PI/180)*Math.cos(la2*Math.PI/180)*Math.sin(dLo/2)**2;return R*2*Math.atan2(Math.sqrt(a),Math.sqrt(1-a));}
+let attQuery='';
 function pgAttend(){
-  const att=(d().attendance||[]).filter(a=>hrScope()==="self"?a.empId===currentEmpId():true);
-  const o=outletObj();
-  return `<h2 class="h" style="margin-top:2px;">🕐 ${LANG==="zh"?"打卡考勤":"Attendance"} <span class="tag">${nm(o)}</span></h2>
-  <div class="hint">📍 ${LANG==="zh"?"只有在门市 3 公里范围内才能打卡（GPS 定位验证）。":"Clock-in only within 3km of the outlet (GPS verified)."}</div>
-  <div class="card" style="padding:16px;text-align:center;margin-bottom:12px;">
-    <div class="mini" style="margin-bottom:10px;">${LANG==="zh"?"门市位置":"Outlet"}: ${nm(o)} (${(o.lat||0).toFixed(4)}, ${(o.lng||0).toFixed(4)})</div>
-    <div id="gpsStatus" class="mini" style="margin-bottom:12px;color:var(--grey);">${LANG==="zh"?"点下方按钮定位并打卡":"Tap to locate & clock in"}</div>
-    <button class="btn brand block" onclick="doClockIn()">📍 ${LANG==="zh"?"定位打卡":"GPS Clock In/Out"}</button>
+  const zh=LANG==="zh";const o=outletObj();
+  const att=(d().attendance||[]).filter(a=>hrScope()==="self"?a.empId===currentEmpId():true).slice().sort((x,y)=>(y.date||'').localeCompare(x.date||'')||(y.in||'').localeCompare(x.in||''));
+  const me=currentEmpId();const today=att.find(a=>a.empId===me&&a.date===TODAY);
+  const nowIn=today&&!today.out;
+  const todayAll=(d().attendance||[]).filter(a=>a.date===TODAY);const onDuty=todayAll.filter(a=>!a.out).length;
+  const m=TODAY.slice(0,7);const monthHrs=att.filter(a=>(a.date||'').slice(0,7)===m).reduce((q,a)=>q+(+a.hours||0),0);
+  const wd=zh?['日','一','二','三','四','五','六']:['Su','Mo','Tu','We','Th','Fr','Sa'];
+  const byDate={};att.filter(a=>(a.date||'').slice(0,7)===m).forEach(a=>{(byDate[a.date]=byDate[a.date]||[]).push(a);});
+  const body=Object.keys(byDate).sort().reverse().map(dt=>{const dd=new Date(dt+'T00:00:00');
+    return `<div class="grn-day"><span>${zh?`${dd.getMonth()+1}月${dd.getDate()}日 · 周${wd[dd.getDay()]}`:dt}${dt===TODAY?` <span class="pill p-g">${zh?'今天':'Today'}</span>`:''}</span><b>${byDate[dt].length} ${zh?'人':''}</b></div>`+byDate[dt].map(a=>{const e=empById(a.empId);
+      return `<div class="dv-row inv-card ${a.out?'':'has'}" data-name="${oEsc(((e&&e.name)||'')+' '+(a.empId||'')).toLowerCase()}"><div style="min-width:0;"><div class="dv-name">${e?oEsc(e.name):oEsc(a.empId)}</div><div class="mini">${a.in} → ${a.out||(zh?'上班中':'on duty')}</div></div>
+        <div class="inv-qty"><div class="inv-q">${a.hours?(+a.hours).toFixed(1):'—'} <small>${zh?'小时':'h'}</small></div>${a.out?'':`<span class="pill p-g">${zh?'在岗':'On'}</span>`}</div></div>`;}).join('');}).join('');
+  return `<div class="fb"><h2 class="h" style="margin:0;">${zh?"打卡考勤":"Attendance"} <span class="tag">${nm(o)}</span></h2></div>
+  <div class="card" style="padding:18px 16px;text-align:center;margin-bottom:12px;">
+    <div class="mini" style="margin-bottom:6px;">${zh?"门市位置":"Outlet"}: ${nm(o)}</div>
+    <div id="gpsStatus" style="font-size:14px;margin-bottom:12px;color:var(--ink2);">${nowIn?(zh?`你已于 ${today.in} 上班，下班时再点一次`:`Clocked in at ${today.in}`):(today?(zh?`今天已打卡：${today.in} – ${today.out}`:'Done today'):(zh?'点下方按钮定位并打卡':'Tap to locate & clock in'))}</div>
+    <button class="btn brand block" style="padding:14px;font-size:16px;" onclick="doClockIn()">${nowIn?(zh?'定位下班打卡':'Clock out'):(zh?'定位上班打卡':'Clock in')}</button>
+    <div class="mini" style="margin-top:8px;">${zh?"需在门市 3 公里范围内（GPS 验证）":"Within 3km of the outlet (GPS)"}</div>
   </div>
-  <h2 class="h">📋 ${LANG==="zh"?"考勤记录":"Records"}</h2>
-  <div class="card tbl"><table><thead><tr><th>${LANG==="zh"?"员工":"Staff"}</th><th>${LANG==="zh"?"日期":"Date"}</th><th>${LANG==="zh"?"上班":"In"}</th><th>${LANG==="zh"?"下班":"Out"}</th><th>${LANG==="zh"?"时数":"Hrs"}</th></tr></thead><tbody>
-  ${att.map(a=>{const e=empById(a.empId);return `<tr><td>${e?oEsc(e.name):oEsc(a.empId)}</td><td class="mini">${a.date.slice(5)}</td><td>${a.in}</td><td>${a.out||'—'}</td><td>${a.hours?a.hours.toFixed(1):'—'}</td></tr>`;}).join('')||`<tr><td colspan="5" class="empty">${LANG==="zh"?"暂无记录":"No records"}</td></tr>`}
-  </tbody></table></div>`;
+  <div class="grid g3 sup-sum"><div class="kpi"><div class="k">${zh?"今日出勤":"Today"}</div><div class="v sm">${todayAll.length}</div></div><div class="kpi"><div class="k">${zh?"在岗":"On duty"}</div><div class="v sm ${onDuty?'pos':''}">${onDuty}</div></div><div class="kpi"><div class="k">${zh?"本月时数":"Month hrs"}</div><div class="v sm">${monthHrs.toFixed(1)}</div></div></div>
+  ${att.length>3?`<div class="dv-tools"><input class="dv-search" type="search" placeholder="${zh?'搜索员工…':'Search staff…'}" oninput="dvFilter(this.value)" autocomplete="off"></div>`:''}
+  <div id="dvList">${body||`<div class="empty">${zh?"本月暂无考勤记录":"No records this month"}</div>`}</div>`;
 }
 function doClockIn(){
   const st=document.getElementById('gpsStatus');
@@ -3151,25 +3171,47 @@ function doClockIn(){
 }
 
 /* 排班 */
+let schWeek=0;
+function schWeekSet(n){schWeek=n;render();}
 function pgSchedule(){
-  const sch=(d().schedule||[]).filter(s=>hrScope()==="self"?s.empId===currentEmpId():true);
-  return `<div class="fb"><h2 class="h" style="margin:0;">📅 ${LANG==="zh"?"排班表":"Schedule"} <span class="tag">v${BUILD}</span></h2>${canW('schedule')&&hrScope()!=="self"?`<button class="btn gold sm" onclick="openM('shift')">+ ${LANG==="zh"?"排班":"Shift"}</button>`:''}</div>
-  <div class="hint">${hrScope()==="self"?(LANG==="zh"?"你只能看自己的班表。":"Your shifts only."):(LANG==="zh"?"安排本店员工班次。":"Assign shifts.")}</div>
-  <div class="card tbl"><table><thead><tr><th>${LANG==="zh"?"日期":"Date"}</th><th>${LANG==="zh"?"员工":"Staff"}</th><th>${LANG==="zh"?"班次":"Shift"}</th>${canW('schedule')&&hrScope()!=="self"?'<th></th>':''}</tr></thead><tbody>
-  ${sch.map((s,i)=>{const e=empById(s.empId);return `<tr><td class="mini">${s.date.slice(5)}</td><td>${e?oEsc(e.name):oEsc(s.empId)}</td><td>${oEsc(s.shift)}</td>${canW('schedule')&&hrScope()!=="self"?`<td><button class="ib" onclick="delShift(${i})">🗑️</button></td>`:''}</tr>`;}).join('')||`<tr><td colspan="4" class="empty">${LANG==="zh"?"暂无排班":"No shifts"}</td></tr>`}
-  </tbody></table></div>`;
+  const zh=LANG==="zh";const wr=canW('schedule')&&hrScope()!=="self";
+  const all=(d().schedule||[]);
+  const base=new Date(TODAY+'T00:00:00');const dow=(base.getDay()+6)%7;base.setDate(base.getDate()-dow+schWeek*7);
+  const days=[...Array(7)].map((_,i)=>{const x=new Date(base);x.setDate(base.getDate()+i);return x.toLocaleDateString('en-CA');});
+  const wd=zh?['一','二','三','四','五','六','日']:['Mo','Tu','We','Th','Fr','Sa','Su'];
+  const vis=all.map((s2,i)=>({s:s2,i})).filter(({s:s2})=>hrScope()==="self"?s2.empId===currentEmpId():true);
+  const inWeek=vis.filter(({s:s2})=>days.includes(s2.date));
+  const rangeLbl=`${days[0].slice(5)} ~ ${days[6].slice(5)}`;
+  const cols=days.map((dt,k)=>{const list=inWeek.filter(({s:s2})=>s2.date===dt).sort((a2,b2)=>(a2.s.shift||'').localeCompare(b2.s.shift||''));
+    return `<div class="sch-day ${dt===TODAY?'today':''}"><div class="sch-h"><b>${zh?'周'+wd[k]:wd[k]}</b><span>${dt.slice(8)}</span></div>
+      ${list.map(({s:s2,i})=>{const e=empById(s2.empId);return `<div class="sch-chip"><span><b>${e?oEsc(e.name):oEsc(s2.empId)}</b><small>${oEsc(s2.shift)}</small></span>${wr?`<button class="ib" onclick="delShift(${i})">×</button>`:''}</div>`;}).join('')||`<div class="sch-empty">—</div>`}</div>`;}).join('');
+  return `<div class="fb"><h2 class="h" style="margin:0;">${zh?"排班表":"Schedule"}</h2>${wr?`<button class="btn brand sm" onclick="openM('shift')">+ ${zh?"排班":"Shift"}</button>`:''}</div>
+  <div class="seg mtabs nox" style="margin-bottom:12px;"><button class="${schWeek===-1?'active':''}" onclick="schWeekSet(-1)">${zh?'上周':'Last'}</button><button class="${schWeek===0?'active':''}" onclick="schWeekSet(0)">${zh?'本周':'This week'}</button><button class="${schWeek===1?'active':''}" onclick="schWeekSet(1)">${zh?'下周':'Next'}</button><button class="${schWeek===2?'active':''}" onclick="schWeekSet(2)">${zh?'下下周':'+2'}</button></div>
+  <div class="grid g2 sup-sum"><div class="kpi"><div class="k">${zh?"本周":"Week"}</div><div class="v sm">${rangeLbl}</div></div><div class="kpi"><div class="k">${zh?"班次数":"Shifts"}</div><div class="v sm">${inWeek.length}</div></div></div>
+  <div class="sch-grid">${cols}</div>
+  ${hrScope()==="self"?`<div class="hint">${zh?'你只能看自己的班表。':'Your shifts only.'}</div>`:''}`;
 }
 async function delShift(i){if(!confirm(LANG==="zh"?"删除此班次？":"Delete shift?"))return;d().schedule.splice(i,1);await save();render();}
 
 /* 请假：员工申请，店长/经理批准 */
+let leaveFilter='all';
+function leaveFilterSet(v){leaveFilter=v;render();}
 function pgLeave(){
-  const leaves=(d().leaves||[]).filter(l=>hrScope()==="self"?l.empId===currentEmpId():true);
+  const zh=LANG==="zh";
+  const all=(d().leaves||[]).filter(l=>hrScope()==="self"?l.empId===currentEmpId():true).slice().sort((a2,b2)=>(b2.from||'').localeCompare(a2.from||''));
   const canApprove=canApproveLeave();
-  return `<div class="fb"><h2 class="h" style="margin:0;">🌴 ${LANG==="zh"?"请假管理":"Leave"} <span class="tag">v${BUILD}</span></h2><button class="btn gold sm" onclick="openM('leave')">+ ${LANG==="zh"?"申请请假":"Apply"}</button></div>
-  <div class="hint">${canApprove?(LANG==="zh"?"你可以批准／拒绝本店请假申请。":"You can approve/reject."):(LANG==="zh"?"提交请假申请，等待上级批准。":"Submit and await approval.")}</div>
-  <div class="card tbl"><table><thead><tr><th>${LANG==="zh"?"员工":"Staff"}</th><th>${LANG==="zh"?"类型":"Type"}</th><th>${LANG==="zh"?"日期":"Dates"}</th><th>${LANG==="zh"?"天":"Days"}</th><th>${LANG==="zh"?"状态":"Status"}</th>${canApprove?'<th></th>':''}</tr></thead><tbody>
-  ${leaves.map(l=>{const e=empById(l.empId);const cls=l.status==="已批准"?"p-g":l.status==="已拒绝"?"p-r":"p-a";return `<tr><td>${e?oEsc(e.name):oEsc(l.empId)}</td><td>${oEsc(l.type)}</td><td class="mini">${l.from.slice(5)}~${l.to.slice(5)}</td><td>${l.days}</td><td><span class="pill ${cls}">${oEsc(l.status)}</span></td>${canApprove?`<td style="white-space:nowrap;">${l.status==="待批准"?`<button class="ib" onclick="approveLeave(${l.id},1)">✅</button> <button class="ib" onclick="approveLeave(${l.id},0)">❌</button>`:''}</td>`:''}</tr>`;}).join('')||`<tr><td colspan="6" class="empty">${LANG==="zh"?"暂无申请":"None"}</td></tr>`}
-  </tbody></table></div>`;
+  const pend=all.filter(l=>l.status!=="已批准"&&l.status!=="已拒绝").length;
+  const days=all.filter(l=>l.status==="已批准"&&(l.from||'').slice(0,4)===TODAY.slice(0,4)).reduce((q,l)=>q+(+l.days||0),0);
+  const fl=all.filter(l=>leaveFilter==='all'||(leaveFilter==='pend'&&l.status!=="已批准"&&l.status!=="已拒绝")||(leaveFilter==='ok'&&l.status==="已批准")||(leaveFilter==='no'&&l.status==="已拒绝"));
+  const cards=fl.map(l=>{const e=empById(l.empId);const st=l.status==="已批准"?{c:'p-g',t:zh?'已批准':'Approved'}:l.status==="已拒绝"?{c:'p-r',t:zh?'已拒绝':'Rejected'}:{c:'p-a',t:zh?'待批准':'Pending'};const pending=st.c==='p-a';
+    return `<div class="dv-row inv-card ${pending?'':''}" style="${pending?'border-left:5px solid var(--amber);':l.status==="已批准"?'border-left:5px solid var(--green);':'border-left:5px solid var(--red);'}" data-name="${oEsc(((e&&e.name)||'')+' '+(l.type||'')).toLowerCase()}">
+      <div style="min-width:0;"><div class="dv-name">${e?oEsc(e.name):oEsc(l.empId)}</div><div class="mini">${oEsc(l.type)} · ${(l.from||'').slice(5)} ~ ${(l.to||'').slice(5)}</div><div style="margin-top:4px;"><span class="pill ${st.c}">${st.t}</span></div></div>
+      <div class="inv-qty"><div class="inv-q">${l.days} <small>${zh?'天':'d'}</small></div>${canApprove&&pending?`<div class="inv-act"><button class="btn brand sm" onclick="approveLeave(${l.id},true)">${zh?'批准':'Approve'}</button><button class="btn ghost sm" onclick="approveLeave(${l.id},false)">${zh?'拒绝':'Reject'}</button></div>`:''}</div></div>`;}).join('')||`<div class="empty">${zh?'没有符合的请假记录':'None'}</div>`;
+  return `<div class="fb"><h2 class="h" style="margin:0;">${zh?"请假管理":"Leave"}</h2><button class="btn brand sm" onclick="openM('leave')">+ ${zh?"申请请假":"Apply"}</button></div>
+  <div class="grid g3 sup-sum"><div class="kpi"><div class="k">${zh?"待批准":"Pending"}</div><div class="v sm ${pend?'neg':'pos'}">${pend}</div></div><div class="kpi"><div class="k">${zh?"今年已批天数":"Days this year"}</div><div class="v sm">${days}</div></div><div class="kpi"><div class="k">${zh?"全部申请":"All"}</div><div class="v sm">${all.length}</div></div></div>
+  <div class="seg mtabs nox" style="margin-bottom:10px;"><button class="${leaveFilter==='all'?'active':''}" onclick="leaveFilterSet('all')">${zh?'全部':'All'}</button><button class="${leaveFilter==='pend'?'active':''}" onclick="leaveFilterSet('pend')">${zh?'待批准':'Pending'} ${pend}</button><button class="${leaveFilter==='ok'?'active':''}" onclick="leaveFilterSet('ok')">${zh?'已批准':'Approved'}</button><button class="${leaveFilter==='no'?'active':''}" onclick="leaveFilterSet('no')">${zh?'已拒绝':'Rejected'}</button></div>
+  <details class="hintd"><summary>${zh?'说明':'Notes'}</summary><div>${canApprove?(zh?"你可以批准／拒绝本店请假申请。":"You can approve/reject."):(zh?"提交请假申请，等待上级批准。":"Submit and await approval.")}</div></details>
+  <div class="inv-grid">${cards}</div>`;
 }
 async function approveLeave(id,ok){const l=d().leaves.find(x=>x.id===id);if(!l)return;l.status=ok?"已批准":"已拒绝";auditLog("请假审批",l.type+" "+(ok?"批准":"拒绝"),"待批准",l.status);await save();render();}
 
@@ -3685,7 +3727,7 @@ const PERM_MODULES=[
   ["waste","报废损耗","Wastage"],["ent","招待赠送","Offers"],["ck","中央厨房","Central Kitchen"],["inv","库存","Inventory"],
   ["bom","配方成本","Recipe"],["stock","盘点/月末","Stock/Month-End"],["ap","应付账款","Payables"],["opex","运营开销","OpEx"],
   ["report","报表","Reports"],["hr","员工档案","Staff"],["attend","打卡考勤","Attendance"],["schedule","排班","Schedule"],
-  ["leave","请假","Leave"],["payroll","人事薪资","Payroll"],["settings","系统设置","Settings"],
+  ["leave","请假","Leave"],["settings","系统设置","Settings"],
 ];
 function permLabel(m){const x=PERM_MODULES.find(p=>p[0]===m);return x?(LANG==="zh"?x[1]:x[2]):m;}
 async function togglePerm(role,mod,checked){
@@ -4010,7 +4052,7 @@ function openM(type,editId){
       <div class="fr"><label>${LANG==="zh"?"孩子数":"Children"}</label><input id="em_children" type="number" value="0" min="0"></div></div>
       <div class="fg2"${canSeeSalary()?'':' style="display:none"'}><div class="fr"><label>${LANG==="zh"?"银行名称":"Bank Name"}</label><input id="em_bankname" placeholder="Maybank / CIMB / Public Bank..."></div>
       <div class="fr"><label>${LANG==="zh"?"银行账号":"Bank Account No."}</label><input id="em_bankacc" placeholder="1234567890"></div></div>
-      <div class="hint">${LANG==="zh"?"银行资料用于「薪资代发银行文件」导出；法定扣除(EPF/SOCSO/EIS/SL24J/PCB)在『薪资发放 Payroll』按马来西亚公式自动算。EPF 依国籍自动判定（马来西亚籍有 EPF）。":"Bank details used for the salary bank file export. Statutory deductions auto-calculated in Payroll Run."}</div>
+      <div class="hint">${LANG==="zh"?"EPF 依国籍自动判定（马来西亚籍有 EPF）。":"Bank details used for the salary bank file export. Statutory deductions auto-calculated in Payroll Run."}</div>
       <button class="btn block brand" onclick="saveEmp()">${LANG==="zh"?"保存员工":"Save"}</button>`,
     opex:`<h3>✎ ${LANG==="zh"?"编辑运营开销":"Edit OpEx"} <span class="tag">${monthLabel2(costMonth)}</span> <span class="x" onclick="closeM()">×</span></h3>
       <div class="hint" style="margin-bottom:6px;">${LANG==="zh"?"仅修改本月（"+monthLabel2(costMonth)+"）的开销，其他月份不受影响。营销/维修/Wi-Fi/垃圾清理/POS月租/会计费/维修杂项这7项已改成实时读取「运营开销记录」，这里不能改，要去那边加/改记录。":"Edits this month only. Marketing/Maintenance/Misc items are live from the OpEx Log and can't be edited here."}</div>
@@ -5392,7 +5434,7 @@ function payActionsHTML(w,fin,zh){
 
 
 /* 页面路由补充（ap/opex 不在底部tab，用函数导航） */
-const _pages={dash:pgDash,sales:pgSales,inv:pgInv,proc:pgProc,bom:pgBom,report:pgReport,settings:pgSettings,ap:pgAp,opex:pgOpex,opexm:pgOpexM,payroll:pgPayroll,payrun:pgPayrun,hr:pgHR,attend:pgAttend,schedule:pgSchedule,leave:pgLeave,ck:pgCK,stock:pgStock,
+const _pages={dash:pgDash,sales:pgSales,inv:pgInv,proc:pgProc,bom:pgBom,report:pgReport,settings:pgSettings,ap:pgAp,opex:pgOpex,opexm:pgOpexM,hr:pgHR,attend:pgAttend,schedule:pgSchedule,leave:pgLeave,ck:pgCK,stock:pgStock,
   purchase:pgPurchase,grn:pgGRN,transfer:pgTransfer,waste2:pgWaste2,offer:pgOffer,monthend:pgMonthEnd,monthly:pgMonthly,ordersheet:pgOrderSheet,orderinv:pgOrderInv,opexlog:pgOpexLog};
 /* 顶栏在窄手机上文字太多会自动换行、变高(实测 375px 宽的手机顶栏可以到 139px 高)；
    量出顶栏"现在真正的高度"写进 --topH 这个 CSS 变量，侧边菜单/遮罩层跟着它定位，
@@ -5529,7 +5571,7 @@ function ui2Tabs(){
   add('swap','调拨','Transfer',"goProcSub('transfer')",curPage==='transfer',pageAllowed('transfer'));
   let hasDash=pageAllowed('dash');
   if(defs.length<2){defs.length=0;hasDash=false;
-    [['attend','clock'],['leave','sun'],['payroll','wallet'],['hr','user']].forEach(([p,ic])=>{if(pageAllowed(p))defs.push({icon:ic,label:mlabel(p),go:"nav('"+p+"')",on:curPage===p});});
+    [['attend','clock'],['leave','sun'],['hr','user']].forEach(([p,ic])=>{if(pageAllowed(p))defs.push({icon:ic,label:mlabel(p),go:"nav('"+p+"')",on:curPage===p});});
   }
   // 总览放正中间（小山坡的山顶）；底部不再放「更多」——左上角 ☰ 就是菜单
   let ci=-1;
