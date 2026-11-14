@@ -834,6 +834,17 @@ html.ui2 .hint{background:transparent!important;border:0!important;padding:2px 2
 #imgZoom{position:fixed;inset:0;z-index:300;background:rgba(10,12,20,.82);display:none;align-items:center;justify-content:center;padding:20px;}
 #imgZoom.show{display:flex;}#imgZoom img{width:min(86vw,340px);height:auto;max-height:80vh;object-fit:contain;background:#fff;border-radius:12px;padding:8px;box-sizing:border-box;}
 
+
+/* ---- 订单详情（mk92）：表格改卡片 ---- */
+.odl{display:grid;gap:10px;max-height:56vh;overflow:auto;padding:2px;margin-top:8px;}
+@media(min-width:761px){.odl{grid-template-columns:1fr 1fr;}}
+.odc{border:1px solid var(--line);border-radius:var(--radius);background:var(--card);padding:12px;}
+.odc-h{display:flex;gap:8px;align-items:flex-start;justify-content:space-between;}.odc-n{font-weight:700;font-size:14px;line-height:1.4;word-break:break-word;}
+.odc-f{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:10px;align-items:end;}
+.odc-f label{display:grid;gap:4px;font-size:11.5px;color:var(--grey);min-width:0;}
+.odc-f input.odnum{width:100%;box-sizing:border-box;font-size:16px;padding:10px;min-height:44px;text-align:right;border:1px solid var(--line2);border-radius:var(--radius-sm);background:var(--card);color:var(--ink);}
+.odc-a{grid-column:1/-1;display:flex;justify-content:space-between;align-items:center;font-size:12.5px;color:var(--ink2);border-top:1px dashed var(--line2);padding-top:8px;}.odc-a b{font-size:16px;color:var(--ink);font-variant-numeric:tabular-nums;}
+.odtot{position:sticky;bottom:0;display:flex;justify-content:space-between;gap:10px;margin-top:10px;padding:12px 14px;border-radius:var(--radius);background:var(--ink);color:#fff;font-size:13px;}.odtot b{font-size:17px;margin-left:4px;}
 /* ---- 弹窗表单（mk90）：固定标题 + 固定保存按钮 + 大一点的关闭键 + 16px 输入（iPhone 不会自动放大）---- */
 html.ui2 .m h3{position:sticky;top:0;z-index:5;background:var(--card);padding:8px 0 12px;margin:0 0 6px;border-bottom:1px solid var(--row-line);}
 html.ui2 .m h3 .x{flex:none;width:36px;height:36px;display:grid;place-items:center;border-radius:50%;background:var(--soft);color:var(--ink2);font-size:20px;}
@@ -892,7 +903,7 @@ html.ui2[data-theme="cn"] .m>button.btn.block.brand{box-shadow:0 -14px 12px 4px 
 </head>
 <body>
 <div class="top">
-  <div class="l"><button class="menu-btn" onclick="toggleSide()">☰</button><span class="brand-logo" title="明记家乡小食店"><svg width="34" height="34" viewBox="0 0 100 100" aria-label="明记" style="border-radius:7px;"><rect x="4" y="4" width="92" height="92" rx="16" fill="#7C1619"/><rect x="4" y="4" width="92" height="92" rx="16" fill="none" stroke="#F2B417" stroke-width="7"/><text x="50" y="33" text-anchor="middle" dominant-baseline="central" font-family="'Microsoft YaHei','PingFang SC',sans-serif" font-weight="800" font-size="40" fill="#F2B417">明</text><text x="50" y="70" text-anchor="middle" dominant-baseline="central" font-family="'Microsoft YaHei','PingFang SC',sans-serif" font-weight="800" font-size="40" fill="#F2B417">记</text></svg></span><h1 id="appTitle">明记家乡小食店</h1><span id="topBranchTag" style="margin-left:8px;font-size:10px;padding:2px 6px;border-radius:6px;background:#F2B417;color:#12203A;font-weight:800;">-</span></div>
+  <div class="l"><button class="menu-btn" onclick="toggleSide()">☰</button><span class="brand-logo" role="button" tabindex="0" title="回主页 Home" onclick="goHome()" onkeydown="if(event.key==='Enter')goHome()" style="cursor:pointer;-webkit-tap-highlight-color:transparent;"><svg width="34" height="34" viewBox="0 0 100 100" aria-label="明记" style="border-radius:7px;"><rect x="4" y="4" width="92" height="92" rx="16" fill="#7C1619"/><rect x="4" y="4" width="92" height="92" rx="16" fill="none" stroke="#F2B417" stroke-width="7"/><text x="50" y="33" text-anchor="middle" dominant-baseline="central" font-family="'Microsoft YaHei','PingFang SC',sans-serif" font-weight="800" font-size="40" fill="#F2B417">明</text><text x="50" y="70" text-anchor="middle" dominant-baseline="central" font-family="'Microsoft YaHei','PingFang SC',sans-serif" font-weight="800" font-size="40" fill="#F2B417">记</text></svg></span><h1 id="appTitle">明记家乡小食店</h1><span id="topBranchTag" style="margin-left:8px;font-size:10px;padding:2px 6px;border-radius:6px;background:#F2B417;color:#12203A;font-weight:800;">-</span></div>
   <div class="r">
     <button class="lang" id="installBtn" onclick="installApp()" title="安装为App Install">📲</button>
     <button class="lang" id="xferBellBtn" onclick="openXferInbox()" title="跨店调拨申请 Transfer requests" style="display:none;position:relative;">🔁<span id="xferBellCount" style="display:none;position:absolute;top:-4px;right:-4px;min-width:16px;height:16px;line-height:16px;padding:0 3px;border-radius:9px;background:#d92d20;color:#fff;font-size:10px;font-weight:700;text-align:center;">0</span></button>
@@ -1262,7 +1273,7 @@ function statusOf(d){if(d<=14)return{t:"健康",e:"Fresh",c:"p-g"};if(d<=30)retu
 function stTxt(s){return LANG==="zh"?s.t:s.e;}
 
 /* ================= 数据种子 ================= */
-const BUILD="1111mk91";  // 版本标记：页面右上/网格提示可见，用来确认已载入最新版
+const BUILD="1111mk92";  // 版本标记：页面右上/网格提示可见，用来确认已载入最新版
 const SEED_VERSION="bh-master-2026-09-1";  // 版本变更→下次载入自动重置为最新主数据（仅本店云端）
 function seed(outletId){
   const isCK = outletId==="ck";
@@ -2008,6 +2019,7 @@ async function switchOutlet(){curOutlet=document.getElementById('outletSel').val
   render();}
 function switchRole(){curRole=document.getElementById('roleSel').value;if(!pageAllowed(curPage))curPage=firstAllowedPage();render();}
 function toggleLang(){LANG=LANG==="zh"?"en":"zh";render();}
+function goHome(){try{closeM();}catch(e){}try{const sb=document.getElementById('sidebar');if(sb&&sb.classList.contains('open'))toggleSide();}catch(e){}if(typeof sfx==='function')try{sfx('click');}catch(e){}nav(firstAllowedPage());window.scrollTo(0,0);}
 function nav(p){curPage=p;if(!['purchase','grn','monthend'].includes(p))selSupplier=null;if(p!=='inv')invSupplier=null;if(p!=='bom')dcSel=null;if(p!=='ap')apSel=null;if(p!=='orderinv'){oiSel=null;oiMonth=null;}if(p!=='opexm')opexMSel=null;if(p!=='payrun'){payslipMode=null;payslipPick={};}const sb=document.getElementById('sidebar');if(sb)sb.classList.remove('open');const bd=document.getElementById('backdrop');if(bd)bd.classList.remove('show');render();window.scrollTo(0,0);}
 
 
@@ -3546,33 +3558,28 @@ function setOL(id,arr,i,field,v){const o=orderById(id);if(!o||!o[arr]||!o[arr][i
 function odRecalc(id){const o=orderById(id);if(!o)return;['lines','uniform'].forEach(arr=>(o[arr]||[]).forEach((l,i)=>{const el=document.getElementById('oda-'+arr+'-'+i);if(el)el.textContent=money((+l.q||0)*(+l.price||0));}));const t=orderTotals(o);const q=document.getElementById('odTQ');if(q)q.textContent=num(t.tq,2);const a=document.getElementById('odTA');if(a)a.textContent=money(t.ta);}
 async function delOL(id,arr,i){const o=orderById(id);if(!o)return;const it=o[arr][i];if(!confirm(LANG==="zh"?("移除『"+String((it.d||('Size '+it.size)||'')).split('\n')[0]+"』？"):"Remove item?"))return;o[arr].splice(i,1);await saveOrders();openOrderDetail(id);}
 function odRow(id,arr,i,name,l){
-  return `<tr>
-    <td>${oEsc(name)}</td>
-    <td class="c"><input class="odnum" inputmode="decimal" value="${oEsc(l.q)}" oninput="setOL('${id}','${arr}',${i},'q',this.value)"></td>
-    <td class="c"><input class="odnum" inputmode="decimal" placeholder="0" value="${oEsc(l.price!=null?l.price:'')}" oninput="setOL('${id}','${arr}',${i},'price',this.value)"></td>
-    <td class="c" id="oda-${arr}-${i}">${money((+l.q||0)*(+l.price||0))}</td>
-    <td class="c"><span class="ib" onclick="delOL('${id}','${arr}',${i})">🗑️</span></td>
-  </tr>`;
+  return `<div class="odc"><div class="odc-h"><div class="odc-n">${oEsc(name)}</div><button class="ib" onclick="delOL('${id}','${arr}',${i})" title="删除">🗑️</button></div>
+    <div class="odc-f"><label>数量/重量 Qty<input class="odnum" inputmode="decimal" value="${oEsc(l.q)}" oninput="setOL('${id}','${arr}',${i},'q',this.value)"></label>
+    <label>单价 Price<input class="odnum" inputmode="decimal" placeholder="0" value="${oEsc(l.price!=null?l.price:'')}" oninput="setOL('${id}','${arr}',${i},'price',this.value)"></label>
+    <div class="odc-a"><span>金额 Amt</span><b id="oda-${arr}-${i}">${money((+l.q||0)*(+l.price||0))}</b></div></div></div>`;
 }
 function openOrderDetail(id){
   const o=orderById(id);if(!o)return;const zh=LANG==="zh";_orderEditing=true; // 打开订单详情=正在编辑，暂停轮询覆盖
   const rows=[
     ...(o.lines||[]).map((l,i)=>odRow(id,'lines',i,(l.d||'').replace(/\n/g,' / '),l)),
     ...(o.uniform||[]).map((u,i)=>odRow(id,'uniform',i,(zh?'制服 Uniform · Size ':'Uniform · Size ')+u.size,u))
-  ].join('')||`<tr><td colspan="5" class="c">—</td></tr>`;
+  ].join('')||`<div class="empty">—</div>`;
   const t=orderTotals(o);
   const dt=new Date(o.ts);const when=dt.toLocaleString('en-MY',{hour12:false});
   const badge=o.status==='confirmed'?`<span class="pill p-g">${zh?"已确认":"Confirmed"} ${o.invoiceNo||''}</span>`:`<span class="pill p-a">${zh?"待确认":"Pending"}</span>`;
   openForm(`<div style="display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap;">
-      <h3 style="margin:0;">${zh?"订单详情":"Order"} <span class="x" onclick="closeM()">×</span></h3>
+      <h3 style="margin:0;flex:1;">${zh?"订单详情":"Order"} <span class="x" onclick="closeM()">×</span></h3>
       <button class="btn ghost sm" onclick="openOrdersPanel()">← ${zh?"返回列表":"Back"}</button>
     </div>
-    <div class="mini" style="margin:6px 0;">🧑 ${oEsc(o.by&&o.by.name||'')} · ${o.supplier?oEsc(o.supplier)+' · ':''}${oEsc(o.outletName||'')} · ${when} · ${badge}</div>
+    <div class="mini" style="margin:6px 0;">${oEsc(o.by&&o.by.name||'')} · ${o.supplier?oEsc(o.supplier)+' · ':''}${oEsc(o.outletName||'')} · ${when} · ${badge}</div>
     <div class="hint" style="margin-top:0;">${zh?"货物不够就改数量或🗑️删掉；可填单价算金额。改动自动保存。":"Adjust qty / remove / set price."}</div>
-    <div style="max-height:66vh;overflow:auto;"><table class="odtbl"><thead><tr><th>${zh?"品名":"Item"}</th><th class="c" style="width:88px;">${zh?"数量/重量":"Qty"}</th><th class="c" style="width:96px;">${zh?"单价":"Price"}</th><th class="c" style="width:110px;">${zh?"金额":"Amt"}</th><th class="c" style="width:44px;"></th></tr></thead>
-      <tbody>${rows}</tbody>
-      <tfoot><tr><td style="text-align:right;font-weight:800;">${zh?"合计":"Total"}</td><td class="c" style="font-weight:800;" id="odTQ">${num(t.tq,2)}</td><td></td><td class="c" style="font-weight:800;" id="odTA">${money(t.ta)}</td><td></td></tr></tfoot>
-    </table></div>
+    <div class="odl">${rows}</div>
+    <div class="odtot"><span>${zh?"合计":"Total"} · ${zh?"数量":"Qty"} <b id="odTQ">${num(t.tq,2)}</b></span><span>${zh?"金额":"Amt"} <b id="odTA">${money(t.ta)}</b></span></div>
     <div style="display:flex;gap:6px;justify-content:flex-end;margin-top:10px;flex-wrap:wrap;">
       ${o.status!=='confirmed'?`<button class="btn brand sm" onclick="confirmOrder('${o.id}')">✅ ${zh?"确定订单":"Confirm"}</button>`:`<button class="btn gold sm" onclick="openInvoice('${o.id}')">🧾 ${zh?"创建 Invoice":"Create Invoice"}</button>`}
       <button class="btn ghost sm" onclick="deleteOrder('${o.id}')">🗑️ ${zh?"删除订单":"Delete"}</button>
