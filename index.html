@@ -1190,7 +1190,7 @@ function statusOf(d){if(d<=14)return{t:"健康",e:"Fresh",c:"p-g"};if(d<=30)retu
 function stTxt(s){return LANG==="zh"?s.t:s.e;}
 
 /* ================= 数据种子 ================= */
-const BUILD="1111mk84";  // 版本标记：页面右上/网格提示可见，用来确认已载入最新版
+const BUILD="1111mk85";  // 版本标记：页面右上/网格提示可见，用来确认已载入最新版
 const SEED_VERSION="bh-master-2026-09-1";  // 版本变更→下次载入自动重置为最新主数据（仅本店云端）
 function seed(outletId){
   const isCK = outletId==="ck";
@@ -2406,54 +2406,46 @@ function oiInvoices(){return (typeof ORDERS!=='undefined'?ORDERS:[]).filter(o=>o
 function oiMonthOf(o){return new Date(o.confirmedAt||o.ts).toLocaleDateString('en-CA').slice(0,7);}
 function oiCanDel(){return ['owner','area','hrmgr'].includes(curRole)&&!isAgg();}
 async function delInvoice(id){if(!oiCanDel()){alert(LANG==="zh"?"只有区域副经理及以上可删除 Invoice。":"Only Area Manager & above can delete.");return;}if(!confirm(LANG==="zh"?"删除此 Invoice？此操作无法复原。":"Delete this invoice?"))return;await loadOrders();ORDERS=ORDERS.filter(o=>o.id!==id);await saveOrders();try{if(typeof auditLog==='function')auditLog(LANG==="zh"?"删除Invoice":"Delete invoice",id,"","");}catch(e){}render();}
+let oiQuery='';
+function oiBackAll(){oiSel=null;oiMonth=null;render();window.scrollTo(0,0);}
 function pgOrderInv(){
   const zh=LANG==="zh";
-  if(isAgg())return `<div class="fb"><h2 class="h" style="margin:0;">🧾 ${zh?"订单发票":"Order Invoices"}</h2></div><div class="hint">${zh?"请在右上角切换到某一分店查看该店的 Invoice。":"Switch to a branch."}</div>`;
+  if(isAgg())return `<div class="fb"><h2 class="h" style="margin:0;">${zh?"订单发票":"Order Invoices"}</h2></div><div class="card" style="padding:24px 18px;text-align:center;"><div style="font-weight:700;margin-bottom:6px;">${zh?'请先切换到某一间分店':'Pick a branch'}</div><div class="mini">${zh?'用右上角的分店选单，选好分店后再查看该店的 Invoice。':'Use the branch selector.'}</div></div>`;
   const all=oiInvoices();
-  const groups={};all.forEach(o=>{const s=apSupOf(o);(groups[s]=groups[s]||[]).push(o);});
+  const groups={};all.forEach(o=>{const s2=apSupOf(o);(groups[s2]=groups[s2]||[]).push(o);});
   const sups=Object.keys(groups).sort();
-  // Level 1: 供应商
+  const sum=l=>l.reduce((q,o)=>q+orderTotals(o).ta,0);
+  // 一级：供应商
   if(!oiSel){
-    const cards=sups.map(s=>{const ords=groups[s];const months=[...new Set(ords.map(oiMonthOf))];
-      return `<div class="card" style="padding:13px;margin-bottom:9px;cursor:pointer;" onclick="setOiSel('${s.replace(/'/g,"\\'")}')">
-        <div style="display:flex;justify-content:space-between;align-items:center;">
-          <div><div style="font-weight:800;font-size:15px;">🏢 ${oEsc(s)}</div>
-          <div class="mini">${ords.length} ${zh?"张 Invoice":"invoices"} · ${months.length} ${zh?"个月份":"months"}</div></div>
-          <span class="mini">›</span>
-        </div></div>`;}).join('')||`<div class="empty">${zh?"暂无 Invoice。请先在『采购进销 → 订货单』下单并确认生成 Invoice。":"No invoices yet."}</div>`;
-    return `<div class="fb"><h2 class="h" style="margin:0;">🧾 ${zh?"订单发票":"Order Invoices"} <span class="tag">v${BUILD}</span></h2></div>
-      <div class="hint">${zh?"订货单确认后生成的 Invoice 都在这里。点供应商 → 选月份 → 查看/打印。区域副经理及以上可删除。":"Invoices from confirmed order sheets. Supplier → month → view."}</div>
-      ${cards}`;
+    const tm=TODAY.slice(0,7);const monthAll=all.filter(o=>oiMonthOf(o)===tm);
+    const rows=sups.map(s2=>({s:s2,l:groups[s2],tot:sum(groups[s2]),last:groups[s2].reduce((m,o)=>Math.max(m,o.confirmedAt||o.ts||0),0)})).sort((x,y)=>y.last-x.last);
+    const q=(oiQuery||'').toLowerCase();
+    const cards=rows.map(r=>`<div class="dv-row ap-card" data-name="${oEsc(r.s.toLowerCase())}" style="cursor:pointer;${q&&!r.s.toLowerCase().includes(q)?'display:none;':''}" onclick="setOiSel('${r.s.replace(/\\/g,"\\\\").replace(/'/g,"\\'")}')">
+      <div style="min-width:0;"><div class="dv-name">${oEsc(r.s)}</div><div class="mini">${r.l.length} ${zh?"张 Invoice":"invoices"} · ${zh?'最近':'last'} ${r.last?new Date(r.last).toLocaleDateString('en-GB'):'—'}</div></div>
+      <div class="inv-qty"><div class="inv-q">${money(r.tot)}</div><div class="mini">${zh?'累计':'total'} ›</div></div></div>`).join('')||`<div class="empty">${zh?"暂无 Invoice。请先在『采购进销 → 订货单』下单并确认生成 Invoice。":"No invoices yet."}</div>`;
+    return `<div class="fb"><h2 class="h" style="margin:0;">${zh?"订单发票":"Order Invoices"}</h2></div>
+      <div class="grid g3 sup-sum"><div class="kpi"><div class="k">${zh?"Invoice 总数":"Invoices"}</div><div class="v sm">${all.length}</div></div><div class="kpi"><div class="k">${zh?"本月金额":"This month"}</div><div class="v sm">${money(sum(monthAll))}</div></div><div class="kpi"><div class="k">${zh?"供应商":"Suppliers"}</div><div class="v sm">${sups.length}</div></div></div>
+      <details class="hintd"><summary>${zh?'说明':'Notes'}</summary><div>${zh?"订货单确认后生成的 Invoice 都在这里。点供应商 → 选月份 → 查看/打印。区域副经理及以上可删除。":"Invoices from confirmed order sheets."}</div></details>
+      ${all.length?`<div class="dv-tools"><input class="dv-search" type="search" placeholder="${zh?'搜索供应商…':'Search suppliers…'}" value="${oEsc(oiQuery)}" oninput="oiQuery=this.value;dvFilter(this.value)" autocomplete="off"></div>`:''}
+      <div id="dvList">${cards}</div>`;
   }
+  // 二级：供应商 → 月份标签 + Invoice 卡片（合并成一页）
   const ords=(groups[oiSel]||[]);
-  // Level 2: 月份
-  if(!oiMonth){
-    const mMap={};ords.forEach(o=>{const m=oiMonthOf(o);(mMap[m]=mMap[m]||[]).push(o);});
-    const months=Object.keys(mMap).sort().reverse();
-    const cards=months.map(m=>{const list=mMap[m];const tot=list.reduce((a,o)=>a+orderTotals(o).ta,0);
-      return `<div class="card" style="padding:13px;margin-bottom:9px;cursor:pointer;" onclick="setOiMonth('${m}')">
-        <div style="display:flex;justify-content:space-between;align-items:center;">
-          <div><div style="font-weight:800;font-size:15px;">📅 ${monthLabel2(m)}</div>
-          <div class="mini">${list.length} ${zh?"张 Invoice":"invoices"} · ${money(tot)}</div></div>
-          <span class="mini">›</span>
-        </div></div>`;}).join('')||`<div class="empty">—</div>`;
-    return `<div class="fb"><h2 class="h" style="margin:0;">🧾 ${oEsc(oiSel)}</h2><button class="btn ghost sm" onclick="backOi()">← ${zh?"供应商列表":"Suppliers"}</button></div>
-      <div class="hint">${zh?"选月份查看该月 Invoice。":"Pick a month."}</div>${cards}`;
-  }
-  // Level 3: Invoice 列表
-  const list=ords.filter(o=>oiMonthOf(o)===oiMonth).sort((a,b)=>(b.confirmedAt||b.ts)-(a.confirmedAt||a.ts));
-  const rows=list.map(o=>{const t=orderTotals(o);const dt=new Date(o.confirmedAt||o.ts).toLocaleDateString('en-GB');
-    return `<div class="card" style="padding:12px;margin-bottom:8px;">
-      <div style="display:flex;justify-content:space-between;gap:8px;align-items:center;flex-wrap:wrap;">
-        <div><div style="font-weight:800;">🧾 ${oEsc(o.invoiceNo||'-')}</div>
-        <div class="mini">${dt} · ${zh?"下单":"by"} ${oEsc(o.by&&o.by.name||'')} · ${(o.lines||[]).length+(o.uniform||[]).length} ${zh?"项":"items"} · ${money(t.ta)}</div></div>
-        <div style="display:flex;gap:6px;flex-wrap:wrap;">
-          <button class="btn gold sm" onclick="openInvoice('${o.id}')">🧾 ${zh?"查看":"View"}</button>
-          ${oiCanDel()?`<button class="btn ghost sm" onclick="delInvoice('${o.id}')">🗑️ ${zh?"删除":"Delete"}</button>`:''}
-        </div>
-      </div></div>`;}).join('')||`<div class="empty">—</div>`;
-  return `<div class="fb"><h2 class="h" style="margin:0;">🧾 ${oEsc(oiSel)} · ${monthLabel2(oiMonth)}</h2><button class="btn ghost sm" onclick="backOi()">← ${zh?"月份":"Months"}</button></div>
-    <div class="hint">${zh?"点『查看』看完整 Invoice，可打印/存 PDF。":"View to open & print."}${oiCanDel()?'':(zh?' 你只能查看，不能删除。':' View only.')}</div>${rows}`;
+  const mMap={};ords.forEach(o=>{const m=oiMonthOf(o);(mMap[m]=mMap[m]||[]).push(o);});
+  const months=Object.keys(mMap).sort().reverse();
+  const cur=(oiMonth&&mMap[oiMonth])?oiMonth:months[0];
+  const list=(mMap[cur]||[]).sort((a2,b2)=>(b2.confirmedAt||b2.ts)-(a2.confirmedAt||a2.ts));
+  const chips=`<div class="seg mtabs nox">${months.map(m=>`<button class="${m===cur?'active':''}" onclick="setOiMonth('${m}')">${monthLabel2(m)} <span class="mini">${mMap[m].length}</span></button>`).join('')}</div>`;
+  const cards=list.map(o=>{const t=orderTotals(o);const dt=new Date(o.confirmedAt||o.ts).toLocaleDateString('en-GB');const n=(o.lines||[]).length+(o.uniform||[]).length;
+    return `<div class="dv-row inv-card" data-name="${oEsc(String(o.invoiceNo||'').toLowerCase())}">
+      <div style="min-width:0;"><div class="dv-name">${oEsc(o.invoiceNo||'-')}</div><div class="mini">${dt} · ${zh?"下单":"by"} ${oEsc(o.by&&o.by.name||'')}</div><div class="mini">${n} ${zh?"项":"items"}</div></div>
+      <div class="inv-qty"><div class="inv-q">${money(t.ta)}</div><div class="inv-act" style="flex-wrap:wrap;justify-content:flex-end;"><button class="btn ghost sm" onclick="openInvoice('${o.id}')">${zh?"查看":"View"}</button>${oiCanDel()?`<button class="ib" onclick="delInvoice('${o.id}')">🗑️</button>`:''}</div></div></div>`;}).join('')||`<div class="empty">—</div>`;
+  return `<div class="fb"><h2 class="h" style="margin:0;">${oEsc(oiSel)}</h2><button class="btn ghost sm" onclick="oiBackAll()">← ${zh?"供应商列表":"Suppliers"}</button></div>
+    ${chips}
+    <div class="grid g2 sup-sum"><div class="kpi"><div class="k">${zh?"本月 Invoice":"Invoices"}</div><div class="v sm">${list.length}</div></div><div class="kpi"><div class="k">${zh?"本月金额":"Amount"}</div><div class="v sm">${money(sum(list))}</div></div></div>
+    ${list.length>3?`<div class="dv-tools"><input class="dv-search" type="search" placeholder="${zh?'搜索 Invoice 号…':'Search invoice no…'}" oninput="dvFilter(this.value)" autocomplete="off"></div>`:''}
+    <div id="dvList" class="inv-grid">${cards}</div>
+    ${oiCanDel()?'':`<div class="hint">${zh?'你只能查看，不能删除。':'View only.'}</div>`}`;
 }
 
 /* ================= M7 配方成本（可编辑菜品成本表 + 单独算）================= */
@@ -2759,8 +2751,9 @@ function pgOpex(){
   const labourKeys=["salaries","epf","socso","eis","levy","ot"];
   const pl=payrollLabour();const plMap={salaries:pl.salaries,epf:pl.epf,socso:pl.socso,eis:pl.eis,levy:pl.levy,ot:pl.ot};
   const labourSynced=labourKeys.every(k=>Math.round((+o[k]||0))===Math.round((plMap[k]||0)));
-  return `<div class="fb"><h2 class="h" style="margin:0;">💵 ${LANG==="zh"?"运营开销 OpEx":"Operating Expenses"} <span class="tag">${monthLabel2(m)}${locked?' 🔒':''}</span></h2>${canW('opex')&&!locked?`<div style="display:flex;gap:6px;flex-wrap:wrap;">${canSeeSalary()?`<button class="btn ghost sm" onclick="syncOpexFromPayroll()">🔗 ${LANG==="zh"?"同步人事薪资":"Sync Payroll"}</button>`:''}<button class="btn gold sm" onclick="openM('opex')">✎ ${LANG==="zh"?"编辑":"Edit"}</button></div>`:''}</div>
-  <div class="seg" style="margin-bottom:8px;flex-wrap:wrap;">${availMonths().map(mm=>`<button class="${mm===m?'active':''}" onclick="setCostMonth('${mm}')">${monthLabel2(mm)}${monthLocked(mm)?' 🔒':''}</button>`).join('')}</div>
+  return `<div class="fb"><h2 class="h" style="margin:0;">${LANG==="zh"?"运营开销 OpEx":"Operating Expenses"}</h2>${canW('opex')&&!locked?`<div style="display:flex;gap:8px;align-items:center;"><button class="btn brand sm" onclick="openM('opex')">${LANG==="zh"?"编辑":"Edit"}</button>${canSeeSalary()?actm([{l:LANG==="zh"?"同步人事薪资":"Sync payroll",on:'syncOpexFromPayroll()'}]):''}</div>`:''}</div>
+  <div class="seg mtabs" style="margin-bottom:12px;">${availMonths().map(mm=>`<button class="${mm===m?'active':''}" onclick="setCostMonth('${mm}')">${monthLabel2(mm)}${monthLocked(mm)?' 🔒':''}</button>`).join('')}</div>
+  <div class="grid g2 sup-sum"><div class="kpi"><div class="k">${LANG==="zh"?"本月 OpEx 总额":"Total OpEx"}</div><div class="v sm neg">${money(total)}</div><div class="mini">${monthLabel2(m)}${locked?(LANG==="zh"?' · 已锁定':' · locked'):''}</div></div><div class="kpi"><div class="k">${LANG==="zh"?"最大一项":"Largest"}</div><div class="v sm">${(function(){let best=['',0];groups.forEach(([g,rows])=>rows.forEach(([k,z,e])=>{const v=opexEffective(o,m,k);if(v>best[1])best=[LANG==="zh"?z:e,v];}));return best[1]?money(best[1]):'—';})()}</div><div class="mini">${(function(){let best=['',0];groups.forEach(([g,rows])=>rows.forEach(([k,z,e])=>{const v=opexEffective(o,m,k);if(v>best[1])best=[LANG==="zh"?z:e,v];}));return best[0]||'';})()}</div></div></div>
   <div class="hint">${LANG==="zh"?"运营开销按自然月独立核算，直接带入该月损益与净利。人工成本随『人事薪资』自动联动（也可手动改）；营销/维修/Wi-Fi/垃圾清理/POS月租/会计费/维修杂项这7项直接实时读取「运营开销记录」，加一笔立刻反映，不用同步。":"Per-month OpEx feeds that month's P&L. Labour auto-links to Payroll. Marketing/Maintenance/Misc items live-read from the OpEx Log — no sync needed."}${hideSalary?(LANG==="zh"?" ⚠️ 你的角色只能看人工总数。":" ⚠️ Labour total only."):""}</div>
   ${locked?`<div class="al al-b" style="margin-bottom:8px;"><div class="t">🔒 ${LANG==="zh"?monthLabel2(m)+" 已月末锁定":"Locked"}</div>${LANG==="zh"?"该月开销已归档固定；如需修改请到『月度核算』解锁。":"Archived; unlock in Monthly."}</div>`:`<div class="hint" style="margin-bottom:8px;">${own?(LANG==="zh"?"📌 本月为专属开销（与其他月独立）。":"📌 Month-specific."):(LANG==="zh"?"📄 本月沿用默认开销；一旦编辑/同步即建立本月专属副本。":"📄 Using default template.")}</div>`}
   ${(!hideSalary&&canSeeSalary())?`<div class="al ${labourSynced?'al-b':'al-a'}" style="margin-bottom:8px;"><div class="t">${labourSynced?('🔗 '+(LANG==="zh"?"人工成本 已与人事薪资一致":"Labour matches payroll")):('⚠️ '+(LANG==="zh"?"人工成本与人事薪资不一致":"Labour differs from payroll"))}</div>${LANG==="zh"?"人事薪资实际：薪资"+money(pl.salaries)+" · OT"+money(pl.ot)+" · EPF"+money(pl.epf)+" · SOCSO"+money(pl.socso)+" · EIS"+money(pl.eis)+" · 人头税"+money(pl.levy)+(labourSynced?"":"　→ 点『🔗同步人事薪资』填入"):""}</div>`:''}
@@ -2772,7 +2765,7 @@ function pgOpex(){
         <div class="pl"><div class="row"><span>${LANG==="zh"?"人工成本总额（含薪资/EPF/SOCSO/税/OT）":"Total Labour (masked)"}</span><b>${money(gtotal)}</b></div>
         <div class="row"><span class="mini">${LANG==="zh"?"🔒 个别项目已隐藏（权限限制）":"🔒 Breakdown hidden"}</span><span></span></div></div>`;
     }
-    return `<h2 class="h">${g} <span class="tag">${money(gtotal)}</span></h2>
+    return `<h2 class="h" style="margin-top:14px;">${g} <span class="tag">${money(gtotal)}</span></h2>
     <div class="pl">${rows.map(([k,z,e])=>{const linked=labourKeys.includes(k);const fromLog=typeof OPEXLOG_CATS!=='undefined'&&OPEXLOG_CATS.some(c=>c[0]===k);const ref=plMap[k];const diff=linked&&Math.round((+o[k]||0))!==Math.round(ref||0);return `<div class="row"><span>${LANG==="zh"?z:e}${linked?` <span class="pill p-b" title="${LANG==="zh"?"可从人事薪资联动":"payroll-linked"}">🔗</span>`:''}${fromLog?` <span class="pill p-b" title="${LANG==="zh"?"实时读取运营开销记录":"live from OpEx Log"}">🔗</span>`:''}</span><b${diff?' style="color:var(--amber)"':''}>${money(opexEffective(o,m,k))}${diff?`<br><span class="mini">${LANG==="zh"?"薪资":"HR"} ${money(ref)}</span>`:''}</b></div>`;}).join('')}</div>`;
   }).join('')}
   <div class="pl" style="margin-top:12px;"><div class="row tot"><span>${LANG==="zh"?"每月 OpEx 总额":"Total OpEx"}</span><span>${money(total)}</span></div></div>`;
@@ -2797,29 +2790,27 @@ function pgOpexM(){
   // 月份列表：可录入的月份（近月）+ 已有数据的月份
   const months=availMonths();
   if(!opexMSel){
-    return `<h2 class="h" style="margin-top:2px;">💵 ${zh?"运营开销录入":"OpEx Entry"} <span class="tag">${zh?"按月":"By Month"}</span></h2>
-    <div class="hint" style="margin-bottom:10px;">${zh?"👉 点一个月份进去，直接 key in 那个月的运营开销（租金、水电、营销、维修、杂费）。填好的数字会自动带进『损益表』和『月度核算』算净利。":"Tap a month, then key in that month's operating expenses. Values flow into the P&L automatically."}</div>
-    <div class="hint" style="margin-bottom:10px;display:flex;align-items:center;gap:8px;flex-wrap:wrap;">${zh?"要录入其他月份？":"Another month?"} <input type="month" id="opexmPick" value="${(costMonth||TODAY.slice(0,7))}" style="padding:7px 9px;border:1.5px solid var(--line);border-radius:8px;font-size:13px;font-weight:700;background:#fff;color:var(--ink);"><button class="btn ghost sm" onclick="var v=document.getElementById('opexmPick').value; if(v) setOpexMSel(v);">${zh?"进入":"Open"} ›</button></div>
-    <div class="grid g2">${months.map(mm=>{const o=curOpex(mm)||{};const sub=opexMSubtotal(o,mm);const lk=monthLocked(mm);const own=!!(d().opexByMonth&&d().opexByMonth[mm]);return `<div class="kpi" style="cursor:pointer;text-align:left;" onclick="setOpexMSel('${mm}')">
-      <div class="k" style="display:flex;justify-content:space-between;align-items:center;">${monthLabel2(mm)}${lk?' 🔒':(own?'':' <span class="mini" style="font-weight:600;">'+(zh?"未录":"—")+'</span>')}</div>
-      <div class="v sm">${money(sub)}</div>
-      <div class="s mini">${zh?"运营开销小计":"OpEx subtotal"} ›</div></div>`;}).join('')}</div>`;
+    return `<div class="fb"><h2 class="h" style="margin:0;">${zh?"运营开销录入":"OpEx Entry"}</h2></div>
+    <details class="hintd"><summary>${zh?'说明':'Notes'}</summary><div>${zh?"点一个月份进去，直接 key in 那个月的运营开销（租金、水电、营销、维修、杂费）。填好的数字会自动带进『损益表』和『月度核算』算净利。":"Tap a month and key in that month's expenses."}</div></details>
+    <div class="dv-tools"><span class="mini">${zh?"其他月份":"Another month"}</span><input type="month" id="opexmPick" value="${(costMonth||TODAY.slice(0,7))}" style="padding:9px 10px;border:1px solid var(--line2);border-radius:var(--radius-sm);font-size:15px;background:var(--card);color:var(--ink);"><button class="btn ghost sm" onclick="(function(){const v=document.getElementById('opexmPick').value;if(v)setOpexMSel(v);})()">${zh?"进入":"Go"}</button></div>
+    <div id="dvList" class="inv-grid">${months.map(mm=>{const o=curOpex(mm)||{};const sub=opexMSubtotal(o,mm);const lk=monthLocked(mm);const own=!!(d().opexByMonth&&d().opexByMonth[mm]);return `<div class="dv-row ap-card" style="cursor:pointer;border-left:5px solid ${lk?'var(--blue)':own?'var(--green)':'var(--line2)'};" onclick="setOpexMSel('${mm}')">
+      <div style="min-width:0;"><div class="dv-name">${monthLabel2(mm)}</div><div class="mini">${lk?(zh?'已月末锁定':'Locked'):(own?(zh?'已录入':'Entered'):(zh?'未录入':'Not entered'))}</div></div>
+      <div class="inv-qty"><div class="inv-q">${money(sub)}</div><div class="mini">${zh?"运营开销小计":"subtotal"} ›</div></div></div>`;}).join('')}</div>`;
   }
   // 单月录入
   const m=opexMSel;const locked=monthLocked(m);const o=curOpex(m)||{};const groups=opexMGroups();
   const sub=opexMSubtotal(o,m);
   const fromLog=k=>typeof OPEXLOG_CATS!=='undefined'&&OPEXLOG_CATS.some(c=>c[0]===k);
-  return `<div class="fb"><h2 class="h" style="margin:0;">💵 ${zh?"运营开销录入":"OpEx Entry"} <span class="tag">${monthLabel2(m)}${locked?' 🔒':''}</span></h2><button class="btn ghost sm" onclick="backOpexM()">← ${zh?"选月份":"Months"}</button></div>
-  <div class="hint" style="margin-bottom:8px;">${zh?"直接在下面 key in 金额（RM），填好按底部『保存本月』。只影响【"+monthLabel2(m)+"】，不会串到别的月。":"Key in the amounts (RM) below and tap Save. Affects "+monthLabel2(m)+" only."}</div>
-  ${locked?`<div class="al al-b" style="margin-bottom:8px;"><div class="t">🔒 ${zh?monthLabel2(m)+" 已月末锁定":"Locked"}</div>${zh?"该月开销已归档固定；如需修改请到『财务→月度核算』解锁。":"Archived; unlock in Monthly."}</div>`:''}
-  ${!w?`<div class="al al-a" style="margin-bottom:8px;"><div class="t">🔒 ${zh?"只读":"Read-only"}</div>${zh?"你的角色或当前视图不能修改运营开销。":"Your role/view cannot edit OpEx."}</div>`:''}
-  ${groups.map(([g,rows])=>{const gsub=rows.reduce((s,[k])=>s+opexEffective(o,m,k),0);return `<h2 class="h">${g} <span class="tag">${money(gsub)}</span></h2>
-    <div class="pl" style="padding:6px 10px;">${rows.map(([k,lbl])=>`<div class="fr" style="display:flex;align-items:center;justify-content:space-between;gap:10px;margin:6px 0;">
-      <label style="flex:1;font-size:13.5px;">${lbl}${fromLog(k)?` <span class="pill p-b" title="${zh?"实时读取运营开销记录":"live from OpEx Log"}">🔗</span>`:''}</label>
-      <div style="display:flex;align-items:center;gap:4px;"><span class="mini" style="color:var(--muted);">RM</span><input id="oxm_${k}" type="number" inputmode="decimal" step="0.01" min="0" value="${opexEffective(o,m,k)}" ${(locked||!w||fromLog(k))?'disabled':''} style="width:120px;text-align:right;padding:8px 9px;border:1.5px solid var(--line);border-radius:8px;font-size:14px;font-weight:700;"></div>
+  return `<div class="fb"><h2 class="h" style="margin:0;">${zh?"运营开销录入":"OpEx Entry"} <span class="tag">${monthLabel2(m)}${locked?' 🔒':''}</span></h2><button class="btn ghost sm" onclick="backOpexM()">← ${zh?"选月份":"Months"}</button></div>
+  <details class="hintd"><summary>${zh?'说明':'Notes'}</summary><div>${zh?"直接在下面 key in 金额（RM），填好按底部『保存本月』。只影响【"+monthLabel2(m)+"】，不会串到别的月。带 🔗 的项目实时读取「运营开销记录」，不能手填。":"Key in the amounts (RM) and Save. Affects this month only."}</div></details>
+  ${locked?`<div class="al al-b" style="margin-bottom:8px;"><div class="t">${zh?monthLabel2(m)+" 已月末锁定":"Locked"}</div>${zh?"该月开销已归档固定；如需修改请到『财务→月度核算』解锁。":"Archived; unlock in Monthly."}</div>`:''}
+  ${!w?`<div class="al al-a" style="margin-bottom:8px;"><div class="t">${zh?"只读":"Read-only"}</div>${zh?"你的角色或当前视图不能修改运营开销。":"Your role/view cannot edit OpEx."}</div>`:''}
+  ${groups.map(([g,rows])=>{const gsub=rows.reduce((q,[k])=>q+opexEffective(o,m,k),0);return `<div class="card" style="padding:14px;margin-bottom:12px;"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;"><b style="font-size:15px;">${g.replace(/^[^\s]+\s/,'')}</b><span class="mini">${money(gsub)}</span></div>
+    ${rows.map(([k,lbl])=>`<div class="fr" style="display:flex;align-items:center;justify-content:space-between;gap:10px;margin:10px 0;">
+      <label style="flex:1;font-size:14px;">${lbl}${fromLog(k)?` <span class="pill p-b">${zh?'实时':'live'}</span>`:''}</label>
+      <div style="display:flex;align-items:center;gap:6px;"><span class="mini">RM</span><input id="oxm_${k}" type="number" inputmode="decimal" step="0.01" min="0" value="${opexEffective(o,m,k)}" ${(locked||!w||fromLog(k))?'disabled':''} style="width:130px;text-align:right;font-size:16px;padding:10px 9px;border:1px solid var(--line2);border-radius:var(--radius-sm);background:var(--card);color:var(--ink);"></div>
     </div>`).join('')}</div>`;}).join('')}
-  <div class="pl" style="margin-top:12px;"><div class="row tot"><span>${zh?"本月运营开销小计":"Month OpEx subtotal"}</span><span>${money(sub)}</span></div></div>
-  ${(!locked&&w)?`<div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:12px;"><button class="btn brand" style="flex:1;" onclick="saveOpexM()">💾 ${zh?"保存本月":"Save Month"}</button></div>`:''}`;
+  <div class="dv-foot"><span>${zh?"本月运营开销小计":"Month subtotal"}</span><span style="display:flex;align-items:center;gap:12px;"><b>${money(sub)}</b>${(!locked&&w)?`<button class="btn brand sm" onclick="saveOpexM()">${zh?"保存本月":"Save"}</button>`:''}</span></div>`;
 }
 /* 「运营开销记录」(采购进销里那份零散流水账) 按类别加总，直接填进「运营开销录入」对应欄位
    (marketing/maintenance/wifi/rubbish/possaas/accounting/repair 两边 key 完全对得上)。
@@ -4880,20 +4871,31 @@ const OPEXLOG_CATS=[
   ["repair","维修杂项","Repair (misc)"],
 ];
 function opexLogCatLabel(k){const c=OPEXLOG_CATS.find(x=>x[0]===k);return c?(LANG==="zh"?c[1]:c[2]):(k||'—');}
+let opexLogCat='all';
+function opexLogCatSet(v){opexLogCat=v;render();}
 function pgOpexLog(){
   const zh=LANG==="zh";const x=d();const writable=subCanW('opexlog');
   const all=(x.opexLog||[]).slice();
   const months=logMonths(all);const cur=(opexLogMonth&&months.includes(opexLogMonth))?opexLogMonth:months[0];
-  const rs=all.filter(r=>(r.date||'').slice(0,7)===cur).sort((a,b)=>(b.date||'').localeCompare(a.date||''));
-  const tot=rs.reduce((s,r)=>s+(+r.amount||0),0);
-  return `<div class="fb"><h2 class="h" style="margin:0;">🧾 ${zh?"运营开销记录":"OpEx Log"} <span class="tag">v${BUILD}</span></h2><button class="btn ghost sm" onclick="nav('proc')">← ${zh?"进销存作业":"Operations"}</button></div>
-  <div class="hint">${zh?"按月分开。记录 类别·日期·Invoice No.·金额·备注，跟「运营开销」预算表是两回事，这里是零散开销的流水账。":"By month. Category, date, invoice no., amount & note — a running log, separate from the OpEx budget sheet."}</div>
-  ${writable?`<button class="btn brand sm" style="margin-bottom:8px;" onclick="formOpexLog()">+ ${zh?"新增开销":"Add"}</button>`:''}
-  ${logMonthTabs(months,cur,'setOpexLogMonth')}
-  <div class="grid g2" style="margin-bottom:10px;"><div class="kpi"><div class="k">${zh?"本月笔数":"Records"}</div><div class="v sm">${rs.length}</div></div><div class="kpi"><div class="k">${zh?"本月开销总额":"Total"}</div><div class="v sm neg">${money(tot)}</div></div></div>
-  <div class="card tbl"><table><thead><tr><th>${zh?"日期":"Date"}</th><th>${zh?"类别":"Category"}</th><th>Invoice No.</th><th>${zh?"金额":"Amount"}</th><th>${zh?"备注":"Note"}</th>${writable?'<th></th>':''}</tr></thead><tbody>
-  ${rs.map(r=>{const gi=x.opexLog.indexOf(r);return `<tr><td class="mini">${r.date}</td><td>${opexLogCatLabel(r.cat)}</td><td class="mini">${oEsc(r.invoiceNo)||'—'}</td><td class="neg">${money(r.amount)}</td><td class="mini">${oEsc(r.note)}</td>${writable?`<td style="white-space:nowrap;"><button class="ib" onclick="formOpexLog(${gi})">✏️</button> <button class="ib" onclick="delOpexLog(${gi})">🗑️</button></td>`:''}</tr>`;}).join('')||`<tr><td colspan="6" class="empty">${zh?"暂无记录":"None"}</td></tr>`}
-  </tbody><tfoot><tr style="background:#FAFBFC;font-weight:800;"><td colspan="3">${zh?"合计":"Total"}</td><td class="neg">${money(tot)}</td><td colspan="${writable?2:1}"></td></tr></tfoot></table></div>`;
+  const mrs=all.filter(r=>(r.date||'').slice(0,7)===cur);
+  const tot=mrs.reduce((s2,r)=>s2+(+r.amount||0),0);
+  const cats=[...new Set(mrs.map(r=>r.cat))];
+  const rs=mrs.filter(r=>opexLogCat==='all'||r.cat===opexLogCat).sort((a2,b2)=>(b2.date||'').localeCompare(a2.date||''));
+  const wd=zh?['日','一','二','三','四','五','六']:['Su','Mo','Tu','We','Th','Fr','Sa'];
+  const byDate={};rs.forEach(r=>{(byDate[r.date||'']=byDate[r.date||'']||[]).push(r);});
+  const body=Object.keys(byDate).sort().reverse().map(dt=>{const dd=new Date(dt+'T00:00:00');const t=byDate[dt].reduce((q,r)=>q+(+r.amount||0),0);
+    return `<div class="grn-day"><span>${zh?`${dd.getMonth()+1}月${dd.getDate()}日 · 周${wd[dd.getDay()]}`:dt}${dt===TODAY?` <span class="pill p-g">${zh?'今天':'Today'}</span>`:''}</span><b>${money(t)}</b></div>`+byDate[dt].map(r=>{const gi=x.opexLog.indexOf(r);
+      return `<div class="dv-row inv-card" data-name="${oEsc((opexLogCatLabel(r.cat)+' '+(r.invoiceNo||'')+' '+(r.note||'')).toLowerCase())}">
+        <div style="min-width:0;"><div class="dv-name">${opexLogCatLabel(r.cat)}</div><div class="mini">${r.invoiceNo?'Invoice '+oEsc(r.invoiceNo):(zh?'无 Invoice 号':'No invoice no.')}</div>${r.note?`<div class="mini">${oEsc(r.note)}</div>`:''}</div>
+        <div class="inv-qty"><div class="inv-q">${money(r.amount)}</div>${writable?`<div class="inv-act"><button class="ib" onclick="formOpexLog(${gi})">✏️</button><button class="ib" onclick="delOpexLog(${gi})">🗑️</button></div>`:''}</div></div>`;}).join('');}).join('');
+  return `<div class="fb"><h2 class="h" style="margin:0;">${zh?"运营开销记录":"OpEx Log"}</h2><div style="display:flex;gap:8px;align-items:center;">${writable?`<button class="btn brand sm" onclick="formOpexLog()">+ ${zh?"新增开销":"Add"}</button>`:''}<button class="btn ghost sm" onclick="nav('proc')">← ${zh?"返回":"Back"}</button></div></div>
+  ${logMonthTabs(months,cur,'setOpexLogMonth').replace('class="seg"','class="seg mtabs nox"')}
+  <div class="grid g2 sup-sum"><div class="kpi"><div class="k">${zh?"本月笔数":"Records"}</div><div class="v sm">${mrs.length}</div></div><div class="kpi"><div class="k">${zh?"本月开销总额":"Total"}</div><div class="v sm neg">${money(tot)}</div></div></div>
+  <details class="hintd"><summary>${zh?'说明':'Notes'}</summary><div>${zh?"按月分开。记录 类别·日期·Invoice No.·金额·备注，跟「运营开销」预算表是两回事，这里是零散开销的流水账；营销/维修/Wi-Fi 等项会实时带进「运营开销」。":"A running log of small expenses, by month."}</div></details>
+  ${mrs.length?`<div class="dv-tools"><input class="dv-search" type="search" placeholder="${zh?'搜索类别/Invoice/备注…':'Search…'}" oninput="dvFilter(this.value)" autocomplete="off"></div>
+  ${cats.length>1?`<div class="seg mtabs nox" style="margin-bottom:10px;"><button class="${opexLogCat==='all'?'active':''}" onclick="opexLogCatSet('all')">${zh?'全部':'All'}</button>${cats.map(c=>`<button class="${opexLogCat===c?'active':''}" onclick="opexLogCatSet('${c}')">${opexLogCatLabel(c)}</button>`).join('')}</div>`:''}`:''}
+  <div id="dvList">${body||`<div class="empty">${zh?"本月暂无开销记录":"None"}</div>`}</div>
+  <div class="dv-foot"><span>${monthLabel(cur)} ${zh?'开销合计':'total'}</span><b>${money(tot)}</b></div>`;
 }
 function formOpexLog(editIdx){
   const zh=LANG==="zh";const r=(editIdx!=null)?(d().opexLog||[])[editIdx]:null;const isEdit=!!r;
