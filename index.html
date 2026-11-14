@@ -794,6 +794,16 @@ html.ui2 .hint{background:transparent!important;border:0!important;padding:2px 2
 .sch-chip{display:flex;justify-content:space-between;align-items:center;gap:4px;background:var(--soft);border-radius:var(--radius-sm);padding:5px 7px;margin-bottom:5px;font-size:12px;}.sch-chip span{min-width:0;}.sch-chip b{display:block;font-size:12.5px;word-break:break-word;}.sch-chip small{color:var(--grey);}
 .sch-empty{color:var(--line2);text-align:center;font-size:12px;padding:6px 0;}
 @media(max-width:760px){.sch-grid{grid-template-columns:1fr;gap:8px;}.sch-day{padding:10px 12px;}.sch-h{justify-content:flex-start;gap:8px;font-size:13px;}.sch-chip{display:inline-flex;margin:0 6px 6px 0;min-width:44%;}.sch-empty{text-align:left;padding:0;}}
+
+.cc-wrap{display:flex;gap:22px;flex-wrap:wrap;align-items:center;}
+.cc-g{flex:0 0 230px;max-width:100%;margin:0 auto;}.cc-gauge{width:100%;height:auto;display:block;}
+.cc-b{flex:1;min-width:240px;display:grid;gap:10px;}
+.cc-row{display:grid;grid-template-columns:104px 1fr 96px;gap:10px;align-items:center;font-size:13px;}
+.cc-l{color:var(--ink2);white-space:nowrap;}.cc-bar{height:14px;background:var(--soft);border-radius:99px;overflow:hidden;}.cc-bar i{display:block;height:100%;border-radius:99px;}.cc-v{text-align:right;font-variant-numeric:tabular-nums;}
+.cc-in label{display:grid;gap:4px;font-size:11.5px;color:var(--grey);min-width:0;}.cc-in input{min-width:0;width:100%;box-sizing:border-box;}.cc-in input{padding:10px 9px;font-size:16px;border:1px solid var(--line2);border-radius:var(--radius-sm);background:var(--card);color:var(--ink);text-align:right;}
+@media(max-width:700px){.cc-row{grid-template-columns:92px 1fr 84px;}.cc-in{grid-template-columns:1fr 1fr 1fr!important;gap:8px!important;}.cc-in input{padding:9px 6px;font-size:15px;}}
+.os-row .os-desc{font-weight:600;line-height:1.45;white-space:pre-line;word-break:break-word;}
+.os-row .odesc-edit{min-height:24px;outline:none;border-bottom:1px dashed var(--line2);}
 /* ---- 进货「按日」视图（SUPY 风格）---- */
 .mtabs{flex-wrap:nowrap!important;overflow-x:auto;max-width:100%;scrollbar-width:none;}.mtabs::-webkit-scrollbar{display:none;}.mtabs button{flex:none;white-space:nowrap;}
 .mtabs.nox .ib{display:none;}
@@ -1200,7 +1210,7 @@ function statusOf(d){if(d<=14)return{t:"健康",e:"Fresh",c:"p-g"};if(d<=30)retu
 function stTxt(s){return LANG==="zh"?s.t:s.e;}
 
 /* ================= 数据种子 ================= */
-const BUILD="1111mk87";  // 版本标记：页面右上/网格提示可见，用来确认已载入最新版
+const BUILD="1111mk88";  // 版本标记：页面右上/网格提示可见，用来确认已载入最新版
 const SEED_VERSION="bh-master-2026-09-1";  // 版本变更→下次载入自动重置为最新主数据（仅本店云端）
 function seed(outletId){
   const isCK = outletId==="ck";
@@ -1590,17 +1600,19 @@ function xferStatusPill(r){
   if(r.status==='rejected')return `<span class="pill p-r">❌ ${zh?'被拒绝':'Rejected'}</span>${r.rejectReason?`<div class="mini">${oEsc(r.rejectReason)}</div>`:''}`;
   return `<span class="pill p-g">✅ ${zh?'已批准':'Approved'}</span>`;
 }
-function xferCardHtml(){ // 待批准 / 被拒绝 / 已批准但还没记进本店 的申请
+function xferCardHtml(){ // 待批准 / 被拒绝 / 已批准但还没记进本店 的申请（卡片）
   const zh=LANG==="zh";
   const done=new Set((DB[curOutlet]&&DB[curOutlet].xferApplied)||[]);
   const list=(isAgg()?XREQ:XREQ.filter(r=>r.reqBy===curOutlet||r.counter===curOutlet)).filter(r=>r.status!=='approved'||!done.has(r.id)).slice().reverse();
-  const rows=list.map(r=>{
+  const cards=list.map(r=>{
     const mine=r.reqBy===curOutlet;
-    const act=(xferCanApprove(r)?`<button class="btn gold sm" onclick="decideXreq('${r.id}','approved')">${zh?'批准':'Approve'}</button> <button class="btn ghost sm" onclick="decideXreq('${r.id}','rejected')">${zh?'拒绝':'Reject'}</button>`:'')+(xferCanWithdraw(r)?` <button class="btn ghost sm" onclick="withdrawXreq('${r.id}')">${r.status==='pending'?(zh?'撤回':'Withdraw'):(zh?'移除':'Remove')}</button>`:'');
-    return `<tr><td class="mini">${oEsc((r.date||'').slice(5))}</td><td>${r.kind==='item'?'📦':'🧑‍🍳'} <b>${oEsc(r.kind==='item'?(r.item+' '+num(r.qty)+(r.unit||'')):r.staff)}</b>${r.kind==='staff'&&r.role?` <span class="mini">${oEsc(r.role)}</span>`:''}<div class="mini">${oEsc(modeTxt(r.mode||(r.kind==='item'?'transfer':'loan')))}${r.note?' · '+oEsc(r.note):''}</div></td>
-      <td class="mini">${mine?(zh?'我方发起':'Mine'):oEsc(r.reqByName||oidName(r.reqBy))+(zh?' 发起':'')}<br>${oEsc(r.fromName||oidName(r.from))} → ${oEsc(r.toName||oidName(r.to))}</td><td>${xferStatusPill(r)}</td><td style="white-space:nowrap;">${act}</td></tr>`;
-  }).join('');
-  return `<div class="card tbl" style="margin-bottom:12px;"><table><thead><tr><th>${zh?'日期':'Date'}</th><th>${zh?'内容':'Request'}</th><th>${zh?'发起 / 调出→调入':'From → To'}</th><th>${zh?'状态':'Status'}</th><th></th></tr></thead><tbody>${rows||`<tr><td colspan="5" class="empty">${zh?'没有待处理的调拨申请':'No pending requests'}</td></tr>`}</tbody></table></div>`;
+    const act=(xferCanApprove(r)?`<button class="btn brand sm" onclick="decideXreq('${r.id}','approved')">${zh?'批准':'Approve'}</button><button class="btn ghost sm" onclick="decideXreq('${r.id}','rejected')">${zh?'拒绝':'Reject'}</button>`:'')+(xferCanWithdraw(r)?`<button class="btn ghost sm" onclick="withdrawXreq('${r.id}')">${r.status==='pending'?(zh?'撤回':'Withdraw'):(zh?'移除':'Remove')}</button>`:'');
+    const bc=r.status==='pending'?'var(--amber)':r.status==='rejected'?'var(--red)':'var(--green)';
+    return `<div class="dv-row inv-card" style="border-left:5px solid ${bc};"><div style="min-width:0;"><div class="dv-name">${oEsc(r.kind==='item'?(r.item+' '+num(r.qty)+(r.unit||'')):r.staff)}${r.kind==='staff'&&r.role?` <span class="mini">${oEsc(r.role)}</span>`:''}</div>
+      <div class="mini">${oEsc(r.fromName||oidName(r.from))} → ${oEsc(r.toName||oidName(r.to))} · ${mine?(zh?'我方发起':'Mine'):oEsc(r.reqByName||oidName(r.reqBy))+(zh?' 发起':'')}</div>
+      <div class="mini">${oEsc(modeTxt(r.mode||(r.kind==='item'?'transfer':'loan')))}${r.note?' · '+oEsc(r.note):''} · ${oEsc((r.date||'').slice(5))}</div><div style="margin-top:5px;">${xferStatusPill(r)}</div></div>
+      <div class="inv-qty"><div class="inv-act" style="flex-wrap:wrap;justify-content:flex-end;">${act}</div></div></div>`;}).join('');
+  return `<div class="inv-grid" style="margin-bottom:12px;">${cards||`<div class="empty">${zh?'没有待处理的调拨申请':'No pending requests'}</div>`}</div>`;
 }
 function openXferInbox(){
   _xferInboxOpen=true;const zh=LANG==="zh";
@@ -1967,7 +1979,7 @@ function calcRevenue(){ // 含税营业额（由销量×菜价，回退到 posGr
    bom    ③配方法：COGS = Σ(配方成本 × 销量)（招牌菜单品毛利）*/
 function costCfg(){
   const c=(d().costConfig)||{};
-  return {mode:c.mode||'rate', rate:(c.rate!=null?c.rate:35), openStock:+c.openStock||0, closeStock:+c.closeStock||0, purOverride:(c.purOverride===''||c.purOverride==null)?null:+c.purOverride};
+  return {mode:'period', rate:(c.rate!=null?c.rate:35), openStock:+c.openStock||0, closeStock:+c.closeStock||0, purOverride:(c.purOverride===''||c.purOverride==null)?null:+c.purOverride};
 }
 function monthPurchases(){ // 本月进货金额（自动：采购进货 type=in，按当前核算月）
   const m=costMonth||TODAY.slice(0,7);
@@ -1997,6 +2009,33 @@ function calcFin(){
   const netProfit=grossProfit-waste-ent-opex;
   return {gross,net,sst,cogs,grossProfit,waste,ent,opex,netProfit,foodPct:net?cogs/net*100:0,netPct:net?netProfit/net*100:0};
 }
+/* 食材成本（只用一种：实耗法＝月初库存＋本月进货−月末库存；SUPY 的 Actual food cost）+ 图表 */
+function _arc(cx,cy,r,a0,a1){const pt=a=>[cx+r*Math.cos(Math.PI-a*Math.PI),cy-r*Math.sin(Math.PI-a*Math.PI)];const p0=pt(a0),p1=pt(a1);return `M${p0[0].toFixed(1)} ${p0[1].toFixed(1)}A${r} ${r} 0 0 1 ${p1[0].toFixed(1)} ${p1[1].toFixed(1)}`;}
+function dashCostHTML(){
+  const zh=LANG==="zh";const cfg=costCfg();const autoPur=monthPurchases();
+  const pur=cfg.purOverride!=null?cfg.purOverride:autoPur;const cogs=Math.max(0,cfg.openStock+pur-cfg.closeStock);
+  const netM=calcRevenue()/1.06;const pct=netM>0?cogs/netM*100:0;
+  const col=pct===0?'var(--grey)':pct<28?'#0891B2':pct<=35?'var(--green)':'var(--red)';
+  const MAX=50,fr=v=>Math.min(1,Math.max(0,v/MAX));
+  const gauge=`<svg viewBox="0 0 200 118" class="cc-gauge"><path d="${_arc(100,100,78,0,1)}" fill="none" stroke="var(--soft)" stroke-width="16" stroke-linecap="round"/>
+    <path d="${_arc(100,100,78,fr(28),fr(35))}" fill="none" stroke="var(--green)" stroke-opacity=".28" stroke-width="16"/>
+    ${pct>0?`<path d="${_arc(100,100,78,0,Math.max(.012,fr(pct)))}" fill="none" stroke="${col}" stroke-width="16" stroke-linecap="round"/>`:''}
+    <text x="100" y="86" text-anchor="middle" font-size="30" font-weight="800" fill="var(--ink)">${pct.toFixed(1)}%</text>
+    <text x="100" y="106" text-anchor="middle" font-size="11" fill="var(--grey)">${zh?'食材成本率':'Food cost %'}</text>
+    <text x="14" y="116" font-size="10" fill="var(--grey)">0</text><text x="176" y="116" font-size="10" fill="var(--grey)">${MAX}%</text></svg>`;
+  const rows=[[zh?'月初库存':'Opening',cfg.openStock,'var(--blue)','+'],[zh?'本月进货':'Purchases',pur,'var(--amber)','+'],[zh?'月末库存':'Closing',cfg.closeStock,'var(--grey)','−'],[zh?'实耗食材成本':'Food cost',cogs,col,'=']];
+  const mx=Math.max(1,cfg.openStock+pur,cogs,cfg.closeStock);
+  const bars=rows.map(([l,v,c,sg])=>`<div class="cc-row"><span class="cc-l">${sg} ${l}</span><span class="cc-bar"><i style="width:${Math.max(v>0?2:0,v/mx*100).toFixed(1)}%;background:${c}"></i></span><b class="cc-v">${money(v)}</b></div>`).join('');
+  return `<div class="fb" style="margin-top:6px;"><h2 class="h" style="margin:0;">${zh?"食材成本":"Food Cost"} <span class="tag">${monthLabel2(costMonth)}</span></h2></div>
+    <div class="card" style="padding:16px;margin:8px 0 12px;">
+      <div class="cc-wrap"><div class="cc-g">${gauge}<div class="mini" style="text-align:center;">${zh?'目标 28% – 35%（绿色区）':'Target 28–35%'}</div></div><div class="cc-b">${bars}<div class="mini" style="margin-top:8px;">${zh?`净营业额 ${money(netM)} · 实耗 ÷ 净营业额 = 成本率`:`Net sales ${money(netM)}`}</div></div></div>
+      <div class="grid g3 cc-in" style="margin-top:14px;">
+        <label>${zh?"月初库存 RM":"Opening RM"}<input type="number" inputmode="decimal" step="0.01" value="${cfg.openStock}" onchange="setCostParam('openStock',+this.value)"></label>
+        <label>${zh?"本月进货 RM":"Purchases RM"}<input type="number" inputmode="decimal" step="0.01" placeholder="${autoPur.toFixed(2)}" value="${cfg.purOverride!=null?cfg.purOverride:''}" onchange="setCostParam('purOverride',this.value)"></label>
+        <label>${zh?"月末库存 RM":"Closing RM"}<input type="number" inputmode="decimal" step="0.01" value="${cfg.closeStock}" onchange="setCostParam('closeStock',+this.value)"></label></div>
+      <div class="mini" style="margin-top:8px;">${zh?`本月进货留空＝自动取 ${monthLabel2(costMonth)} 的进货单（现在 ${money(autoPur)}）。月底盘点后填「月末库存」就出真账。`:`Leave purchases empty to use the month's purchases.`}</div>
+    </div>`;
+}
 function pgDash(){
   const f=calcFin();const o=outletObj();
   const rangeLabel={day:"日均",week:"每周",month:"每月"};
@@ -2019,33 +2058,7 @@ function pgDash(){
     <div class="kpi"><div class="k">${LANG==="zh"?"SST 6% 代收":"SST 6%"}</div><div class="v sm warnc">${money(f.sst)}</div><div class="s mini">${LANG==="zh"?"需另存缴税":"Set aside"}</div></div>
   </div>
 
-  ${(function(){const cfg=costCfg();const zh=LANG==="zh";const autoPur=monthPurchases();
-    const seg=`<div class="seg" style="margin-bottom:8px;flex-wrap:wrap;">
-      <button class="${cfg.mode==='rate'?'active':''}" onclick="setCostMode('rate')">${zh?"① 成本率(快)":"Rate"}</button>
-      <button class="${cfg.mode==='period'?'active':''}" onclick="setCostMode('period')">${zh?"② 成本算货(准)":"Stock"}</button>
-      <button class="${cfg.mode==='bom'?'active':''}" onclick="setCostMode('bom')">${zh?"③ 配方(单品)":"BOM"}</button></div>`;
-    const legend=zh?`<div class="mini" style="margin:-2px 0 10px;line-height:1.7;color:var(--ink2);">
-      <b>①成本率</b>：最快、最粗。凭经验填一个成本率(如35%)，系统用「营业额×成本率」估食材成本。适合每天随手看大概。<br>
-      <b>②成本算货</b> ⭐：最准。<b>月初库存 + 本月进货 − 月末库存 = 真实食材成本</b>。月底盘点后填一填就出真账，最适合老板看月度盈亏。<br>
-      <b>③配方</b>：最细。逐道菜按「配方×卖出数量」算成本，能看单品毛利，但要先给菜品建好配方(BOM)。</div>`:'';
-    let body='';
-    if(cfg.mode==='rate'){
-      body=`<div class="fr" style="margin:0;max-width:260px;"><label>${zh?"食材成本率 Food Cost %":"Food Cost %"}</label>
-        <input type="number" step="0.5" value="${cfg.rate}" onchange="setCostParam('rate',+this.value)"> </div>
-        <div class="mini" style="margin-top:6px;">${zh?`快速估算：食材成本 = 净营业额 × ${cfg.rate}%。适合平时每天看大概。`:`COGS = Net Sales × ${cfg.rate}%`}</div>`;
-    }else if(cfg.mode==='period'){
-      body=`<div class="grid g3">
-        <div class="fr" style="margin:0;"><label>${zh?"月初库存 RM":"Opening RM"}</label><input type="number" step="0.01" value="${cfg.openStock}" onchange="setCostParam('openStock',+this.value)"></div>
-        <div class="fr" style="margin:0;"><label>${zh?"本月进货 RM":"Purchases RM"}</label><input type="number" step="0.01" placeholder="${autoPur.toFixed(2)}" value="${cfg.purOverride!=null?cfg.purOverride:''}" onchange="setCostParam('purOverride',this.value)"></div>
-        <div class="fr" style="margin:0;"><label>${zh?"月末库存 RM":"Closing RM"}</label><input type="number" step="0.01" value="${cfg.closeStock}" onchange="setCostParam('closeStock',+this.value)"></div>
-      </div>
-      <div class="mini" style="margin-top:6px;">${zh?`实耗成本 = 月初 ${money(cfg.openStock)} + 进货 ${money(cfg.purOverride!=null?cfg.purOverride:autoPur)}${cfg.purOverride==null?`（自动取${monthLabel2(costMonth)}采购）`:'（手动）'} − 月末 ${money(cfg.closeStock)}。月底盘点后填月末库存即可结真账。`:`COGS = Opening + Purchases − Closing`}</div>`;
-    }else{
-      body=`<div class="mini">${zh?"用每道菜的配方(BOM)×销量算成本。需先在「配方成本」给菜品建配方；适合招牌单点/煮炒菜看单品毛利。Buffet 类不建议用此法。":"COGS = Σ recipe cost × qty. Build BOM first."}</div>`;
-    }
-    return `<h2 class="h">🧮 ${zh?"成本核算方式":"Costing Method"}</h2>
-      <div class="card" style="padding:13px;margin-bottom:12px;">${seg}${legend}${body}</div>`;
-  })()}
+  ${dashCostHTML()}
   ${(function(){const mp=monthlyPnL(costMonth);if(!(mp.rev||mp.cogs))return '';const cpc=mp.foodPct<28?'#0891B2':(mp.foodPct<=35?'var(--green)':'var(--red)');return `
   <h2 class="h">📅 ${LANG==="zh"?"月度核算":"Monthly Costing"} <span class="tag">${monthLabel2(costMonth)}${monthLocked(costMonth)?' 🔒':''}</span></h2>
   <div class="pl">
@@ -3588,43 +3601,43 @@ async function submitSheetOrder(sup){
   try{if(typeof auditLog==='function')auditLog(LANG==="zh"?"订货提交":"Order",sup+" · "+by.name+" · "+lines.length+(LANG==="zh"?"项":" items"),"","");}catch(e){}
   alert(LANG==="zh"?("✅ 已向 "+sup+" 下单！共 "+lines.length+" 项，已通知老板与区域副经理。"):("✅ Order to "+sup+" placed."));
 }
+function osQtyIn(inp,sup,i){setOsQty(sup,i,inp.value);const row=inp.closest('.os-row');if(row)row.classList.toggle('has',(+inp.value||0)>0||String(inp.value).trim()!=='');
+  const n=document.querySelectorAll('.os-row.has').length;['os-n','os-n2'].forEach(id=>{const e=document.getElementById(id);if(e)e.textContent=n;});}
 function osTable(sup){
+  const zh=LANG==="zh";
   const wDesc=['owner','area','hrmgr'].includes(curRole)&&!isAgg();
   const wQty=subCanW('ordersheet');
-  const a=osData(sup);const sz=ordSize();
-  const cols=1+1+(wDesc?1:0);
-  const rows=a.map((it,i)=>`<tr>`+
-    `<td class="odesc">${wDesc?`<div class="odesc-edit" contenteditable="true" spellcheck="false" onblur="setOsDesc('${gEsc(sup)}',${i},this.innerText)">${oEsc(it.d)}</div>`:`<div class="odesc-view">${oEsc(it.d).replace(/\n/g,'<br>')}</div>`}</td>`+
-    `<td class="oqty"><input inputmode="decimal" value="${oEsc(it.q)}" ${wQty?'':'disabled'} oninput="setOsQty('${gEsc(sup)}',${i},this.value)"></td>`+
-    (wDesc?`<td class="odel"><span class="ib" onclick="delOsItem('${gEsc(sup)}',${i})">🗑️</span></td>`:'')+
-  `</tr>`).join('')||`<tr><td colspan="${cols}" class="empty">${LANG==="zh"?"暂无品项，点『+品项』添加":"No items"}</td></tr>`;
-  const submitBtn=wQty?`<button class="btn brand sm" onclick="submitSheetOrder('${gEsc(sup)}')">🛒 ${LANG==="zh"?"下单":"Place Order"}</button>`:'';
-  const sizeCtl=`<div class="seg sm" style="margin:0;"><button class="${sz==='s'?'active':''}" onclick="setOrdSize('s')">${LANG==="zh"?"小":"S"}</button><button class="${sz==='m'?'active':''}" onclick="setOrdSize('m')">${LANG==="zh"?"中":"M"}</button><button class="${sz==='l'?'active':''}" onclick="setOrdSize('l')">${LANG==="zh"?"大":"L"}</button></div>`;
-  const bar=`<div class="fb" style="align-items:center;flex-wrap:wrap;gap:8px;"><div class="obanner">${oEsc(sup)} · ${LANG==="zh"?"订货单":"Order Sheet"}</div><div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;"><span class="mini" style="opacity:.7;">${LANG==="zh"?"大小":"Size"}</span>${sizeCtl}${submitBtn}<button class="btn ghost sm" onclick="printOrder()">🖨️ ${LANG==="zh"?"打印":"Print"}</button>${wDesc?`<button class="btn ghost sm" onclick="osReset('${gEsc(sup)}')">↩︎ ${LANG==="zh"?"还原":"Reset"}</button>`:''}</div></div>`;
-  const hint=`<div class="hint">${LANG==="zh"?"填『数量 QTY』后按『🛒 下单』提交（会通知老板与区域副经理）。":"Fill QTY then Place Order (owner & area notified)."}${wDesc?(LANG==="zh"?" 品名可改，可『+品项』或🗑️删除。":""):''} <span class="mini" style="opacity:.6;">build ${BUILD}</span></div>`;
-  const addBtn=wDesc?`<button class="btn ghost sm oadd" onclick="addOsItem('${gEsc(sup)}')">+ ${LANG==="zh"?"品项":"Item"}</button>`:'';
-  return bar+hint+`<div class="orderroot size-${sz}"><div class="ocol" style="max-width:640px;"><table class="otbl"><thead><tr><th class="odesc">DESCRIPTION</th><th class="oqty">QTY.</th>${wDesc?'<th class="odel"></th>':''}</tr></thead><tbody>${rows}</tbody></table>${addBtn}</div></div>`;
+  const a=osData(sup);
+  const filled=a.filter(it=>String(it.q||'').trim()!=='').length;
+  const rows=a.map((it,i)=>`<div class="dv-row os-row ${String(it.q||'').trim()!==''?'has':''}" data-name="${oEsc(String(it.d||'').toLowerCase())}">
+    <div>${wDesc?`<div class="odesc-edit os-desc" contenteditable="true" spellcheck="false" onblur="setOsDesc('${gEsc(sup)}',${i},this.innerText)">${oEsc(it.d)}</div>`:`<div class="os-desc">${oEsc(it.d)}</div>`}</div>
+    <div class="dv-in gcw"><label>${zh?'数量 QTY':'QTY'}<input inputmode="decimal" value="${oEsc(it.q)}" ${wQty?'':'disabled'} oninput="osQtyIn(this,'${gEsc(sup)}',${i})"></label>${wDesc?`<button class="ib" style="margin-bottom:6px;" onclick="delOsItem('${gEsc(sup)}',${i})">🗑️</button>`:''}</div></div>`).join('')||`<div class="empty">${zh?"暂无品项，点『+ 品项』添加":"No items"}</div>`;
+  const submitBtn=wQty?`<button class="btn brand sm" onclick="submitSheetOrder('${gEsc(sup)}')">${zh?"下单":"Place order"}</button>`:'';
+  return `<div class="grid g2 sup-sum"><div class="kpi"><div class="k">${zh?"品项":"Items"}</div><div class="v sm">${a.length}</div></div><div class="kpi"><div class="k">${zh?"已填数量":"Filled"}</div><div class="v sm pos"><span id="os-n">${filled}</span></div></div></div>
+    <div class="dv-tools"><input class="dv-search" type="search" placeholder="${zh?'搜索品项…':'Search items…'}" oninput="dvFilter(this.value)" autocomplete="off">${wDesc?`<button class="btn ghost sm" onclick="addOsItem('${gEsc(sup)}')">+ ${zh?'品项':'Item'}</button>`:''}</div>
+    <details class="hintd"><summary>${zh?'说明':'Notes'}</summary><div>${zh?"填「数量」后按「下单」提交（会通知老板与区域副经理）。":"Fill QTY then place order."}${wDesc?(zh?" 品名可直接点开修改，可「+ 品项」或 🗑️ 删除。":""):''}</div></details>
+    <div id="dvList">${rows}</div>
+    <div class="dv-foot"><span>${zh?'已填':'Filled'} <b id="os-n2">${filled}</b> / ${a.length}</span>${submitBtn}</div>`;
 }
 function pgOrderSheet(){
-  const back=`<button class="btn ghost sm" onclick="nav('proc')">← ${LANG==="zh"?"进销存作业":"Operations"}</button>`;
+  const zh=LANG==="zh";
+  const back=`<button class="btn ghost sm" onclick="nav('proc')">← ${zh?"返回":"Back"}</button>`;
   if(!selSupplier){
-    const sups=supplierList();const wSup=canW('proc'); // 店长及以上可改/删/加供应商
-    const cards=sups.map(v=>{
-      const isck=isCkOrderSup(v.name);
-      return `<div class="card" style="padding:13px;margin-bottom:9px;cursor:pointer;" onclick="setSupplier('${v.name.replace(/'/g,"\\'")}')">
-        <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;">
-          <div><div style="font-weight:800;font-size:15px;">🏢 ${oEsc(v.name)}${isck?` <span class="tag">${LANG==="zh"?"含图片":"photos"}</span>`:''}</div>
-          <div class="mini">${LANG==="zh"?"点进去下单":"Tap to order"}</div></div>
-          <div style="white-space:nowrap;">${wSup?`<button class="ib" title="${LANG==="zh"?'改名':'Rename'}" onclick="event.stopPropagation();renameSupplier(${v.id})">✏️</button> <button class="ib" title="${LANG==="zh"?'删除':'Delete'}" onclick="event.stopPropagation();delSupplier(${v.id})">🗑️</button> `:''}<span class="mini">›</span></div>
-        </div></div>`;
-    }).join('')||`<div class="empty">${LANG==="zh"?"暂无供应商，点『+ 新增供应商』添加。":"No suppliers"}</div>`;
-    return `<div class="fb"><h2 class="h" style="margin:0;">🛒 ${LANG==="zh"?"订货单":"Order Sheet"} <span class="tag">v${BUILD}</span></h2>${back}</div>
-      <div class="hint">${LANG==="zh"?"点选供应商 → 填数量 → 🛒下单（会通知老板与区域副经理）。中央厨房 (TCY OKR) 含图片版。":"Pick supplier → qty → order."}</div>
-      ${wSup?`<div style="margin-bottom:9px;"><button class="btn gold sm" onclick="addSupplier()">+ ${LANG==="zh"?"新增供应商":"Add Supplier"}</button></div>`:''}
-      ${cards}`;
+    const sups=supplierList();const wSup=canW('proc');
+    const q=(supQuery||'').toLowerCase();
+    const cards=sups.map(v=>{const isck=isCkOrderSup(v.name);
+      return `<div class="dv-row ap-card" data-name="${oEsc(v.name.toLowerCase())}" style="cursor:pointer;${q&&!v.name.toLowerCase().includes(q)?'display:none;':''}" onclick="setSupplier('${v.name.replace(/\\/g,"\\\\").replace(/'/g,"\\'")}')">
+        <div style="min-width:0;"><div class="dv-name">${oEsc(v.name)}${isck?` <span class="pill p-b">${zh?"含图片":"photos"}</span>`:''}</div><div class="mini">${zh?"点进去填数量下单":"Tap to order"}</div></div>
+        ${supManage&&wSup?`<div class="sup-act" onclick="event.stopPropagation()"><button class="ib" onclick="renameSupplier(${v.id})">✏️</button><button class="ib" onclick="delSupplier(${v.id})">🗑️</button></div>`:`<span class="sup-go">›</span>`}</div>`;
+    }).join('')||`<div class="empty">${zh?"暂无供应商，点「+ 新增供应商」添加。":"No suppliers"}</div>`;
+    return `<div class="fb"><h2 class="h" style="margin:0;">${zh?"订货单":"Order Sheet"}</h2><div style="display:flex;gap:8px;align-items:center;">${wSup?`<button class="btn brand sm" onclick="addSupplier()">+ ${zh?"供应商":"Supplier"}</button>${actm([{l:supManage?(zh?'完成管理':'Done managing'):(zh?'管理供应商（改名/删除）':'Manage suppliers'),on:'supManage=!supManage;render()'}])}`:''}${back}</div></div>
+      <div class="grid g2 sup-sum"><div class="kpi"><div class="k">${zh?"供应商":"Suppliers"}</div><div class="v sm">${sups.length}</div></div><div class="kpi"><div class="k">${zh?"流程":"Flow"}</div><div class="v sm" style="font-size:13px;">${zh?"选供应商 → 填数量 → 下单":"Pick → qty → order"}</div></div></div>
+      <div class="dv-tools"><input class="dv-search" type="search" placeholder="${zh?'搜索供应商…':'Search suppliers…'}" value="${oEsc(supQuery||'')}" oninput="supQuery=this.value;dvFilter(this.value)" autocomplete="off"></div>
+      <details class="hintd"><summary>${zh?'说明':'Notes'}</summary><div>${zh?"下单会通知老板与区域副经理。中央厨房 (TCY OKR) 是含图片的版本。":"Orders notify owner & area manager."}</div></details>
+      <div id="dvList">${cards}</div>`;
   }
-  const supHead=`<div class="fb"><h2 class="h" style="margin:0;">🛒 ${selSupplier}</h2><button class="btn ghost sm" onclick="backSupplier()">← ${LANG==="zh"?"供应商列表":"Suppliers"}</button></div>`;
-  if(isCkOrderSup(selSupplier))return supHead+orderListHTML();   // 中央厨房订货表（有照片）
+  const supHead=`<div class="fb"><h2 class="h" style="margin:0;">${selSupplier}</h2><button class="btn ghost sm" onclick="backSupplier()">← ${zh?"供应商列表":"Suppliers"}</button></div>`;
+  if(isCkOrderSup(selSupplier))return supHead+orderListHTML();
   return supHead+osTable(selSupplier);
 }
 /* ---------- 中央厨房 · 生产成本（格子式：大锅成本 ÷ 包数 = 单包成本）---------- */
@@ -4802,23 +4815,28 @@ async function delLedger(mod,gi){if(!confirm(LANG==="zh"?"删除此单据？":"D
 
 /* ================= 跨店调拨（物品 + 人力）================= */
 function pgTransfer(){
-  const x=d();const writable=subCanW('transfer');
-  const allItems=x.transfers||[];const loans=x.staffLoans||[];
-  const months=logMonths(allItems);const cur=(transferMonth&&months.includes(transferMonth))?transferMonth:months[0];
-  const items=allItems.filter(r=>(r.date||'').slice(0,7)===cur).sort((a,b)=>(b.date||'').localeCompare(a.date||''));
-  const back=`<button class="btn ghost sm" onclick="nav('proc')">← ${LANG==="zh"?"进销存作业":"Operations"}</button>`;
-  return `<div class="fb"><h2 class="h" style="margin:0;">🔁 ${LANG==="zh"?"跨店调拨":"Inter-Branch Transfer"} <span class="tag">v${BUILD}</span></h2>${back}</div>
-  <div class="hint">${LANG==="zh"?"发起调拨/借调要先送出申请，对方店批准后，双方记录和库存才会变动；对方没处理显示「待批准」，拒绝则显示「被拒绝」。":"Requests need the other branch's approval before records and stock change."}</div>
-  ${xferActive()?`<div class="fb"><h2 class="h" style="margin:0;">📨 ${LANG==="zh"?"调拨申请":"Requests"}</h2></div>${xferCardHtml()}`:''}
-  ${logMonthTabs(months,cur,'setTransferMonth')}
-  <div class="fb"><h2 class="h" style="margin:0;">📦 ${LANG==="zh"?"物品调拨":"Item Transfer"}</h2>${writable?`<button class="btn gold sm" onclick="formXferNew('item')">+ ${LANG==="zh"?"物品申请":"Item request"}</button>`:''}</div>
-  <div class="card tbl"><table><thead><tr><th>${LANG==="zh"?"日期":"Date"}</th><th>${LANG==="zh"?"品名":"Item"}</th><th>Code</th><th>${LANG==="zh"?"数量":"Qty"}</th><th>${LANG==="zh"?"去向":"To"}</th><th>${LANG==="zh"?"方式":"Mode"}</th><th>${LANG==="zh"?"金额":"Amt"}</th><th>${LANG==="zh"?"备注":"Note"}</th>${writable?'<th></th>':''}</tr></thead><tbody>
-  ${items.map(r=>{const gi=allItems.indexOf(r);return `<tr><td class="mini">${(r.date||'').slice(5)}</td><td>${oEsc(r.item)}</td><td class="mini">${oEsc(r.code)||'—'}</td><td>${num(r.qty)} ${oEsc(r.unit)}</td><td>${r.dir==='in'?'← ':(r.dir==='out'?'→ ':'')}${oEsc(r.to)}</td><td><span class="pill ${modePill(r.mode)}">${modeTxt(r.mode)}</span>${r.reqId?` <span class="pill p-g">✅ ${LANG==="zh"?"已批准":"Approved"}</span>`:''}</td><td>${money(r.amt)}</td><td class="mini">${oEsc(r.note)}</td>${writable?`<td style="white-space:nowrap;">${r.reqId?'':`<button class="ib" onclick="formTransferItem(${gi})">✏️</button> <button class="ib" onclick="delTransfer(${gi})">🗑️</button>`}</td>`:''}</tr>`;}).join('')||`<tr><td colspan="9" class="empty">${LANG==="zh"?"本月暂无调拨":"None"}</td></tr>`}
-  </tbody></table></div>
-  <div class="fb" style="margin-top:16px;"><h2 class="h" style="margin:0;">🧑‍🍳 ${LANG==="zh"?"人力资源借调":"Staff Loan"}</h2>${writable?`<button class="btn gold sm" onclick="formXferNew('staff')">+ ${LANG==="zh"?"借调申请":"Staff request"}</button>`:''}</div>
-  <div class="card tbl"><table><thead><tr><th>${LANG==="zh"?"日期":"Date"}</th><th>${LANG==="zh"?"员工":"Staff"}</th><th>${LANG==="zh"?"职位":"Role"}</th><th>${LANG==="zh"?"支援店面":"To Branch"}</th><th>${LANG==="zh"?"方式":"Mode"}</th><th>${LANG==="zh"?"备注":"Note"}</th>${writable?'<th></th>':''}</tr></thead><tbody>
-  ${loans.map((r,i)=>`<tr><td class="mini">${oEsc((r.date||'').slice(5))}</td><td><b>${oEsc(r.staff)}</b></td><td class="mini">${oEsc(r.role)||'—'}</td><td>${r.dir==='in'?'← ':(r.dir==='out'?'→ ':'')}${oEsc(r.to)}</td><td><span class="pill ${modePill(r.mode)}">${modeTxt(r.mode)}</span>${r.reqId?` <span class="pill p-g">✅ ${LANG==="zh"?"已批准":"Approved"}</span>`:''}</td><td class="mini">${oEsc(r.note)}</td>${writable?`<td style="white-space:nowrap;">${r.reqId?'':`<button class="ib" onclick="formStaffLoan(${i})">✏️</button> <button class="ib" onclick="delStaffLoan(${i})">🗑️</button>`}</td>`:''}</tr>`).join('')||`<tr><td colspan="7" class="empty">${LANG==="zh"?"暂无借调":"None"}</td></tr>`}
-  </tbody></table></div>`;
+  const zh=LANG==="zh";const x=d();const writable=subCanW('transfer');
+  const allItems=x.transfers||[];const allLoans=x.staffLoans||[];
+  const months=logMonths(allItems.concat(allLoans));const cur=(transferMonth&&months.includes(transferMonth))?transferMonth:months[0];
+  const items=allItems.filter(r=>(r.date||'').slice(0,7)===cur).sort((a2,b2)=>(b2.date||'').localeCompare(a2.date||''));
+  const loans=allLoans.filter(r=>(r.date||'').slice(0,7)===cur);
+  let pend=0;try{pend=xferPendingForMe().length;}catch(e){}
+  const outN=items.filter(r=>r.dir!=='in').length,inN=items.filter(r=>r.dir==='in').length;
+  const itemCard=r=>{const gi=allItems.indexOf(r);return `<div class="dv-row inv-card" style="border-left:5px solid ${r.dir==='in'?'var(--green)':'var(--blue)'};"><div style="min-width:0;"><div class="dv-name">${oEsc(r.item)}</div><div class="mini">${r.dir==='in'?'← ':(r.dir==='out'?'→ ':'')}${oEsc(r.to)} · ${(r.date||'').slice(5)}${r.code?' · '+oEsc(r.code):''}</div>
+      <div style="margin-top:4px;"><span class="pill ${modePill(r.mode)}">${modeTxt(r.mode)}</span>${r.reqId?` <span class="pill p-g">${zh?'已批准':'Approved'}</span>`:''}</div>${r.note?`<div class="mini">${oEsc(r.note)}</div>`:''}</div>
+      <div class="inv-qty"><div class="inv-q">${num(r.qty)} <small>${oEsc(r.unit)}</small></div>${r.amt?`<div class="inv-v">${money(r.amt)}</div>`:''}${writable&&!r.reqId?`<div class="inv-act"><button class="ib" onclick="formTransferItem(${gi})">✏️</button><button class="ib" onclick="delTransfer(${gi})">🗑️</button></div>`:''}</div></div>`;};
+  const loanCard=r=>{const i=allLoans.indexOf(r);return `<div class="dv-row inv-card" style="border-left:5px solid ${r.dir==='in'?'var(--green)':'var(--blue)'};"><div style="min-width:0;"><div class="dv-name">${oEsc(r.staff)} <span class="mini">${oEsc(r.role)||''}</span></div><div class="mini">${r.dir==='in'?'← ':(r.dir==='out'?'→ ':'')}${oEsc(r.to)} · ${oEsc((r.date||'').slice(5))}</div>
+      <div style="margin-top:4px;"><span class="pill ${modePill(r.mode)}">${modeTxt(r.mode)}</span>${r.reqId?` <span class="pill p-g">${zh?'已批准':'Approved'}</span>`:''}</div>${r.note?`<div class="mini">${oEsc(r.note)}</div>`:''}</div>
+      <div class="inv-qty">${writable&&!r.reqId?`<div class="inv-act"><button class="ib" onclick="formStaffLoan(${i})">✏️</button><button class="ib" onclick="delStaffLoan(${i})">🗑️</button></div>`:''}</div></div>`;};
+  return `<div class="fb"><h2 class="h" style="margin:0;">${zh?"跨店调拨":"Inter-Branch Transfer"}</h2><div style="display:flex;gap:8px;align-items:center;">${writable?`<button class="btn brand sm" onclick="formXferNew('item')">+ ${zh?"物品申请":"Item request"}</button>${actm([{l:zh?'借调申请（人力）':'Staff loan request',on:"formXferNew('staff')"}])}`:''}<button class="btn ghost sm" onclick="nav('proc')">← ${zh?"返回":"Back"}</button></div></div>
+  <div class="grid g3 sup-sum"><div class="kpi"><div class="k">${zh?"待我批准":"To approve"}</div><div class="v sm ${pend?'neg':'pos'}">${pend}</div></div><div class="kpi"><div class="k">${zh?"本月调出":"Out"}</div><div class="v sm">${outN}</div></div><div class="kpi"><div class="k">${zh?"本月调入":"In"}</div><div class="v sm">${inN}</div></div></div>
+  <details class="hintd"><summary>${zh?'说明':'Notes'}</summary><div>${zh?"发起调拨/借调要先送出申请，对方店批准后，双方记录和库存才会变动；对方没处理显示「待批准」，拒绝则显示「被拒绝」。":"Requests need the other branch's approval before records and stock change."}</div></details>
+  ${xferActive()?`<div class="grn-day"><span>${zh?"调拨申请":"Requests"}</span></div>${xferCardHtml()}`:''}
+  ${logMonthTabs(months,cur,'setTransferMonth').replace('class="seg"','class="seg mtabs nox"')}
+  <div class="grn-day"><span>${zh?"物品调拨":"Item transfers"}</span><b>${items.length}</b></div>
+  <div class="inv-grid">${items.map(itemCard).join('')||`<div class="empty">${zh?"本月暂无调拨":"None"}</div>`}</div>
+  <div class="grn-day"><span>${zh?"人力借调":"Staff loans"}</span><b>${loans.length}</b></div>
+  <div class="inv-grid">${loans.map(loanCard).join('')||`<div class="empty">${zh?"本月暂无借调":"None"}</div>`}</div>`;
 }
 function formTransferItem(editIdx){
   const r=(editIdx!=null)?(d().transfers||[])[editIdx]:null;const isEdit=!!r;
