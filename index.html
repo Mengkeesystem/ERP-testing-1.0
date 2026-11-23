@@ -1285,7 +1285,7 @@ function statusOf(d){if(d<=14)return{t:"健康",e:"Fresh",c:"p-g"};if(d<=30)retu
 function stTxt(s){return LANG==="zh"?s.t:s.e;}
 
 /* ================= 数据种子 ================= */
-const BUILD="1111mk95";  // 版本标记：页面右上/网格提示可见，用来确认已载入最新版
+const BUILD="1111mk96";  // 版本标记：页面右上/网格提示可见，用来确认已载入最新版
 const SEED_VERSION="bh-master-2026-09-1";  // 版本变更→下次载入自动重置为最新主数据（仅本店云端）
 function seed(outletId){
   const isCK = outletId==="ck";
@@ -2635,6 +2635,108 @@ async function lockMonth(month){
   auditLog("月度锁定",monthLabel2(month),"","");await save();render();
 }
 async function unlockMonth(month){if(!confirm(LANG==="zh"?`解锁 ${monthLabel2(month)}？改回按实时采购数据计算。`:`Unlock ${month}?`))return;if(d().monthClose&&d().monthClose[month]){delete d().monthClose[month];auditLog("解锁月度",monthLabel2(month),"","");await save();render();}}
+
+/* ============ 导入 POS 销售报表（mk96）============
+   POS 没有 API 时：每月（或每周）从 POS 导出「按菜品」的销售报表（CSV / Excel）→ 这里导入 → 对上 ERP 菜品 → 核对 → 写入当月销量。
+   没见过真实报表格式，所以栏位让人选（自动猜）；已对过的菜名记在 d().posAlias，下个月自动认得。 */
+let _pos=null;
+function posParseCSV(text){
+  text=text.replace(/^﻿/,'');
+  const first=(text.split(/\r?\n/,1)[0]||'');const cnt=c=>first.split(c).length-1;
+  const sep=cnt('\t')>cnt(',')&&cnt('\t')>cnt(';')?'\t':(cnt(';')>cnt(',')?';':',');
+  const rows=[];let row=[],cur='',q=false;
+  for(let i=0;i<text.length;i++){const ch=text[i];
+    if(q){if(ch==='"'){if(text[i+1]==='"'){cur+='"';i++;}else q=false;}else cur+=ch;}
+    else if(ch==='"')q=true;else if(ch===sep){row.push(cur);cur='';}
+    else if(ch==='\n'||ch==='\r'){if(ch==='\r'&&text[i+1]==='\n')i++;row.push(cur);cur='';if(row.some(x=>String(x).trim()!==''))rows.push(row);row=[];}
+    else cur+=ch;}
+  row.push(cur);if(row.some(x=>String(x).trim()!==''))rows.push(row);
+  return rows;
+}
+function posNum(v){if(v==null)return 0;const t=String(v).replace(/[^0-9.\-]/g,'');const n=parseFloat(t);return isNaN(n)?0:n;}
+function loadScriptOnce(src){return new Promise((res,rej)=>{if(document.querySelector('script[src="'+src+'"]'))return res();const sc=document.createElement('script');sc.src=src;sc.onload=res;sc.onerror=()=>rej(new Error('load'));document.head.appendChild(sc);});}
+async function posReadFile(file){
+  const name=(file.name||'').toLowerCase();
+  if(/\.(xlsx|xls|xlsm)$/.test(name)){
+    if(!window.XLSX)await loadScriptOnce('https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js');
+    const wb=XLSX.read(await file.arrayBuffer(),{type:'array'});const ws=wb.Sheets[wb.SheetNames[0]];
+    return XLSX.utils.sheet_to_json(ws,{header:1,defval:'',raw:false}).filter(r=>r.some(x=>String(x).trim()!==''));
+  }
+  return posParseCSV(await file.text());
+}
+function posGuessCols(rows){
+  // 表头行：前 15 行里「非空文字格最多」的那一行
+  let hi=0,best=-1;for(let i=0;i<Math.min(15,rows.length);i++){const n=rows[i].filter(c=>String(c).trim()!==''&&isNaN(posNum(c))||/[A-Za-z一-鿿]/.test(String(c))).length;if(n>best){best=n;hi=i;}}
+  const head=rows[hi].map(x=>String(x).trim().toLowerCase());
+  const find=re=>head.findIndex(h=>re.test(h));
+  return {hi,name:find(/item|product|dish|menu|description|name|菜|品名|商品|名称|项目/),qty:find(/qty|quantity|sold|count|份|数量|销量|件/),amt:find(/amount|sales|total|revenue|value|金额|销售额|营业额|合计|小计/)};
+}
+function posNorm(t){return String(t||'').toLowerCase().replace(/[^a-z0-9一-鿿]+/g,'');}
+function posBigrams(t){const n=posNorm(t),o=new Set();for(let i=0;i<n.length-1;i++)o.add(n.slice(i,i+2));if(n.length===1)o.add(n);return o;}
+function posMatchDish(name){
+  const dishes=d().dishCosts||[];const key=posNorm(name);if(!key)return null;
+  const al=(d().posAlias||{})[key];if(al&&dishes.find(x=>x.id===al))return {id:al,how:'alias'};
+  for(const dc of dishes){if([dc.cn,dc.en,dc.code,((dc.code||'')+' '+(dc.cn||''))].some(v=>v&&posNorm(v)===key))return {id:dc.id,how:'exact'};}
+  const a=posBigrams(name);if(!a.size)return null;let best=null,bs=0;
+  for(const dc of dishes){for(const v of [dc.cn,dc.en]){const b=posBigrams(v);if(!b.size)continue;let x=0;a.forEach(g=>{if(b.has(g))x++;});const sc=x/Math.min(a.size,b.size)*0.6+x/(a.size+b.size-x)*0.4;if(sc>bs){bs=sc;best=dc.id;}}}
+  return bs>=0.6?{id:best,how:'guess'}:null;
+}
+function posImport(month){
+  const zh=LANG==="zh";
+  if(!(d().dishCosts||[]).length)return alert(zh?'这间店还没有菜品（去「配方成本」建立菜品后才能对上销量）':'No dishes yet');
+  _pos={month,rows:null,cols:null,lines:[],mode:'replace'};
+  const inp=document.createElement('input');inp.type='file';inp.accept='.csv,.txt,.xlsx,.xls,.xlsm,text/csv';
+  inp.onchange=async()=>{const f=inp.files&&inp.files[0];if(!f)return;
+    try{_pos.file=f.name;_pos.rows=await posReadFile(f);}catch(e){return alert(zh?'读不了这个文件。Excel 读取需要联网；也可以在 Excel 里「另存为 CSV」再导入。':'Cannot read file');}
+    if(!_pos.rows||_pos.rows.length<2)return alert(zh?'文件里没有读到数据':'No data');
+    _pos.cols=posGuessCols(_pos.rows);posBuild();posReview();};
+  inp.click();
+}
+function posBuild(){
+  const c=_pos.cols,rows=_pos.rows;const agg={};
+  for(let i=c.hi+1;i<rows.length;i++){const r=rows[i];const nm=String(r[c.name]??'').trim();if(!nm||c.name<0||c.qty<0||/^(grand\s*total|sub\s*total|total|合计|总计|小计|总数)$/i.test(nm))continue;
+    const q=posNum(r[c.qty]);if(!q)continue;const k=posNorm(nm);if(!k)continue;
+    if(!agg[k])agg[k]={name:nm,qty:0,amt:0};agg[k].qty+=q;if(c.amt>=0)agg[k].amt+=posNum(r[c.amt]);}
+  const prev=Object.fromEntries((_pos.lines||[]).map(l=>[posNorm(l.name),l]));
+  _pos.lines=Object.values(agg).map(l=>{const old=prev[posNorm(l.name)];const m=old?{id:old.dishId,how:old.how}:posMatchDish(l.name);
+    return {...l,dishId:m?m.id:0,how:m?m.how:'',on:old?old.on:!!m};}).sort((a,b)=>b.qty-a.qty);
+}
+function posReview(){
+  const zh=LANG==="zh",v=_pos,dishes=d().dishCosts||[],cols=v.rows[v.cols.hi]||[];
+  const colOpts=sel=>`<option value="-1">${zh?'— 没有 —':'— none —'}</option>`+cols.map((h,i)=>`<option value="${i}" ${i===sel?'selected':''}>${oEsc(String(h).trim()||('列'+(i+1)))}</option>`).join('');
+  const opts=sel=>`<option value="0">${zh?'— 不导入 —':'— skip —'}</option>`+dishes.map(dc=>`<option value="${dc.id}" ${dc.id===sel?'selected':''}>${oEsc((dc.code?dc.code+' ':'')+(dc.cn||dc.en))}</option>`).join('');
+  const rows=v.lines.map((l,i)=>`<div class="odc ${l.on?'':'inv-off'}" id="pr-${i}"><div class="odc-h"><label class="inv-ck"><input type="checkbox" ${l.on?'checked':''} onchange="posSet(${i},'on',this.checked)"><span class="odc-n">${oEsc(l.name)}${l.how==='guess'?` <span class="pill p-a">${zh?'猜的，请核对':'guess'}</span>`:''}</span></label><b>${num(l.qty)}</b></div>
+    <div class="fr" style="margin:8px 0 0;"><select onchange="posSet(${i},'dishId',+this.value)">${opts(l.dishId)}</select></div></div>`).join('')||`<div class="empty">${zh?'没读到菜品行，请检查上面的栏位选择':'No rows'}</div>`;
+  const existing=monthSales(v.month).length;
+  openForm(`<h3>${zh?'导入 POS 销售':'Import POS sales'} · ${monthLabel2(v.month)} <span class="x" onclick="closeM()">×</span></h3>
+    <div class="hint">${oEsc(v.file)} · ${zh?'下面三个栏位是自动猜的，不对就改。同一菜名的多行会自动加总。':'Check the columns.'}</div>
+    <div class="fg3"><div class="fr"><label>${zh?'菜名栏':'Name'}</label><select onchange="posCol('name',+this.value)">${colOpts(v.cols.name)}</select></div>
+      <div class="fr"><label>${zh?'份数栏':'Qty'}</label><select onchange="posCol('qty',+this.value)">${colOpts(v.cols.qty)}</select></div>
+      <div class="fr"><label>${zh?'金额栏(可选)':'Amount'}</label><select onchange="posCol('amt',+this.value)">${colOpts(v.cols.amt)}</select></div></div>
+    <div class="odl" style="max-height:40vh;">${rows}</div>
+    <div class="odtot" style="position:static;margin-bottom:4px;"><span>${zh?'将导入':'Import'} <b id="pos-n">0</b> ${zh?'道菜':'dishes'} · <b id="pos-q">0</b> ${zh?'份':'pcs'}</span><span id="pos-amt" class="mini" style="color:#ddd;"></span></div>
+    ${existing?`<div class="seg" style="margin:8px 0;"><button class="${v.mode==='replace'?'active':''}" onclick="_pos.mode='replace';posReview()">${zh?'覆盖本月已有的':'Replace'} (${existing})</button><button class="${v.mode==='add'?'active':''}" onclick="_pos.mode='add';posReview()">${zh?'加到已有的上面':'Add'}</button></div>`:''}
+    <button class="btn block brand" style="margin-top:6px;" onclick="posApply()">${zh?'写入本月销量':'Save'}</button>`);
+  posTotals();
+}
+function posCol(k,i){_pos.cols[k]=i;posBuild();posReview();}
+function posSet(i,f,val){const l=_pos.lines[i];l[f]=val;if(f==='dishId'){l.on=!!val;l.how=val?'manual':'';}
+  const row=document.getElementById('pr-'+i);if(row){row.classList.toggle('inv-off',!l.on);const ck=row.querySelector('input[type=checkbox]');if(ck)ck.checked=l.on;}posTotals();}
+function posTotals(){const on=_pos.lines.filter(l=>l.on&&l.dishId);const n=document.getElementById('pos-n'),q=document.getElementById('pos-q'),a=document.getElementById('pos-amt');
+  if(n)n.textContent=on.length;if(q)q.textContent=num(on.reduce((s,l)=>s+l.qty,0));
+  if(a&&_pos.cols.amt>=0){const f=on.reduce((s,l)=>s+l.amt,0);const dishes=d().dishCosts||[];const e=on.reduce((s,l)=>{const dc=dishes.find(x=>x.id===l.dishId);return s+(dc?(+dc.price||0)*l.qty:0);},0);a.textContent=(LANG==="zh"?'报表金额 ':'File ')+money(f)+(e?' · ERP '+money(e):'');}}
+async function posApply(){
+  const zh=LANG==="zh",v=_pos;const on=v.lines.filter(l=>l.on&&l.dishId);
+  if(!on.length)return alert(zh?'没有可导入的菜品（要勾选并选好菜品）':'Nothing to import');
+  const skipped=v.lines.filter(l=>!(l.on&&l.dishId)).length;
+  if(!confirm(zh?`导入 ${on.length} 道菜到 ${monthLabel2(v.month)}（${v.mode==='replace'?'覆盖':'累加'}）${skipped?`，另有 ${skipped} 行没导入`:''}。继续？`:'Import?'))return;
+  d().posAlias=d().posAlias||{};on.forEach(l=>{d().posAlias[posNorm(l.name)]=l.dishId;});
+  const by={};if(v.mode==='add')monthSales(v.month).forEach(s=>{by[s.dishId]=(by[s.dishId]||0)+(+s.qty||0);});
+  on.forEach(l=>{by[l.dishId]=(by[l.dishId]||0)+l.qty;});
+  await applyPOSSalesMonthly(v.month,Object.entries(by).map(([id,q])=>({dishId:+id,qty:q})));
+  closeM();
+  alert(zh?`已导入 ${on.length} 道菜。下个月同样的菜名会自动对上。`:'Imported');
+}
 /* ★ POS 接口（按月）★ window.applyPOSSalesMonthly("2026-09",[{dishId,qty}]) */
 async function applyPOSSalesMonthly(month,arr){
   if(!d().monthlySales)d().monthlySales={};
@@ -2802,7 +2904,7 @@ function pgMonthly(){
     <div class="row tot"><span>= ${zh?"月净利 Net Profit":"Net Profit"}</span><span class="${pnl.net>=0?'pos':'r-neg'}">${money(pnl.net)}</span></div>
   </div>
   <div style="display:flex;gap:6px;margin-bottom:8px;flex-wrap:wrap;">
-    ${w&&!locked?`<button class="btn brand sm" onclick="formMonthSale('${m}')">+ ${zh?"录入销量":"Add Sales"}</button>`:''}
+    ${w&&!locked?`<div style="display:flex;gap:8px;align-items:center;"><button class="btn brand sm" onclick="formMonthSale('${m}')">+ ${zh?"录入销量":"Add Sales"}</button>${actm([{l:zh?'导入 POS 销售报表':'Import POS report',on:"posImport('"+m+"')"}])}</div>`:''}
     ${w?(locked?`<button class="btn ghost sm" onclick="unlockMonth('${m}')">🔓 ${zh?"解锁本月":"Unlock"}</button>`:`<button class="btn gold sm" onclick="lockMonth('${m}')">🔒 ${zh?"月末锁定":"Month-End Close"}</button>`):''}
   </div>
   <div class="fb" style="margin-top:14px;"><h2 class="h" style="margin:0;">${zh?"月度销售 → 成本 → 毛利":"Sales · Cost · Gross"} <span class="tag">${monthLabel2(m)}</span></h2></div>
