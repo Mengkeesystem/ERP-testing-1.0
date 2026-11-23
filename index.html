@@ -849,6 +849,10 @@ html.ui2 .hint{background:transparent!important;border:0!important;padding:2px 2
 
 .inv-ck{display:flex;gap:10px;align-items:flex-start;cursor:pointer;flex:1;min-width:0;}.inv-ck input{width:22px;height:22px;margin-top:1px;flex:none;}
 .odc.inv-off{opacity:.55;}
+
+/* ---- 空状态卡片 + 小修（mk97）---- */
+html.ui2 div.empty{border:1.5px dashed var(--line2);border-radius:var(--radius);background:var(--card);padding:30px 16px;margin:10px 0;font-size:13.5px;}
+html.ui2[data-theme="mech"] div.empty{border-color:#5A646E;}
 /* ---- 小弹窗补充（mk93）---- */
 html.ui2 .m input[type=file]{width:100%;box-sizing:border-box;font-size:14px;padding:10px;border:1.5px dashed var(--line2);border-radius:var(--radius-sm);background:var(--soft);color:var(--ink2);}
 html.ui2 .m input[type=file]::file-selector-button{border:0;border-radius:99px;padding:8px 14px;margin-right:10px;background:var(--brand);color:#fff;font-weight:600;font-size:13px;}
@@ -1285,7 +1289,7 @@ function statusOf(d){if(d<=14)return{t:"健康",e:"Fresh",c:"p-g"};if(d<=30)retu
 function stTxt(s){return LANG==="zh"?s.t:s.e;}
 
 /* ================= 数据种子 ================= */
-const BUILD="1111mk96";  // 版本标记：页面右上/网格提示可见，用来确认已载入最新版
+const BUILD="1111mk97";  // 版本标记：页面右上/网格提示可见，用来确认已载入最新版
 const SEED_VERSION="bh-master-2026-09-1";  // 版本变更→下次载入自动重置为最新主数据（仅本店云端）
 function seed(outletId){
   const isCK = outletId==="ck";
@@ -2223,7 +2227,7 @@ function pgInv(){
     return `<div class="fb"><h2 class="h" style="margin:0;">${zh?"库存清单":"Inventory"}</h2></div>
       <div class="grid g3 sup-sum"><div class="kpi"><div class="k">${zh?"库存总值":"Stock value"}</div><div class="v sm">${money(allVal)}</div></div><div class="kpi"><div class="k">${zh?"品项":"Items"}</div><div class="v sm">${(x.items||[]).length}</div></div><div class="kpi"><div class="k">${zh?"低于安全库存":"Low stock"}</div><div class="v sm ${allLow?'neg':'pos'}">${allLow}</div></div></div>
       ${addBtns}
-      <div class="hint">${zh?"👉 功能：看每样食材还剩多少、值多少钱(按供应商分组)。进货会自动加、卖出/报废/调拨会自动减，剩太少会提醒你订货。":"See how much of each item is left & its value; auto-adjusts on purchase/sale/waste."}</div>
+      <details class="hintd"><summary>${LANG==="zh"?'说明':'Notes'}</summary><div>${zh?"👉 功能：看每样食材还剩多少、值多少钱(按供应商分组)。进货会自动加、卖出/报废/调拨会自动减，剩太少会提醒你订货。":"See how much of each item is left & its value; auto-adjusts on purchase/sale/waste."}</div></details>
       ${(function(){const al=alertList();const n=al.length;return `<details class="alertBox"${n?'':' '} style="margin:2px 0 6px;">
         <summary style="cursor:pointer;list-style:none;display:flex;align-items:center;justify-content:space-between;gap:8px;padding:10px 12px;border:1.5px solid ${n?'var(--amber)':'var(--line)'};border-radius:10px;background:${n?'rgba(245,158,11,.08)':'#fff'};font-weight:800;font-size:14px;">
           <span>⚠️ ${zh?"需要注意":"Alerts"} ${n?`<span class="pill p-r">${n}</span>`:`<span class="mini" style="font-weight:600;color:var(--muted);">${zh?"无":"none"}</span>`}</span>
@@ -2435,7 +2439,7 @@ function pgAp(){
         <div class="inv-qty"><div class="inv-q ${paid?'':'neg'}">${money(tot)}</div><div class="mini">${paid?(zh?'已付':'Paid'):(zh?'应付':'Due')}</div>
           <div class="inv-act" style="flex-wrap:wrap;justify-content:flex-end;"><button class="btn ghost sm" onclick="setApSel('${s.replace(/'/g,"\\'")}')">${zh?"订单状态":"Status"}</button>${apPaidBtn(s)}</div></div></div>`;}).join('')||`<div class="empty">${zh?"没有符合的供应商。":"None."}</div>`;
     return `<div class="fb"><h2 class="h" style="margin:0;">💳 ${zh?"应付账款":"Payables"} <span class="tag">v${BUILD}</span></h2><button class="btn ghost sm" onclick="nav('proc')">← ${zh?"返回":"Back"}</button></div>
-      <div class="hint">${zh?"点『订单状态』→ 看该店的 Invoice → 逐项核对(✔/✗)→ 按『订单正确』；付款后按『未付款』改为已付款。":"Tap Status to reconcile; mark paid."}</div>
+      <details class="hintd"><summary>${LANG==="zh"?'说明':'Notes'}</summary><div>${zh?"点『订单状态』→ 看该店的 Invoice → 逐项核对(✔/✗)→ 按『订单正确』；付款后按『未付款』改为已付款。":"Tap Status to reconcile; mark paid."}</div></details>
       ${shortN?`<div class="al al-r" style="margin-bottom:10px;"><div class="t">⚠️ ${zh?"有少付":"Underpaid"}</div>${zh?("共 "+shortN+" 家供应商现金少付，合计 RM"+num(shortTot,2)+"。红色卡片即是。"):(shortN+" vendors short, total RM"+num(shortTot,2))}</div>`:''}
       <div class="grid g2 sup-sum" style="margin-bottom:10px;">
         <div class="kpi"><div class="k">${zh?"未付供应商":"Unpaid vendors"}</div><div class="v sm ${unpaidN?'neg':''}">${unpaidN}</div></div>
@@ -3913,7 +3917,7 @@ function pgStock(){
   <div class="grid g3 sup-sum"><div class="kpi"><div class="k">${zh?"盘点品项":"Counted"}</div><div class="v sm">${rows.length}</div></div>
     <div class="kpi"><div class="k">${zh?"有盘差":"With variance"}</div><div class="v sm ${nBad?'neg':'pos'}">${nBad}</div></div>
     <div class="kpi"><div class="k">${zh?"盘差额合计":"Variance value"}</div><div class="v sm ${totVal>0?'neg':''}">${money(totVal)}</div></div></div>
-  <div class="hint">${zh?"月底（或定期）数一次实际库存填进来，系统自动算出账面 vs 实物差多少（＝隐性损耗），也用来做月度实耗成本。":"Enter your physical count; the system shows the shortfall vs book stock."}</div>
+  <details class="hintd"><summary>${LANG==="zh"?'说明':'Notes'}</summary><div>${zh?"月底（或定期）数一次实际库存填进来，系统自动算出账面 vs 实物差多少（＝隐性损耗），也用来做月度实耗成本。":"Enter your physical count; the system shows the shortfall vs book stock."}</div></details>
   ${rows.length?`<div class="dv-tools"><input class="dv-search" type="search" placeholder="${zh?'搜索品项…':'Search…'}" oninput="dvFilter(this.value)" autocomplete="off">
     <div class="seg"><button class="${stockFilter==='all'?'active':''}" onclick="stockFilterSet('all')">${zh?'全部':'All'}</button><button class="${stockFilter==='bad'?'active':''}" onclick="stockFilterSet('bad')">${zh?'有盘差':'Variance'}</button><button class="${stockFilter==='ok'?'active':''}" onclick="stockFilterSet('ok')">${zh?'正常':'OK'}</button></div></div>
     <div class="dv-tools"><div class="seg"><button class="${stockSort==='var'?'active':''}" onclick="stockSortSet('var')">${zh?'盘差最大':'Largest'}</button><button class="${stockSort==='val'?'active':''}" onclick="stockSortSet('val')">${zh?'金额':'Value'}</button><button class="${stockSort==='name'?'active':''}" onclick="stockSortSet('name')">${zh?'品名':'Name'}</button></div></div>
@@ -5872,7 +5876,7 @@ function ui2Title(){
   const t=document.getElementById('appTitle');if(!t||!window.matchMedia('(max-width:760px)').matches)return;
   const hd=document.querySelector('#pageHost .h');let s='';
   if(hd){const f=[...hd.childNodes].filter(n=>n.nodeType===3).map(n=>n.nodeValue).join('').replace(/^[^\p{L}\p{N}]+/u,'').trim();s=f;}
-  if(s.indexOf('·')>=0)s=s.split('·').pop().trim();t.textContent=s||mlabel(curPage);
+  if(s.indexOf('·')>=0)s=s.split('·').pop().trim();s=({'运营开销录入':'开销录入','运营开销记录':'开销记录','进销存作业':'进销存','Stock Take':'Stock Take'})[s]||s;t.textContent=s||mlabel(curPage);
 }
 /* 手机底部导航：总览 / 采购 / 进货 / 库存 / 调拨 / 更多（没有权限的会自动隐藏；没有这些权限的角色改显示 打卡/请假/薪资） */
 function ui2Tabs(){
