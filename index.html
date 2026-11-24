@@ -1339,7 +1339,7 @@ function statusOf(d){if(d<=14)return{t:"健康",e:"Fresh",c:"p-g"};if(d<=30)retu
 function stTxt(s){return LANG==="zh"?s.t:s.e;}
 
 /* ================= 数据种子 ================= */
-const BUILD="1111mk115";  // 版本标记：页面右上/网格提示可见，用来确认已载入最新版
+const BUILD="1111mk116";  // 版本标记：页面右上/网格提示可见，用来确认已载入最新版
 const SEED_VERSION="bh-master-2026-09-1";  // 版本变更→下次载入自动重置为最新主数据（仅本店云端）
 function seed(outletId){
   const isCK = outletId==="ck";
@@ -7154,6 +7154,7 @@ function installApp(){
       });
     }).catch(()=>{});
   }
+  try{navigator.serviceWorker.addEventListener('message',ev=>{if(ev.data&&ev.data.type==='version')checkForUpdate();});}catch(e){} // 收到「新版本」推送：马上检查，不等 5 分钟
   setTimeout(()=>{try{startUpdateCheck();}catch(e){}},0); // 不等登录/载入数据：那一步万一卡住，也照样能发现新版本（等整个脚本载入完再启动，否则会碰到还没定义的变量）
   try{window.addEventListener('beforeinstallprompt',function(e){e.preventDefault();_deferredPrompt=e;});}catch(e){}
   try{window.addEventListener('click',function(){if(typeof primeAudio==='function')primeAudio();},{once:true});}catch(e){}
@@ -7259,7 +7260,9 @@ function tryShowForcedUpdate(){
     <button class="btn block brand" id="forceUpdBtn">✅ ${zh?"确认更新":"Update Now"}</button>
   </div>`;
   document.body.appendChild(ov);
-  document.getElementById('forceUpdBtn').onclick=()=>{location.href=location.pathname+'?_ts='+Date.now();};
+  const _shownAt=Date.now();
+  // 弹出后 0.9 秒内的点击不算（避免你正好在点别的东西时，手指落在「确认更新」上被误触发）
+  document.getElementById('forceUpdBtn').onclick=(ev)=>{if(Date.now()-_shownAt<900)return;location.href=location.pathname+'?_ts='+Date.now();};
 }
 function showUpdateBanner(newBuild){
   const already=_updPending;

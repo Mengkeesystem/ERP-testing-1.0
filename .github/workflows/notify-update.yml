@@ -1,0 +1,42 @@
+# 明记 ERP：每次改了网页（index.html / sw.js）推上 main 之后，等网站真的换成新版本，
+# 再叫 Supabase 的推送函数给所有人的手机发一条「有新版本」通知。
+# 需要在仓库 Settings → Secrets and variables → Actions 新增一个 Secret：CRON_SECRET（和 Supabase Edge Function Secrets 里的 CRON_SECRET 同一个值）。
+# 没设的话这个任务会跳过（不会变红），只是不发推送。
+name: notify-update
+
+on:
+  push:
+    branches: [main]
+    paths: ["index.html", "sw.js"]
+  workflow_dispatch: {}
+
+concurrency:
+  group: notify-update
+  cancel-in-progress: true   # 连续推好几次时，只通知最后一个版本
+
+permissions:
+  contents: read
+
+jobs:
+  notify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: 等网站换成新版本，然后推送通知
+        env:
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+        run: |
+          if [ -z "$CRON_SECRET" ]; then echo "没有设置 CRON_SECRET，跳过推送通知"; exit 0; fi
+          BUILD=$(grep -o 'const BUILD="[^"]*"' index.html | head -1 | sed 's/.*"\(.*\)"/\1/')
+          echo "仓库里的版本：$BUILD"
+          for i in $(seq 1 40); do
+            LIVE=$(curl -sS --max-time 30 "https://mengkeesystem.github.io/ERP-testing-1.0/?_ts=$(date +%s)" | grep -o 'const BUILD="[^"]*"' | head -1 | sed 's/.*"\(.*\)"/\1/' || true)
+            echo "第 $i 次：网站上的版本 = ${LIVE:-（读不到）}"
+            if [ "$LIVE" = "$BUILD" ]; then break; fi
+            sleep 15
+          done
+          if [ "$LIVE" != "$BUILD" ]; then echo "等了 10 分钟网站还没换成新版本，不推送"; exit 1; fi
+          curl -sS --max-time 60 -X POST "https://kmcdokwiyetlmsrdlgqw.supabase.co/functions/v1/send-order-push" \
+            -H "content-type: application/json" -H "x-cron-secret: $CRON_SECRET" \
+            -d "{\"kind\":\"version\",\"build\":\"$BUILD\"}" | tee /tmp/r.json; echo
+          grep -q '"ok":true' /tmp/r.json

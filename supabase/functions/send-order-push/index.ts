@@ -177,11 +177,11 @@ async function loadOrders(): Promise<any[]> {
   let v: any = data?.value; if (typeof v === "string") { try { v = JSON.parse(v); } catch (_e) { v = []; } }
   return Array.isArray(v) ? v : [];
 }
-async function sendTo(emails: Set<string>, title: string, body: string, tag: string): Promise<number> {
+async function sendTo(emails: Set<string>, title: string, body: string, tag: string, kind = ""): Promise<number> {
   if (!emails.size) return 0;
   const { data: all } = await supabase.from("erp_push_subs").select("endpoint, sub, email, role");
   const subs = ((all ?? []) as any[]).filter((s) => emails.has(String(s.email || "").toLowerCase()));
-  const payload = JSON.stringify({ title, body, icon: "icon-192.png", url: "./", tag });
+  const payload = JSON.stringify({ title, body, icon: "icon-192.png", url: "./", tag, kind });
   let sent = 0;
   await Promise.allSettled(subs.map(async (row: any) => {
     try { await webpush.sendNotification(row.sub, payload); sent++; }
@@ -196,6 +196,19 @@ async function emailsOf(outlet: string, roles: string[]): Promise<Set<string>> {
 async function adminEmails(): Promise<Set<string>> {
   const { data } = await supabase.from("erp_users").select("email").eq("active", true).in("role", ADMIN_ROLES);
   return new Set((data ?? []).map((u: any) => String(u.email || "").toLowerCase()));
+}
+// 新版本上线通知：GitHub Actions 在网站部署好、确认新版本已上线之后带 x-cron-secret 来呼叫（.github/workflows/notify-update.yml）。
+// 所有 active 账号、所有已登记手机都收；同一个版本号只推一次（记在 erp_store 的 erpv2:lastpush:version）。
+async function versionPush(req: Request, inp: any): Promise<Response> {
+  const build = String(inp?.build ?? "").trim();
+  if (!/^\d{4}mk\d{2,3}$/.test(build)) return reply(req, { error: "bad build" }, 400);
+  const { data: last } = await supabase.from("erp_store").select("value").eq("key", "erpv2:lastpush:version").maybeSingle();
+  if ((last?.value as any)?.build === build && !inp?.force) return reply(req, { ok: true, skipped: "already_sent", build });
+  const { data: users } = await supabase.from("erp_users").select("email").eq("active", true);
+  const emails = new Set((users ?? []).map((u: any) => String(u.email || "").toLowerCase()));
+  const sent = await sendTo(emails, "🔄 明记 ERP 有新版本", `版本 ${build} 已上线，打开 App 点「确认更新」即可。`, "version", "version");
+  await supabase.from("erp_store").upsert({ key: "erpv2:lastpush:version", value: { build, at: new Date().toISOString(), sent }, updated_at: new Date().toISOString() });
+  return reply(req, { ok: true, sent, build });
 }
 const ST_TXT: Record<string, string> = { confirmed: "已确认", rejected: "被拒绝", shipped: "已发货", partial: "部分收货", received: "已收货", cancelled: "已取消" };
 async function orderStatusPush(req: Request, who: any, input: any): Promise<Response> {
@@ -277,6 +290,7 @@ Deno.serve(async (req) => {
       if (!vapidOk) return reply(req, { error: "push not configured" }, 503);
       const inp = await req.json().catch(() => ({}));
       if (inp?.kind === "digest") return await runDigest(req);
+      if (inp?.kind === "version") return await versionPush(req, inp);
       return reply(req, { error: "bad request" }, 400);
     }
     const who = await authenticate(req);
