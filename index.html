@@ -289,6 +289,14 @@
   .bar-row .val{width:80px;text-align:right;flex-shrink:0;font-weight:700;font-size:11px;}
 </style>
 <style id="ui2css">
+#aiBall{position:fixed;width:54px;height:54px;border-radius:50%;z-index:88;display:none;align-items:center;justify-content:center;font-weight:800;font-size:17px;letter-spacing:.5px;color:#fff;background:radial-gradient(circle at 32% 28%,rgba(255,255,255,.35),rgba(255,255,255,0) 45%),var(--brand,#7C1619);box-shadow:0 6px 18px rgba(0,0,0,.32),inset 0 0 0 2px rgba(255,255,255,.28);opacity:.92;touch-action:none;user-select:none;-webkit-user-select:none;-webkit-touch-callout:none;cursor:pointer;transition:transform .12s;}
+#aiBall.drag{transform:scale(1.12);transition:none;opacity:1;}
+#aiBall.hold{transform:scale(1.18);}
+#aiBallMenu{position:fixed;z-index:89;display:none;min-width:170px;background:var(--card,#fff);color:var(--ink,#222);border:1px solid var(--line,#ddd);border-radius:14px;padding:6px;box-shadow:0 12px 30px rgba(0,0,0,.28);}
+#aiBallMenu button{display:block;width:100%;text-align:left;padding:12px 14px;border:0;background:none;color:inherit;font-size:15px;border-radius:10px;cursor:pointer;}
+#aiBallMenu button:active{background:var(--hover,#eee);}
+#aiBallMenu button.dn{color:#d92d20;}
+
 /* ================= 界面样式（BUILD 1111mk73）：三套主题，用 <html data-theme="..."> 切换 =================
    classic  = Default 默认（暖象牙底 + 明记酒红 + 金色点缀）
    mech     = 机械风（钢灰 + 工业橙 + 等宽字 + 直角 + 警示条纹）
@@ -1321,7 +1329,7 @@ function statusOf(d){if(d<=14)return{t:"健康",e:"Fresh",c:"p-g"};if(d<=30)retu
 function stTxt(s){return LANG==="zh"?s.t:s.e;}
 
 /* ================= 数据种子 ================= */
-const BUILD="1111mk113";  // 版本标记：页面右上/网格提示可见，用来确认已载入最新版
+const BUILD="1111mk114";  // 版本标记：页面右上/网格提示可见，用来确认已载入最新版
 const SEED_VERSION="bh-master-2026-09-1";  // 版本变更→下次载入自动重置为最新主数据（仅本店云端）
 function seed(outletId){
   const isCK = outletId==="ck";
@@ -2305,6 +2313,56 @@ function aiContext(){
   }
   return L.join('\n').slice(0,36000);
 }
+
+// ===== 明记小助手浮动圆球（类似 iPhone 辅助触控）=====
+// 点一下＝打开小助手；按住 2 秒＝弹出「打开 / 退出」；拖动＝换位置（放开自动吸到左/右边）；退出＝圆球消失，下次打开小助手（顶部 AI 按钮 / ⋯ 菜单 / 运营健康页）才会重新出现。
+(function(){
+  const LS='erpAiBall',LP='erpAiBallPos',SZ=54;
+  let el,menu,timer=null,sx=0,sy=0,ox=0,oy=0,moved=false,held=false,down=false;
+  const gs=(k)=>{try{return localStorage.getItem(k);}catch(e){return null;}};
+  const ss=(k,v)=>{try{localStorage.setItem(k,v);}catch(e){}};
+  function pos(){let p=null;try{p=JSON.parse(gs(LP)||'null');}catch(e){}return p&&typeof p.y==='number'?p:{s:'r',y:0.62};}
+  function place(){const p=pos(),W=innerWidth,H=innerHeight;const top=70,bot=H-SZ-96;const y=Math.max(top,Math.min(bot,p.y*H));
+    el.style.top=y+'px';el.style.left=(p.s==='l'?6:W-SZ-6)+'px';}
+  function closeMenu(){menu.style.display='none';el.classList.remove('hold');}
+  function openMenu(){const r=el.getBoundingClientRect(),zh=LANG==="zh";
+    menu.innerHTML=`<button data-a="open">${zh?'打开明记小助手':'Open assistant'}</button><button data-a="exit" class="dn">${zh?'退出':'Dismiss'}</button>`;
+    menu.style.display='block';const mw=menu.offsetWidth,mh=menu.offsetHeight;
+    let l=r.left<innerWidth/2?r.right+8:r.left-mw-8;l=Math.max(6,Math.min(innerWidth-mw-6,l));
+    let t=Math.max(60,Math.min(innerHeight-mh-90,r.top));menu.style.left=l+'px';menu.style.top=t+'px';}
+  function sync(){
+    if(!el)return;try{syncIn();}catch(e){el.style.display='none';}}
+  function syncIn(){
+    const loggedIn=typeof AUTH==='function'&&AUTH()&&typeof curUser!=='undefined'&&curUser;
+    const on=loggedIn&&typeof aiAllowed==='function'&&aiAllowed()&&gs(LS)!=='off';
+    const mbg=document.getElementById('mbg');const modal=mbg&&mbg.classList.contains('show');
+    const show=on&&!modal;
+    el.style.display=show?'flex':'none';if(!show)closeMenu();
+  }
+  window.aiBallOn=function(){ss(LS,'on');sync();};
+  window.aiBallSync=sync;
+  function init(){
+    el=document.createElement('div');el.id='aiBall';el.textContent='AI';el.setAttribute('role','button');el.setAttribute('aria-label','明记小助手');
+    menu=document.createElement('div');menu.id='aiBallMenu';document.body.appendChild(el);document.body.appendChild(menu);place();
+    el.addEventListener('contextmenu',e=>e.preventDefault());
+    el.addEventListener('pointerdown',e=>{down=true;moved=false;held=false;sx=e.clientX;sy=e.clientY;const r=el.getBoundingClientRect();ox=r.left;oy=r.top;
+      try{el.setPointerCapture(e.pointerId);}catch(_){}
+      clearTimeout(timer);timer=setTimeout(()=>{if(down&&!moved){held=true;el.classList.add('hold');if(navigator.vibrate)try{navigator.vibrate(30);}catch(_){}openMenu();}},2000);});
+    el.addEventListener('pointermove',e=>{if(!down||held)return;const dx=e.clientX-sx,dy=e.clientY-sy;
+      if(!moved&&Math.hypot(dx,dy)>8){moved=true;clearTimeout(timer);el.classList.add('drag');}
+      if(moved){el.style.left=Math.max(0,Math.min(innerWidth-SZ,ox+dx))+'px';el.style.top=Math.max(60,Math.min(innerHeight-SZ-90,oy+dy))+'px';}});
+    const up=(e)=>{if(!down)return;down=false;clearTimeout(timer);el.classList.remove('drag');
+      if(moved){const r=el.getBoundingClientRect();ss(LP,JSON.stringify({s:(r.left+SZ/2<innerWidth/2)?'l':'r',y:r.top/innerHeight}));place();}
+      else if(!held&&e.type==='pointerup'){openAi();}};
+    el.addEventListener('pointerup',up);el.addEventListener('pointercancel',up);
+    menu.addEventListener('click',e=>{const a=e.target&&e.target.getAttribute&&e.target.getAttribute('data-a');if(!a)return;closeMenu();
+      if(a==='open')openAi();else if(a==='exit'){ss(LS,'off');sync();}});
+    document.addEventListener('pointerdown',e=>{if(menu.style.display==='block'&&!menu.contains(e.target)&&e.target!==el)closeMenu();},true);
+    addEventListener('resize',place);addEventListener('orientationchange',()=>setTimeout(place,200));
+    setInterval(sync,500);sync();
+  }
+  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',init);else init();
+})();
 function aiFmt(t){
   const e=oEsc(String(t)).replace(/\*\*(.+?)\*\*/g,'<b>$1</b>');
   return e.split('\n').map(l=>/^\s*([-•*]|\d+[.、)])\s+/.test(l)?`<div style="padding-left:14px;text-indent:-12px;margin:3px 0;">${l.replace(/^\s*([-•*])\s+/,'• ')}</div>`:(l.trim()?`<div style="margin:4px 0;">${l}</div>`:'<div style="height:6px;"></div>')).join('');
@@ -2323,7 +2381,7 @@ async function aiQuotaLoad(){try{let token=SUPABASE_ANON_KEY;try{const {data}=aw
   const r=await fetch(AI_FN_URL,{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+token,'apikey':SUPABASE_ANON_KEY},body:JSON.stringify({quota:true})});
   const j=await r.json();if(j&&j.quota){_aiQuota=j.quota;aiQuotaShow();}}catch(e){}}
 function openAi(){
-  const zh=LANG==="zh";if(!aiAllowed())return alert(zh?'明记小助手只开放给经理以上的账号':'Managers and above only');if(!AUTH()||!AI_FN_URL)return alert(zh?'AI 助手需要登录云端账号后才能用':'Sign in to use AI');
+  const zh=LANG==="zh";if(!aiAllowed())return alert(zh?'明记小助手只开放给经理以上的账号':'Managers and above only');if(window.aiBallOn)aiBallOn();if(!AUTH()||!AI_FN_URL)return alert(zh?'AI 助手需要登录云端账号后才能用':'Sign in to use AI');
   openForm(`<h3>${zh?'明记小助手':'Meng Kee Assistant'} <span class="x" onclick="closeM()">×</span></h3>
     <div class="mini" style="margin-bottom:8px;">${zh?'AI 只会看到这间店的汇总数字（不含员工资料、邮箱、薪资）。回答仅供参考，重要的请对照原数据。':''}</div>
     <div id="aiQuota">${aiQuotaHTML()}</div><div id="aiBox" class="ai-box"></div>
