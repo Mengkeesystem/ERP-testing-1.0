@@ -1289,7 +1289,7 @@ function statusOf(d){if(d<=14)return{t:"健康",e:"Fresh",c:"p-g"};if(d<=30)retu
 function stTxt(s){return LANG==="zh"?s.t:s.e;}
 
 /* ================= 数据种子 ================= */
-const BUILD="1111mk97";  // 版本标记：页面右上/网格提示可见，用来确认已载入最新版
+const BUILD="1111mk98";  // 版本标记：页面右上/网格提示可见，用来确认已载入最新版
 const SEED_VERSION="bh-master-2026-09-1";  // 版本变更→下次载入自动重置为最新主数据（仅本店云端）
 function seed(outletId){
   const isCK = outletId==="ck";
@@ -4913,7 +4913,8 @@ async function invScanFile(sup,file){
       const msg=j.message||(r.status===404?(zh?'识别功能还没部署（找管理员）':'Function not deployed'):(zh?'识别失败，请重试':'Scan failed'));
       return openForm(`<h3>${zh?'识别进货单':'Scan invoice'} <span class="x" onclick="closeM()">×</span></h3><div class="al al-r">${oEsc(msg)}</div><button class="btn block brand" onclick="closeM();invScan('${gEsc(sup)}')">${zh?'重新拍照':'Retake'}</button>`);
     }
-    _inv={sup,date:j.date&&/^\d{4}-\d{2}-\d{2}$/.test(j.date)?j.date:(dvDay||TODAY),invoiceNo:j.invoiceNo||'',total:j.total,note:j.note||'',
+    const hasDate=!!(j.date&&/^\d{4}-\d{2}-\d{2}$/.test(j.date));
+    _inv={sup,noDate:!hasDate,date:hasDate?j.date:TODAY,invoiceNo:j.invoiceNo||'',total:j.total,note:j.note||'',
       lines:j.lines.map(l=>{let cid='';if(l.match){const c=cat.find(x=>x.name===l.match);if(c)cid=c.cid;}if(!cid)cid=invGuess(l.name,cat);
         let price=l.unitPrice;if((price==null||price===0)&&l.amount!=null&&l.qty)price=+(l.amount/l.qty).toFixed(2);
         return {name:l.name,unit:l.unit||'',qty:l.qty,price,amount:l.amount,cid,on:!!cid};})};
@@ -4933,9 +4934,9 @@ function invReview(){
       <div class="odc-a"><span>${zh?'金额':'Amt'}</span><b id="ivamt-${i}">${money((+l.qty||0)*(+l.price||0))}</b></div></div></div>`).join('')||`<div class="empty">${zh?'没读到货品行':'No lines'}</div>`;
   openForm(`<h3>${zh?'核对识别结果':'Review scan'} <span class="x" onclick="closeM()">×</span></h3>
     <div class="hint">${zh?'这是 AI 读出来的，可能有错——请对照发票核对数量和单价。勾选的品项按「写入」才会记进进货单；没对上的可手动选品项或取消勾选。':'AI result — please verify before saving.'}${v.note?`<br><b>${zh?'提示：':'Note: '}</b>${oEsc(v.note)}`:''}</div>
-    <div class="fg2"><div class="fr"><label>${zh?'进货日期':'Date'}</label><input type="date" value="${v.date}" onchange="_inv.date=this.value"></div>
+    <div class="fg2"><div class="fr"><label>${zh?'进货日期':'Date'}</label><input type="date" value="${v.date}" onchange="_inv.date=this.value;_inv.noDate=false;const n=document.getElementById('iv-nd');if(n)n.remove();"></div>
       <div class="fr"><label>Invoice No.</label><input value="${oEsc(v.invoiceNo)}" oninput="_inv.invoiceNo=this.value"></div></div>
-    <div class="odl" style="max-height:48vh;">${rows}</div>
+    ${v.noDate?`<div class="mini" id="iv-nd" style="margin:-4px 0 8px;color:var(--gold-dk,#a16207);">${zh?'发票上没有日期，已默认用今天；不对请改上面的进货日期。':'No date on invoice — defaulted to today.'}</div>`:''}<div class="odl" style="max-height:48vh;">${rows}</div>
     <div class="odtot" style="position:static;margin-bottom:4px;"><span>${zh?'将写入':'Will save'} <b id="iv-n">0</b> ${zh?'项':'items'}</span><span>${zh?'金额':'Amt'} <b id="iv-t">RM 0.00</b>${v.total!=null?` <span class="mini" style="color:#ddd;">${zh?'发票合计':'invoice'} ${money(v.total)}</span>`:''}</span></div>
     <button class="btn block brand" style="margin-top:10px;" onclick="invApply()">${zh?'写入进货单':'Save to purchases'}</button>`);
   invTotals();
@@ -4956,7 +4957,7 @@ async function invApply(){
     await setGridCell('purchase',sup,l.cid,v.date,'price',+l.price||0);
   }
   try{auditLog&&auditLog('拍照识别进货',sup+' '+v.date+' '+on.length+'项');}catch(e){}
-  dvDay=v.date;closeM();render();
+  dvDay=v.date;try{ledgerMonth=v.date.slice(0,7);}catch(e){}closeM();render();
   alert(zh?`已写入 ${on.length} 项到 ${v.date} 的进货单`:`Saved ${on.length} items`);
 }
 function dvAfter(){const s=document.getElementById('dvStrip'),c=s&&s.querySelector('.dv-chip.on');if(s&&c)s.scrollLeft=c.offsetLeft-s.clientWidth/2+c.offsetWidth/2;}
