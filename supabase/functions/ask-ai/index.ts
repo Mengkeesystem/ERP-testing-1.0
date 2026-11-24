@@ -46,6 +46,7 @@ async function authenticate(req: Request) {
   if (!email) return null;
   const { data } = await supabase.from("erp_users").select("email, role, active").eq("email", email).maybeSingle();
   if (!data || data.active !== true) return null;
+  if (!["owner","hrmgr","area","outletmgr","manager","ckmgr"].includes(String(data.role || ""))) return null;   // 经理以上才能用
   return { email, role: String(data.role || "") };
 }
 
@@ -57,7 +58,7 @@ function tooMany(key: string): boolean {
   arr.push(now); hits.set(key, arr); return false;
 }
 
-const SYSTEM = `你是「明记家乡小食店」（马来西亚中餐小食店，多间分店 + 中央厨房）ERP 系统里的数据分析助手。老板和店长会用手机问你问题。
+const SYSTEM = `你是「明记家乡小食店」（马来西亚中餐小食店，多间分店 + 中央厨房）ERP 系统里的数据分析助手，名字叫「明记小助手」。老板和店长会用手机问你问题。
 
 规则：
 1. 只能根据【数据摘要】里的数字回答。摘要里没有的，就直接说「目前系统里没有这项资料」，并告诉对方应该去 ERP 哪一页补（例如：月度核算导入销量、月末盘点、进货单）。绝不编造数字、日期、品名。

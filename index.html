@@ -952,7 +952,7 @@ html.ui2[data-theme="cn"] .m>button.btn.block.brand{box-shadow:0 -14px 12px 4px 
 <div class="top">
   <div class="l"><button class="menu-btn" onclick="toggleSide()">☰</button><span class="brand-logo" role="button" tabindex="0" title="回主页 Home" onclick="goHome()" onkeydown="if(event.key==='Enter')goHome()" style="cursor:pointer;-webkit-tap-highlight-color:transparent;"><svg width="34" height="34" viewBox="0 0 100 100" aria-label="明记" style="border-radius:7px;"><rect x="4" y="4" width="92" height="92" rx="16" fill="#7C1619"/><rect x="4" y="4" width="92" height="92" rx="16" fill="none" stroke="#F2B417" stroke-width="7"/><text x="50" y="33" text-anchor="middle" dominant-baseline="central" font-family="'Microsoft YaHei','PingFang SC',sans-serif" font-weight="800" font-size="40" fill="#F2B417">明</text><text x="50" y="70" text-anchor="middle" dominant-baseline="central" font-family="'Microsoft YaHei','PingFang SC',sans-serif" font-weight="800" font-size="40" fill="#F2B417">记</text></svg></span><h1 id="appTitle">明记家乡小食店</h1><span id="topBranchTag" style="margin-left:8px;font-size:10px;padding:2px 6px;border-radius:6px;background:#F2B417;color:#12203A;font-weight:800;">-</span></div>
   <div class="r">
-    <button class="lang" id="aiBtn" onclick="openAi()" title="问 AI Ask AI" style="font-weight:800;">AI</button>
+    <button class="lang" id="aiBtn" onclick="openAi()" title="明记小助手" style="font-weight:800;display:none;">AI</button>
     <button class="lang" id="installBtn" onclick="installApp()" title="安装为App Install">📲</button>
     <button class="lang" id="xferBellBtn" onclick="openXferInbox()" title="跨店调拨申请 Transfer requests" style="display:none;position:relative;">🔁<span id="xferBellCount" style="display:none;position:absolute;top:-4px;right:-4px;min-width:16px;height:16px;line-height:16px;padding:0 3px;border-radius:9px;background:#d92d20;color:#fff;font-size:10px;font-weight:700;text-align:center;">0</span></button>
     <button class="lang" id="bellBtn" onclick="openOrdersPanel()" title="收到的订单 Orders" style="display:none;position:relative;">🔔<span id="bellCount" style="display:none;position:absolute;top:-4px;right:-4px;min-width:16px;height:16px;line-height:16px;padding:0 3px;border-radius:9px;background:#d92d20;color:#fff;font-size:10px;font-weight:800;text-align:center;">0</span></button>
@@ -1321,7 +1321,7 @@ function statusOf(d){if(d<=14)return{t:"健康",e:"Fresh",c:"p-g"};if(d<=30)retu
 function stTxt(s){return LANG==="zh"?s.t:s.e;}
 
 /* ================= 数据种子 ================= */
-const BUILD="1111mk109";  // 版本标记：页面右上/网格提示可见，用来确认已载入最新版
+const BUILD="1111mk110";  // 版本标记：页面右上/网格提示可见，用来确认已载入最新版
 const SEED_VERSION="bh-master-2026-09-1";  // 版本变更→下次载入自动重置为最新主数据（仅本店云端）
 function seed(outletId){
   const isCK = outletId==="ck";
@@ -2031,6 +2031,7 @@ function renderTop(){
     roleSel.disabled=false;
     roleSel.innerHTML=Object.entries(ROLES).map(([k,v])=>`<option value="${k}" ${k===curRole?'selected':''}>${(curUser&&isAdminUser()&&k!==curUser.role)?'👁 ':''}${LANG==="zh"?v.name:v.en}</option>`).join('');
   }
+  const aiB=document.getElementById('aiBtn');if(aiB)aiB.style.display=aiAllowed()?'':'none';
   if(typeof updateBell==='function')updateBell();
   const ck=OUTLETS.find(o=>o.ck);const branches=OUTLETS.filter(o=>!o.ck);
   const outletSel=document.getElementById('outletSel');
@@ -2236,6 +2237,8 @@ function itemVarianceRows(m){
    点右上角「AI」→ 问问题（例：上个月食材成本为什么变了？哪些东西涨价最多？今天先做什么？）。
    网页把「这间店目前的数据摘要」（只含汇总数字；不含员工资料/邮箱/薪资）+ 问题送给 Edge Function ask-ai，由 Claude 只根据摘要回答。
    老板/副经理还会带上「各分店对比」。摘要在 aiContext() 里组出来，限制长度。 */
+const AI_ROLES=['owner','hrmgr','area','outletmgr','manager','ckmgr'];  // 明记小助手：经理（含店长、中央经理）以上才能用
+function aiAllowed(){return AI_ROLES.indexOf(curRole)>=0&&(!curUser||AI_ROLES.indexOf(curUser.role)>=0);}
 const AI_FN_URL=SUPABASE_URL?(SUPABASE_URL+"/functions/v1/ask-ai"):"";
 let _aiMsgs=[],_aiBusy=false;
 function aiMonthLine(m){
@@ -2309,12 +2312,12 @@ function aiFmt(t){
 function aiRender(){
   const box=document.getElementById('aiBox');if(!box)return;const zh=LANG==="zh";
   const chips=_aiMsgs.length?'':`<div class="mini" style="margin-bottom:8px;">${zh?'试试这样问：':'Try:'}</div><div style="display:flex;flex-wrap:wrap;gap:8px;">${(zh?['上个月食材成本为什么变了？','哪些东西涨价最多？','哪些库存有问题，该订什么货？','今天最该先做哪三件事？','报废最多的是什么？','各分店比一比，哪间成本最高？']:['Why did food cost move?','Biggest price rises?']).map(q=>`<button class="btn sm ghost" onclick="aiAsk(this.textContent)">${q}</button>`).join('')}</div>`;
-  box.innerHTML=chips+_aiMsgs.map(m=>m.role==='user'?`<div class="ai-u">${oEsc(m.content)}</div>`:`<div class="ai-a">${aiFmt(m.content)}</div>`).join('')+(_aiBusy?`<div class="ai-a mini">${zh?'AI 正在看你的数据…（约 5–15 秒）':'Thinking…'}</div>`:'');
+  box.innerHTML=chips+_aiMsgs.map(m=>m.role==='user'?`<div class="ai-u">${oEsc(m.content)}</div>`:`<div class="ai-a">${aiFmt(m.content)}</div>`).join('')+(_aiBusy?`<div class="ai-a mini">${zh?'明记小助手正在看你的数据…（约 5–15 秒）':'Thinking…'}</div>`:'');
   box.scrollTop=box.scrollHeight;
 }
 function openAi(){
-  const zh=LANG==="zh";if(!AUTH()||!AI_FN_URL)return alert(zh?'AI 助手需要登录云端账号后才能用':'Sign in to use AI');
-  openForm(`<h3>${zh?'问 AI':'Ask AI'} <span class="x" onclick="closeM()">×</span></h3>
+  const zh=LANG==="zh";if(!aiAllowed())return alert(zh?'明记小助手只开放给经理以上的账号':'Managers and above only');if(!AUTH()||!AI_FN_URL)return alert(zh?'AI 助手需要登录云端账号后才能用':'Sign in to use AI');
+  openForm(`<h3>${zh?'明记小助手':'Meng Kee Assistant'} <span class="x" onclick="closeM()">×</span></h3>
     <div class="mini" style="margin-bottom:8px;">${zh?'AI 只会看到这间店的汇总数字（不含员工资料、邮箱、薪资）。回答仅供参考，重要的请对照原数据。':''}</div>
     <div id="aiBox" class="ai-box"></div>
     <div class="odfoot"><div style="display:flex;gap:8px;align-items:flex-end;"><textarea id="aiQ" rows="2" maxlength="500" placeholder="${zh?'问点什么…例如：上个月食材成本为什么变了？':'Ask…'}" style="flex:1;" onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();aiAsk();}"></textarea><button class="btn brand" style="flex:none;" onclick="aiAsk()">${zh?'发送':'Send'}</button></div>
@@ -2402,7 +2405,7 @@ function pgHealth(){
   const pill={ok:['p-g',zh?'正常':'OK'],warn:['p-a',zh?'要留意':'Watch'],bad:['p-r',zh?'要处理':'Action'],info:['',zh?'资料不齐':'Info']};
   const tile=c=>`<div class="card hl-tile hl-${c.st}" onclick="${c.go}"><div style="display:flex;justify-content:space-between;align-items:center;gap:8px;"><div style="font-weight:800;font-size:14px;">${c.t}</div><span class="pill ${pill[c.st][0]}">${pill[c.st][1]}</span></div>
     ${c.lines.filter(Boolean).map(l=>`<div class="mini" style="margin-top:4px;">${l}</div>`).join('')}<div class="hl-go">${zh?'去看看':'Open'} ›</div></div>`;
-  return `<div class="fb"><h2 class="h" style="margin:0;">${zh?'运营健康':'Ops health'} <span class="tag">${oEsc(outletObj().name||'')}</span></h2><button class="btn ghost sm" onclick="openAi()">${zh?'问 AI':'Ask AI'}</button></div>
+  return `<div class="fb"><h2 class="h" style="margin:0;">${zh?'运营健康':'Ops health'} <span class="tag">${oEsc(outletObj().name||'')}</span></h2>${aiAllowed()?`<button class="btn ghost sm" onclick="openAi()">${zh?'问小助手':'Ask assistant'}</button>`:''}</div>
     <div class="grid g3 sup-sum"><div class="kpi"><div class="k">${zh?'要处理':'Action'}</div><div class="v sm ${bad.length?'neg':''}">${bad.length}</div></div><div class="kpi"><div class="k">${zh?'要留意':'Watch'}</div><div class="v sm">${warn.length}</div></div><div class="kpi"><div class="k">${zh?'正常':'OK'}</div><div class="v sm pos">${ok.length}</div></div></div>
     ${todos.length?`<div class="card" style="padding:14px;margin:10px 0;"><div style="font-weight:800;margin-bottom:6px;">${zh?'今天该做的事':'To do'}</div>${todos.map(c=>`<div class="hl-todo"><span class="hl-dot hl-${c.st}"></span><span style="flex:1;font-size:13.5px;">${c.todo}</span><button class="btn sm ghost" style="flex:none;white-space:nowrap;" onclick="${c.go}">${zh?'去处理':'Go'}</button></div>`).join('')}</div>`:`<div class="card" style="padding:18px;margin:10px 0;text-align:center;"><div style="font-weight:800;">${zh?'目前没有要处理的事':'All clear'}</div><div class="mini" style="margin-top:4px;">${zh?'下面每一块都正常。':''}</div></div>`}
     <details class="hintd"><summary>${zh?'这页怎么判断':'About'}</summary><div>${zh?'红色「要处理」＝已经拖了：进货 3 天没录、上个月月底没盘点、上个月销量没导入、库存是负数、上个月成本差异超过 8%。黄色「要留意」＝快要出问题：进货 2–3 天没录、有价格变动待核对、有调拨/订货单/请假等你批、报废占进货超过 3%、成本差异 3–8%。这些天数和百分比是我们设的参考线。所有数字都是从你们已经录入的资料即时算出来的，没有录入就会显示没做。':''}</div></details>
