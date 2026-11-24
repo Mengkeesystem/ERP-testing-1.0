@@ -1296,7 +1296,7 @@ function statusOf(d){if(d<=14)return{t:"健康",e:"Fresh",c:"p-g"};if(d<=30)retu
 function stTxt(s){return LANG==="zh"?s.t:s.e;}
 
 /* ================= 数据种子 ================= */
-const BUILD="1111mk99";  // 版本标记：页面右上/网格提示可见，用来确认已载入最新版
+const BUILD="1111mk100";  // 版本标记：页面右上/网格提示可见，用来确认已载入最新版
 const SEED_VERSION="bh-master-2026-09-1";  // 版本变更→下次载入自动重置为最新主数据（仅本店云端）
 function seed(outletId){
   const isCK = outletId==="ck";
@@ -1977,7 +1977,7 @@ function auditLog(act,detail,oldv,newv){
 function can(p){return ROLES[curRole].can.includes(p);}
 // 作业中心(proc)只要拥有任一子作业权限即可进入；子页与页面级访问统一由 pageAllowed 判定
 function hasAnyOp(){return ['proc','transfer','waste','ent','stock'].some(p=>can(p));}
-function pageAllowed(p){if(p==='proc')return hasAnyOp();if(p==='monthly')return can('report');if(p==='opexm')return can('opex');if(p==='payrun'||p==='payroll')return PAYROLL_ON&&can('payroll');if(p==='orderinv')return ['owner','area','hrmgr','manager','headchef'].includes(curRole);if(typeof PROC_SUB!=='undefined'&&PROC_SUB[p])return can(PROC_SUB[p]);return can(p);}
+function pageAllowed(p){if(p==='proc')return hasAnyOp();if(p==='monthly'||p==='variance')return can('report');if(p==='opexm')return can('opex');if(p==='payrun'||p==='payroll')return PAYROLL_ON&&can('payroll');if(p==='orderinv')return ['owner','area','hrmgr','manager','headchef'].includes(curRole);if(typeof PROC_SUB!=='undefined'&&PROC_SUB[p])return can(PROC_SUB[p]);return can(p);}
 function firstAllowedPage(){const order=['dash','attend','leave','hr','schedule','sales','inv','proc','ck','stock','opex','ap','bom','report','settings'];for(const p of order)if(pageAllowed(p))return p;return 'dash';}
 function canW(p){if(isAgg())return false;if((p==='payroll'||p==='payrun')&&ROLES[curRole].salaryLock)return false;return can(p);} // 汇总视图只读；店面经理薪资只读(锁死)
 function renderTop(){
@@ -2021,11 +2021,11 @@ function renderTop(){
 const MENU=[
   ["营运 Operations",[["dash","💰","dash"],["sales","🧾","sales"],["proc","🔄","proc"],["orderinv","🧾","orderinv"],["ck","🏭","ck"]]],
   ["库存 Inventory",[["inv","📦","inv"],["bom","🍲","bom"],["stock","🔎","stock"],["monthend","📋","monthend"],["opexm","💵","opexm"]]],
-  ["财务 Finance",[["ap","💳","ap"],["opex","💵","opex"],["monthly","📅","monthly"],["report","📈","report"]]],
+  ["财务 Finance",[["ap","💳","ap"],["opex","💵","opex"],["monthly","📅","monthly"],["variance","🧮","variance"],["report","📈","report"]]],
   ["人事 HR",[["hr","👤","hr"],["attend","🕐","attend"],["schedule","📅","schedule"],["leave","🌴","leave"]]],
   ["系统 System",[["settings","⚙️","settings"]]],
 ];
-const MENU_LABELS={pricechg:{zh:"价格变动",en:"Price Changes"},sales:{zh:"销售 (POS)",en:"Sales (POS)"},orderinv:{zh:"订单发票",en:"Order Invoices"},ck:{zh:"中央厨房",en:"Central Kitchen"},stock:{zh:"盘点",en:"Stock Take"},hr:{zh:"员工档案",en:"Staff Profiles"},attend:{zh:"打卡考勤",en:"Attendance"},schedule:{zh:"排班",en:"Schedule"},leave:{zh:"请假",en:"Leave"},monthly:{zh:"月度核算",en:"Monthly Cost"},bom:{zh:"配方成本",en:"Recipe Cost"},opexm:{zh:"运营开销录入",en:"OpEx Entry"},monthend:{zh:"月末盘点",en:"Month-End Count"},payrun:{zh:"薪资发放 Payroll",en:"Payroll Run"}};
+const MENU_LABELS={variance:{zh:"成本差异",en:"Cost Variance"},pricechg:{zh:"价格变动",en:"Price Changes"},sales:{zh:"销售 (POS)",en:"Sales (POS)"},orderinv:{zh:"订单发票",en:"Order Invoices"},ck:{zh:"中央厨房",en:"Central Kitchen"},stock:{zh:"盘点",en:"Stock Take"},hr:{zh:"员工档案",en:"Staff Profiles"},attend:{zh:"打卡考勤",en:"Attendance"},schedule:{zh:"排班",en:"Schedule"},leave:{zh:"请假",en:"Leave"},monthly:{zh:"月度核算",en:"Monthly Cost"},bom:{zh:"配方成本",en:"Recipe Cost"},opexm:{zh:"运营开销录入",en:"OpEx Entry"},monthend:{zh:"月末盘点",en:"Month-End Count"},payrun:{zh:"薪资发放 Payroll",en:"Payroll Run"}};
 function mlabel(p){if(MENU_LABELS[p])return MENU_LABELS[p][LANG];return t(p);}
 function renderSidebar(){
   const html=MENU.map(([grp,items])=>{
@@ -2081,6 +2081,82 @@ function calcCOGS(){ // 依成本核算方式返回（整期金额，calcFin 再
   if(cfg.mode==='period'){ const pur=cfg.purOverride!=null?cfg.purOverride:monthPurchases(); return Math.max(0, cfg.openStock + pur - cfg.closeStock); }
   const s=salesData(); // bom
   return s.reduce((sum,row)=>{const r=(d().recipes||[]).find(x=>x.id===row.recipeId);return sum+(r?recipeCost(r)*row.qty:0);},0);
+}
+
+/* ============ 成本差异（mk100）：理论成本 vs 实际成本（参照 SUPY Theoretical / Actual / Variance）============
+   理论成本 ＝ 这个月每道菜卖了几份 × 配方成本（「应该用掉」的食材钱，来自月度核算的 monthlyPnL）
+   实际成本 ＝ 月初库存 ＋ 本月进货 － 月末库存（「真的用掉」的食材钱；库存取自「月末盘点」）
+   差异 ＝ 实际 － 理论；正数 ＝ 实际用得比理论多（浪费/多给/漏记/被偷/涨价），负数 ＝ 比理论省。
+   资料不齐时只说缺什么，绝不编数字。 */
+let varMonth=null;
+function prevMonthOf(m){const a=m.split('-').map(Number),dt=new Date(a[0],a[1]-2,1);return dt.getFullYear()+'-'+String(dt.getMonth()+1).padStart(2,'0');}
+function monthEndRecs(m){ // 该月每家供应商「最后一次」月末盘点的记录
+  const recs=(d().monthEnd||[]).filter(r=>(r.date||'').slice(0,7)===m);if(!recs.length)return null;
+  const last={};recs.forEach(r=>{if(!last[r.supplier]||r.date>last[r.supplier])last[r.supplier]=r.date;});
+  return recs.filter(r=>r.date===last[r.supplier]);
+}
+function monthEndValue(m){const r=monthEndRecs(m);return r?r.reduce((q,x)=>q+(+x.price||0),0):null;}
+function purchasesOf(m){let sum=0;(d().moves||[]).forEach(r=>{if(r.type==='in'&&String(r.date||'').slice(0,7)===m)sum+=(+r.amt||0);});(d().purchases||[]).forEach(r=>{if(String(r.date||'').slice(0,7)===m)sum+=(+r.price||0);});return sum;}
+function varianceFor(m){
+  const sales=monthSales(m),pnl=monthlyPnL(m),cfg=costCfg();
+  let close=monthEndValue(m),open=monthEndValue(prevMonthOf(m)),srcO='盘点',srcC='盘点';
+  if(m===costMonth){if(close==null&&cfg.closeStock>0){close=cfg.closeStock;srcC='手填';}if(open==null&&cfg.openStock>0){open=cfg.openStock;srcO='手填';}}
+  const pur=(m===costMonth&&cfg.purOverride!=null)?cfg.purOverride:purchasesOf(m);
+  const theo=sales.length?pnl.cogs:null;
+  const actual=(open!=null&&close!=null)?Math.max(0,open+pur-close):null;
+  const net=pnl.rev/1.06;
+  const waste=(d().wasteLog||[]).filter(r=>(r.date||'').slice(0,7)===m).reduce((q,r)=>q+(+r.cost||0)*(+r.qty||0),0);
+  const offer=(d().offers||[]).filter(r=>(r.date||'').slice(0,7)===m).reduce((q,r)=>q+(+r.total||0),0);
+  const diff=(theo!=null&&actual!=null)?actual-theo:null;
+  return {m,sales:sales.length,theo,actual,open,close,srcO,srcC,pur,net,waste,offer,diff,diffPct:(diff!=null&&theo>0)?diff/theo*100:null};
+}
+function itemVarianceRows(m){
+  const dishes=d().dishCosts||[],th={};
+  monthSales(m).forEach(s=>{const dc=dishes.find(x=>x.id===s.dishId);if(!dc)return;(dc.ing||[]).forEach(ig=>{if(ig.link)th[ig.link]=(th[ig.link]||0)+(+s.qty||0)*(+ig.qty||0);});});
+  const cnt=mm=>{const r=monthEndRecs(mm);if(!r)return null;const o={};r.forEach(x=>{o[x.item]=(o[x.item]||0)+(+x.qty||0);});return o;};
+  const co=cnt(prevMonthOf(m)),cc=cnt(m);
+  const buy={};(d().purchases||[]).forEach(r=>{if(String(r.date||'').slice(0,7)===m){const q=FISH_SUPPLIERS.includes(r.supplier)?(+r.weight||0):(+r.qty||0);buy[r.item]=(buy[r.item]||0)+q;}});
+  return Object.keys(th).map(item=>{const theoQ=th[item];const ok=co&&cc&&(item in co||item in cc);const actQ=ok?((co[item]||0)+(buy[item]||0)-(cc[item]||0)):null;const pr=monthAvgPrice(m,item)||0;
+    return {item,theoQ,actQ,diffQ:actQ==null?null:actQ-theoQ,pr,diffV:actQ==null?null:(actQ-theoQ)*pr};}).sort((a,b)=>Math.abs(b.diffV||0)-Math.abs(a.diffV||0)||b.theoQ-a.theoQ);
+}
+function varSetMonth(m){varMonth=m;render();}
+function pgVariance(){
+  const zh=LANG==="zh";const months=availMonths().slice().sort().reverse();
+  if(!varMonth||!months.includes(varMonth))varMonth=months.includes(costMonth)?costMonth:months[0];
+  const m=varMonth,v=varianceFor(m);
+  const miss=[];
+  if(v.theo==null)miss.push([zh?`${monthLabel2(m)}的销量还没录入（月度核算 → 导入 POS 销售报表，或手动录入销量）`:'No sales',"nav('monthly')",zh?'去月度核算':'Go']);
+  if(v.close==null)miss.push([zh?`${monthLabel2(m)}月底的库存还没盘（库存 → 月末盘点）`:'No closing count',"nav('monthend')",zh?'去月末盘点':'Go']);
+  if(v.open==null)miss.push([zh?`上个月（${monthLabel2(prevMonthOf(m))}）月底的库存没盘，没有「月初库存」可用`:'No opening count',"nav('monthend')",zh?'去月末盘点':'Go']);
+  const col=x=>x==null?'var(--grey)':x>0?'var(--red,#b42318)':'var(--green,#1e7a3b)';
+  const lv=v.diffPct==null?null:(Math.abs(v.diffPct)<3?'ok':Math.abs(v.diffPct)<8?'mid':'bad');
+  const lvTxt={ok:zh?'正常':'OK',mid:zh?'要留意':'Watch',bad:zh?'差得多':'High'};
+  const lvCls={ok:'p-g',mid:'p-a',bad:'p-r'};
+  const mx=Math.max(1,v.theo||0,v.actual||0);
+  const bar=(l,val,c)=>`<div class="cc-row"><span class="cc-l">${l}</span><span class="cc-bar"><i style="width:${val==null?0:Math.max(val>0?2:0,val/mx*100).toFixed(1)}%;background:${c}"></i></span><b class="cc-v">${val==null?'—':money(val)}</b></div>`;
+  const pctOf=x=>(x!=null&&v.net>0)?(x/v.net*100).toFixed(1)+'%':'—';
+  const un=v.diff!=null?v.diff-v.waste-v.offer:null;
+  const explain=v.diff==null?'':`<div class="card" style="padding:14px;margin:10px 0;"><div style="font-weight:800;margin-bottom:6px;">${zh?'差的这笔钱，可能去哪了':'Where did the gap go'}</div>
+    <div class="cc-row"><span class="cc-l">${zh?'实际比理论':'Actual vs theory'}</span><span></span><b class="cc-v" style="color:${col(v.diff)}">${v.diff>0?'+':''}${money(v.diff)}</b></div>
+    <div class="cc-row"><span class="cc-l">${zh?'已记录的报废':'Logged waste'}</span><span></span><b class="cc-v">${money(v.waste)}</b></div>
+    <div class="cc-row"><span class="cc-l">${zh?'已记录的招待赠送':'Logged offers'}</span><span></span><b class="cc-v">${money(v.offer)}</b></div>
+    <div class="cc-row" style="border-top:1px dashed var(--line2);padding-top:6px;"><span class="cc-l"><b>${zh?'还说不清的':'Unexplained'}</b></span><span></span><b class="cc-v" style="color:${col(un)}">${un>0?'+':''}${money(un)}</b></div>
+    <div class="mini" style="margin-top:8px;">${un>0?(zh?'这部分没有任何记录能解释：可能是没记的报废、出餐份量给多了、漏记的进货/调拨、盘点数错，或食材涨价。':'Not explained by any record.'):(zh?'差异已经能被报废/招待记录解释掉，或实际用得比理论省。':'Explained by logs.')}</div></div>`;
+  const rows=itemVarianceRows(m);const rowsOk=rows.filter(r=>r.diffV!=null);
+  const itemCards=rows.slice(0,25).map(r=>`<div class="dv-row inv-card" data-name="${oEsc((r.item||'').toLowerCase())}"><div style="min-width:0;"><div class="dv-name">${oEsc(r.item)}</div><div class="mini">${zh?'理论该用':'Theory'} ${num(r.theoQ)} · ${r.actQ==null?(zh?'<b>没盘点，算不出实际</b>':'no count'):(zh?'实际用了 ':'Actual ')+num(r.actQ)}</div></div>
+    <div class="inv-qty">${r.diffV==null?'<div class="mini">—</div>':`<div class="inv-q" style="color:${col(r.diffV)}">${r.diffV>0?'+':''}${money(r.diffV)}</div><div class="mini">${r.diffQ>0?'+':''}${num(r.diffQ)} ${zh?'的量':''}</div>`}</div></div>`).join('');
+  return `<div class="fb"><h2 class="h" style="margin:0;">${zh?'成本差异':'Cost variance'}</h2></div>
+    <div class="seg mtabs nox" style="margin-bottom:8px;">${months.slice(0,8).map(x=>`<button class="${m===x?'active':''}" onclick="varSetMonth('${x}')">${monthLabel2(x)}</button>`).join('')}</div>
+    <details class="hintd"><summary>${zh?'这页在算什么':'About'}</summary><div>${zh?'<b>理论成本</b>＝这个月每道菜卖了几份 × 每份该用多少食材钱（配方成本）。<br><b>实际成本</b>＝月初库存 ＋ 本月进货 － 月底库存（真的用掉的食材钱）。<br><b>差异</b>＝实际 － 理论。正数表示实际用得比应该的多，要查原因；接近 0 表示厨房很准。差异 3% 以内算正常，3–8% 要留意，超过 8% 差得多（这是我们设的参考线，不是行业标准）。成本率按不含 SST 的营业额（营业额 ÷ 1.06）算。':''}</div></details>
+    ${miss.length?`<div class="card" style="padding:14px;margin:8px 0;border-left:4px solid var(--gold);"><div style="font-weight:800;margin-bottom:6px;">${zh?'还缺这些资料，所以算不出完整的差异':'Missing data'}</div>${miss.map(([t,go,b])=>`<div style="display:flex;justify-content:space-between;gap:10px;align-items:center;padding:6px 0;"><span style="font-size:13px;">${t}</span><button class="btn sm ghost" style="white-space:nowrap;flex:none;" onclick="${go}">${b}</button></div>`).join('')}</div>`:''}
+    <div class="grid g3 sup-sum"><div class="kpi"><div class="k">${zh?'理论成本':'Theoretical'}</div><div class="v sm">${v.theo==null?'—':money(v.theo)}</div><div class="mini">${zh?'占营业额':'of sales'} ${pctOf(v.theo)}</div></div>
+      <div class="kpi"><div class="k">${zh?'实际成本':'Actual'}</div><div class="v sm">${v.actual==null?'—':money(v.actual)}</div><div class="mini">${zh?'占营业额':'of sales'} ${pctOf(v.actual)}</div></div>
+      <div class="kpi"><div class="k">${zh?'差异':'Variance'}</div><div class="v sm" style="color:${col(v.diff)}">${v.diff==null?'—':(v.diff>0?'+':'')+money(v.diff)}</div><div class="mini">${v.diffPct==null?'':`${v.diffPct>0?'+':''}${v.diffPct.toFixed(1)}% · <span class="pill ${lvCls[lv]}">${lvTxt[lv]}</span>`}</div></div></div>
+    <div class="card" style="padding:14px;margin:10px 0;">${bar(zh?'理论成本':'Theory',v.theo,'var(--blue,#2a5fa0)')}${bar(zh?'实际成本':'Actual',v.actual,v.diff>0?'var(--red,#b42318)':'var(--green,#1e7a3b)')}
+      <div class="mini" style="margin-top:8px;">${zh?`月初库存 ${v.open==null?'—':money(v.open)}（${v.srcO}）＋ 本月进货 ${money(v.pur)} － 月底库存 ${v.close==null?'—':money(v.close)}（${v.srcC}）；营业额（不含 SST）${money(v.net)}`:''}</div></div>
+    ${explain}
+    <div class="fb" style="margin-top:12px;"><h2 class="h" style="margin:0;font-size:15px;">${zh?'按食材看（只含配方里「关联原料」的食材）':'By ingredient'}</h2></div>
+    ${rows.length?`<div class="mini" style="margin:4px 0 8px;">${zh?'理论该用＝销量 × 配方用量；实际＝上月底盘点量 ＋ 本月进货量 － 本月底盘点量。要单位一致才准（配方用量的单位要和进货/盘点的单位相同）。':''}${rowsOk.length?'':(zh?' <b>目前这些食材都没有盘点数量，算不出实际。</b>':'')}</div><div id="dvList" class="inv-grid">${itemCards}</div>`:`<div class="empty">${zh?'配方里还没有食材关联到库存品项，或这个月没有销量。到「配方成本」给每道菜的材料选好「关联原料」，这里就会按食材显示差异。':'No linked ingredients'}</div>`}`;
 }
 async function setCostMode(m){const x=d();x.costConfig=x.costConfig||{};x.costConfig.mode=m;await save();render();}
 async function setCostParam(f,v){const x=d();x.costConfig=x.costConfig||{};x.costConfig[f]=v;await save();render();}
@@ -5825,7 +5901,7 @@ function payActionsHTML(w,fin,zh){
 
 /* 页面路由补充（ap/opex 不在底部tab，用函数导航） */
 const _pages={dash:pgDash,sales:pgSales,inv:pgInv,proc:pgProc,bom:pgBom,report:pgReport,settings:pgSettings,ap:pgAp,opex:pgOpex,opexm:pgOpexM,hr:pgHR,attend:pgAttend,schedule:pgSchedule,leave:pgLeave,ck:pgCK,stock:pgStock,
-  purchase:pgPurchase,pricechg:pgPriceChg,grn:pgGRN,transfer:pgTransfer,waste2:pgWaste2,offer:pgOffer,monthend:pgMonthEnd,monthly:pgMonthly,ordersheet:pgOrderSheet,orderinv:pgOrderInv,opexlog:pgOpexLog};
+  purchase:pgPurchase,pricechg:pgPriceChg,variance:pgVariance,grn:pgGRN,transfer:pgTransfer,waste2:pgWaste2,offer:pgOffer,monthend:pgMonthEnd,monthly:pgMonthly,ordersheet:pgOrderSheet,orderinv:pgOrderInv,opexlog:pgOpexLog};
 /* 顶栏在窄手机上文字太多会自动换行、变高(实测 375px 宽的手机顶栏可以到 139px 高)；
    量出顶栏"现在真正的高度"写进 --topH 这个 CSS 变量，侧边菜单/遮罩层跟着它定位，
    永远从顶栏结束的地方开始，不会被拉高的顶栏盖住导致点不到。 */
