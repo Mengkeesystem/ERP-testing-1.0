@@ -854,6 +854,13 @@ html.ui2 .hint{background:transparent!important;border:0!important;padding:2px 2
 html.ui2 div.empty{border:1.5px dashed var(--line2);border-radius:var(--radius);background:var(--card);padding:30px 16px;margin:10px 0;font-size:13.5px;}
 html.ui2[data-theme="mech"] div.empty{border-color:#5A646E;}
 
+
+/* 订单详情：合计条 + 操作按钮一起固定在底部（mk105）*/
+.odfoot{position:sticky;bottom:calc(-1 * (18px + env(safe-area-inset-bottom)));z-index:6;background:var(--card);margin:10px -2px calc(-1 * (18px + env(safe-area-inset-bottom)));padding:8px 2px calc(12px + env(safe-area-inset-bottom));box-shadow:0 -12px 10px 4px var(--card);}
+.odfoot .odtot{position:static;margin:0 0 8px;}
+.odacts{display:flex;gap:6px;justify-content:flex-end;flex-wrap:wrap;}
+html.ui2[data-theme="mech"] .odfoot{background:#E9ECEF;box-shadow:0 -12px 10px 4px #E9ECEF;}
+html.ui2[data-theme="cn"] .odfoot{background:#FFFAEB;box-shadow:0 -12px 10px 4px #FFFAEB;}
 /* ---- 进货价格变动（mk99）---- */
 .pflag{display:inline-flex;align-items:center;font-size:11.5px;font-weight:700;padding:2px 9px;border-radius:99px;white-space:nowrap;}
 .pflag.up{background:#fde8e8;color:#b42318;}.pflag.dn{background:#e3f4e8;color:#1e7a3b;}
@@ -1306,7 +1313,7 @@ function statusOf(d){if(d<=14)return{t:"健康",e:"Fresh",c:"p-g"};if(d<=30)retu
 function stTxt(s){return LANG==="zh"?s.t:s.e;}
 
 /* ================= 数据种子 ================= */
-const BUILD="1111mk104";  // 版本标记：页面右上/网格提示可见，用来确认已载入最新版
+const BUILD="1111mk105";  // 版本标记：页面右上/网格提示可见，用来确认已载入最新版
 const SEED_VERSION="bh-master-2026-09-1";  // 版本变更→下次载入自动重置为最新主数据（仅本店云端）
 function seed(outletId){
   const isCK = outletId==="ck";
@@ -2063,6 +2070,40 @@ function renderSidebar(){
   document.getElementById('sidebar').innerHTML=html;
 }
 function toggleSide(){document.getElementById('sidebar').classList.toggle('open');document.getElementById('backdrop').classList.toggle('show');}
+
+/* ============ 手势：从左边缘往右滑 / 手机「返回」＝ 打开菜单（mk105）============
+   以前：iPhone 从左边往右滑＝浏览器「上一页」，会跳出系统；Android 返回键/手势一样。
+   现在：① 页面开着 history 保护（pushState），返回手势/返回键只触发 popstate，我们改成开菜单（弹窗开着就先关弹窗，菜单开着就关菜单），不会离开 App；
+        ② 已加到主屏幕的 PWA（没有浏览器返回）用左边缘右滑手势直接开菜单。两条路用时间戳避免重复触发。 */
+let _edgeAt=0,_tsx=0,_tsy=0,_tsok=false;
+function navGestureTarget(){
+  const sb=document.getElementById('sidebar'),top=document.querySelector('.top');
+  if(!sb||!top||top.style.display==='none'||sb.style.display==='none')return null;   // 登录页等没有菜单
+  return sb;
+}
+function openMenuByGesture(){
+  const mbg=document.getElementById('mbg');
+  if(mbg&&mbg.classList.contains('show')){closeM();return;}   // 弹窗开着：先关弹窗
+  const sb=navGestureTarget();if(!sb)return;
+  toggleSide();   // 菜单开着就关、关着就开
+}
+(function(){
+  try{history.replaceState({erp:1},'',location.href);history.pushState({erp:2},'',location.href);}catch(e){}
+  window.addEventListener('popstate',function(){
+    try{history.pushState({erp:2},'',location.href);}catch(e){}   // 立刻补回一格，下次返回还是留在 App 里
+    if(Date.now()-_edgeAt<1500)return;   // 刚被边缘手势处理过：别再处理一次
+    openMenuByGesture();
+  });
+  document.addEventListener('touchstart',function(e){const t=e.touches[0];_tsx=t.clientX;_tsy=t.clientY;_tsok=(t.clientX<=24)&&e.touches.length===1;},{passive:true});
+  document.addEventListener('touchend',function(e){
+    if(!_tsok)return;_tsok=false;const t=e.changedTouches[0],dx=t.clientX-_tsx,dy=Math.abs(t.clientY-_tsy);
+    if(dx>70&&dy<60){
+      const sb=navGestureTarget(),mbg=document.getElementById('mbg');
+      if(!sb||(mbg&&mbg.classList.contains('show')))return;
+      _edgeAt=Date.now();if(!sb.classList.contains('open'))toggleSide();
+    }
+  },{passive:true});
+})();
 async function switchOutlet(){
   curOutlet=document.getElementById('outletSel').value;_aggCache=null;try{updateXferBell();}catch(e){}
   render();   // 先用手上已有的资料立刻画出来（不再等网络）
@@ -3990,11 +4031,9 @@ function openOrderDetail(id){
     ${o.status==='rejected'?`<div class="al al-r" style="margin-bottom:8px;">${zh?'已拒绝：':'Rejected: '}${oEsc((o.history||[]).filter(x=>x.st==='rejected').slice(-1).map(x=>x.note).join('')||'')}</div>`:''}
     ${ordHistHTML(o)}
     <div class="hint" style="margin-top:0;">${zh?"货物不够就改数量或🗑️删掉；可填单价算金额。改动自动保存。":"Adjust qty / remove / set price."}</div>
-    <div class="odl">${rows}</div>
-    <div class="odtot"><span>${zh?"合计":"Total"} · ${zh?"数量":"Qty"} <b id="odTQ">${num(t.tq,2)}</b></span><span>${zh?"金额":"Amt"} <b id="odTA">${money(t.ta)}</b></span></div>
-    <div style="display:flex;gap:6px;justify-content:flex-end;margin-top:10px;flex-wrap:wrap;">
-      ${acts.join('')}
-    </div>`);
+    <div class="odl" style="max-height:none;overflow:visible;">${rows}</div>
+    <div class="odfoot"><div class="odtot"><span>${zh?"合计":"Total"} · ${zh?"数量":"Qty"} <b id="odTQ">${num(t.tq,2)}</b></span><span>${zh?"金额":"Amt"} <b id="odTA">${money(t.ta)}</b></span></div>
+      <div class="odacts">${acts.join('')}</div></div>`);
   const mb=document.getElementById('mbox');if(mb)mb.classList.add('m-wide');
 }
 async function deleteOrder(id){if(!confirm(LANG==="zh"?"删除此订单记录？":"Delete this order?"))return;await orderEditFlush();ORDERS=ORDERS.filter(o=>o.id!==id);await saveOrders();openOrdersPanel();}
