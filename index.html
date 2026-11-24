@@ -1314,7 +1314,7 @@ function statusOf(d){if(d<=14)return{t:"健康",e:"Fresh",c:"p-g"};if(d<=30)retu
 function stTxt(s){return LANG==="zh"?s.t:s.e;}
 
 /* ================= 数据种子 ================= */
-const BUILD="1111mk107";  // 版本标记：页面右上/网格提示可见，用来确认已载入最新版
+const BUILD="1111mk108";  // 版本标记：页面右上/网格提示可见，用来确认已载入最新版
 const SEED_VERSION="bh-master-2026-09-1";  // 版本变更→下次载入自动重置为最新主数据（仅本店云端）
 function seed(outletId){
   const isCK = outletId==="ck";
@@ -3966,8 +3966,18 @@ function ordCanReceive(o){return ['confirmed','shipped','partial'].includes(o.st
 function ordCanCancel(o){return o.status==='pending'?(ordMine(o)&&can('proc'))||ordIsApprover():['confirmed','shipped'].includes(o.status)&&ordIsApprover();}
 function ordWho(){return curUser?curUser.name:ROLES[curRole].name;}
 function ordHist(o,st,note){(o.history=o.history||[]).push({st,ts:Date.now(),by:ordWho(),note:note||''});}
+/* 订单状态变化 → 手机推送（kind:'order_status'；标题/内容由服务器按订单资料生成，并核对订单真的是这个状态）*/
+function sendOrderStatusPush(o){
+  try{
+    if(!PUSH_FN_URL||!AUTH()||!o)return;
+    (async()=>{let token=SUPABASE_ANON_KEY;
+      try{const {data}=await _sb.auth.getSession();if(data&&data.session&&data.session.access_token)token=data.session.access_token;}catch(e){}
+      await fetch(PUSH_FN_URL,{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+token,'apikey':SUPABASE_ANON_KEY},body:JSON.stringify({kind:'order_status',orderId:o.id,status:o.status})});
+    })().catch(()=>{});
+  }catch(e){}
+}
 async function ordSetStatus(id,st,note,msg){
-  await orderEditFlush();const o=orderById(id);if(!o)return;o.status=st;ordHist(o,st,note);await saveOrders();
+  await orderEditFlush();const o=orderById(id);if(!o)return;o.status=st;ordHist(o,st,note);await saveOrders();setTimeout(()=>sendOrderStatusPush(o),1500);   // 等云端写好再通知
   try{auditLog('订单状态',(o.supplier||o.outletName||'')+' → '+ORD_ST[st][1]+(note?'（'+note+'）':''),'','');}catch(e){}
   if(msg)try{alert(msg);}catch(e){}
   openOrderDetail(id);
@@ -4088,7 +4098,7 @@ async function confirmOrder(id){
   await orderEditFlush();const o=orderById(id);if(!o){openOrdersPanel();return;}
   o.status='confirmed';if(!o.invoiceNo)o.invoiceNo=nextInvoiceNo();ordHist(o,'confirmed',o.invoiceNo);
   o.confirmedBy=curUser?curUser.name:ROLES[curRole].name;o.confirmedAt=Date.now();
-  await saveOrders();
+  await saveOrders();setTimeout(()=>sendOrderStatusPush(o),1500);
   try{if(typeof auditLog==='function')auditLog(LANG==="zh"?"订单确认":"Order confirmed",(o.supplier||o.outletName||'')+" · "+o.invoiceNo,"","");}catch(e){}
   openOrderDetail(id);
 }
