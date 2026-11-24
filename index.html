@@ -853,6 +853,13 @@ html.ui2 .hint{background:transparent!important;border:0!important;padding:2px 2
 /* ---- 空状态卡片 + 小修（mk97）---- */
 html.ui2 div.empty{border:1.5px dashed var(--line2);border-radius:var(--radius);background:var(--card);padding:30px 16px;margin:10px 0;font-size:13.5px;}
 html.ui2[data-theme="mech"] div.empty{border-color:#5A646E;}
+
+/* ---- 进货价格变动（mk99）---- */
+.pflag{display:inline-flex;align-items:center;font-size:11.5px;font-weight:700;padding:2px 9px;border-radius:99px;white-space:nowrap;}
+.pflag.up{background:#fde8e8;color:#b42318;}.pflag.dn{background:#e3f4e8;color:#1e7a3b;}
+.dv-row.pc-card{display:flex;flex-direction:column;align-items:stretch;gap:8px;}.dv-row.pc-card>div{min-width:0;}
+.dv-flag:empty{display:none;}.dv-flag{margin-top:4px;}
+html.ui2[data-theme="mech"] .pflag.up{background:#3a0f14;color:#ff7b86;}html.ui2[data-theme="mech"] .pflag.dn{background:#0d3324;color:#5fe0a4;}
 /* ---- 小弹窗补充（mk93）---- */
 html.ui2 .m input[type=file]{width:100%;box-sizing:border-box;font-size:14px;padding:10px;border:1.5px dashed var(--line2);border-radius:var(--radius-sm);background:var(--soft);color:var(--ink2);}
 html.ui2 .m input[type=file]::file-selector-button{border:0;border-radius:99px;padding:8px 14px;margin-right:10px;background:var(--brand);color:#fff;font-weight:600;font-size:13px;}
@@ -1289,7 +1296,7 @@ function statusOf(d){if(d<=14)return{t:"健康",e:"Fresh",c:"p-g"};if(d<=30)retu
 function stTxt(s){return LANG==="zh"?s.t:s.e;}
 
 /* ================= 数据种子 ================= */
-const BUILD="1111mk98";  // 版本标记：页面右上/网格提示可见，用来确认已载入最新版
+const BUILD="1111mk99";  // 版本标记：页面右上/网格提示可见，用来确认已载入最新版
 const SEED_VERSION="bh-master-2026-09-1";  // 版本变更→下次载入自动重置为最新主数据（仅本店云端）
 function seed(outletId){
   const isCK = outletId==="ck";
@@ -2018,7 +2025,7 @@ const MENU=[
   ["人事 HR",[["hr","👤","hr"],["attend","🕐","attend"],["schedule","📅","schedule"],["leave","🌴","leave"]]],
   ["系统 System",[["settings","⚙️","settings"]]],
 ];
-const MENU_LABELS={sales:{zh:"销售 (POS)",en:"Sales (POS)"},orderinv:{zh:"订单发票",en:"Order Invoices"},ck:{zh:"中央厨房",en:"Central Kitchen"},stock:{zh:"盘点",en:"Stock Take"},hr:{zh:"员工档案",en:"Staff Profiles"},attend:{zh:"打卡考勤",en:"Attendance"},schedule:{zh:"排班",en:"Schedule"},leave:{zh:"请假",en:"Leave"},monthly:{zh:"月度核算",en:"Monthly Cost"},bom:{zh:"配方成本",en:"Recipe Cost"},opexm:{zh:"运营开销录入",en:"OpEx Entry"},monthend:{zh:"月末盘点",en:"Month-End Count"},payrun:{zh:"薪资发放 Payroll",en:"Payroll Run"}};
+const MENU_LABELS={pricechg:{zh:"价格变动",en:"Price Changes"},sales:{zh:"销售 (POS)",en:"Sales (POS)"},orderinv:{zh:"订单发票",en:"Order Invoices"},ck:{zh:"中央厨房",en:"Central Kitchen"},stock:{zh:"盘点",en:"Stock Take"},hr:{zh:"员工档案",en:"Staff Profiles"},attend:{zh:"打卡考勤",en:"Attendance"},schedule:{zh:"排班",en:"Schedule"},leave:{zh:"请假",en:"Leave"},monthly:{zh:"月度核算",en:"Monthly Cost"},bom:{zh:"配方成本",en:"Recipe Cost"},opexm:{zh:"运营开销录入",en:"OpEx Entry"},monthend:{zh:"月末盘点",en:"Month-End Count"},payrun:{zh:"薪资发放 Payroll",en:"Payroll Run"}};
 function mlabel(p){if(MENU_LABELS[p])return MENU_LABELS[p][LANG];return t(p);}
 function renderSidebar(){
   const html=MENU.map(([grp,items])=>{
@@ -2280,6 +2287,7 @@ function pgProc(){
   if(can('proc')){
     cards.push(["ordersheet","🛒",LANG==="zh"?"订货单":"Order Sheet",LANG==="zh"?"按供应商下单 · 通知老板/副经理":"By supplier · notify boss",var_amber()]);
     cards.push(["purchase","📥",LANG==="zh"?"进货单":"Goods-In",LANG==="zh"?"按供应商 · 每年月日进货记录":"By supplier · dated records",var_green()]);
+    {const pn=priceChanges().filter(c=>c.st==='new').length;cards.push(["pricechg","📈",LANG==="zh"?"价格变动":"Price Changes",LANG==="zh"?(pn?pn+" 项待核对 · 进货涨跌提醒":"进货价格涨跌提醒"):"Purchase price alerts",pn?var_red():var_teal()]);}
     cards.push(["grn","📋",LANG==="zh"?"退货 / 补货":"GRN / Returns",LANG==="zh"?"按供应商 · 含补货/免费/取消":"By supplier · settlement",var_blue()]);
   }
   if(can('transfer'))cards.push(["transfer","🔁",LANG==="zh"?"跨店调拨":"Transfer",LANG==="zh"?"物品调拨 + 人力借调":"Items + staff loans",var_navy()]);
@@ -4468,7 +4476,7 @@ function logMonthTabs(months,cur,setter){return `<div class="seg" style="flex-wr
 let gridCurMonth='';                            // 当前网格实际渲染的月份（合计计算以此为准，避免 ledgerMonth='all' 导致合计归零）
 function setLedgerMonth(v){ledgerMonth=v;render();window.scrollTo(0,0);}
 function monthLabel(ymk){if(ymk==='all')return LANG==="zh"?"全部月份":"All months";const[y,m]=ymk.split('-');return LANG==="zh"?(y+"年"+(+m)+"月"):(ymk);}
-const PROC_SUB={ordersheet:'proc',purchase:'proc',grn:'proc',transfer:'transfer',waste2:'waste',offer:'ent',monthend:'stock',opexlog:'opex'};
+const PROC_SUB={ordersheet:'proc',purchase:'proc',grn:'proc',transfer:'transfer',waste2:'waste',offer:'ent',monthend:'stock',opexlog:'opex',pricechg:'proc'};
 function subCan(p){return PROC_SUB[p]?can(PROC_SUB[p]):can(p);}   // 子页读权限
 function subCanW(p){return PROC_SUB[p]?canW(PROC_SUB[p]):canW(p);}// 子页写权限（汇总视图只读）
 function setSupplier(n){selSupplier=n;ledgerMonth='all';render();window.scrollTo(0,0);}
@@ -4721,6 +4729,7 @@ function gridCellRecalc(el){
   box.querySelectorAll('input[data-f]').forEach(inp=>{const v=+inp.value||0;if(inp.dataset.f==='qty')qty=v;else if(inp.dataset.f==='price')price=v;else if(inp.dataset.f==='weight'){weight=v;hasWeight=true;}});
   const drive=hasWeight?weight:qty;
   const amt=box.querySelector('.gcamt');if(amt)amt.textContent=(drive&&price)?money(drive*price):'-';
+  try{dvFlag(el);}catch(e){}
 }
 function gridCellHTML(mod,sup,cid,date,w){
   const r=gridRec(mod,sup,cid,date);
@@ -4859,8 +4868,9 @@ function dayViewHTML(sup,month){
   const rows=items.map(({c,r})=>{
     const qty=r?(+r.qty||0):0,price=r?(+r.unitPrice||0):0,wt=r?(+r.weight||0):0,amt=r?(+r.price||0):0,lp=dvLastPrice(sup,c.cid);
     const dis=w?'':'disabled',meta=[c.code,c.uom,c.spec].filter(Boolean).map(oEsc).join(' · ');
-    return `<div class="dv-row ${r?'has':''}" data-name="${oEsc(((c.code||'')+' '+(c.name||'')).toLowerCase())}">
-      <div><div class="dv-name">${oEsc(c.name||'')}</div>${meta?`<div class="mini">${meta}</div>`:''}</div>
+    const prevP=priceBefore(sup,c.cid,dvDay);
+    return `<div class="dv-row ${r?'has':''}" data-prev="${prevP||0}" data-name="${oEsc(((c.code||'')+' '+(c.name||'')).toLowerCase())}">
+      <div><div class="dv-name">${oEsc(c.name||'')}</div>${meta?`<div class="mini">${meta}</div>`:''}<div class="dv-flag">${priceFlagHTML(prevP,price)}</div></div>
       <div class="dv-in gcw">${fish?`<label>${zh?'重量':'Weight'}<input type="number" inputmode="decimal" step="0.01" data-f="weight" value="${wt||''}" ${dis} oninput="gridCellRecalc(this)" onchange="dvCommit(this,'${S}','${c.cid}','${dvDay}')"></label>`:''}
         <label>${zh?'数量':'Qty'}<input type="number" inputmode="decimal" step="0.01" data-f="qty" value="${qty||''}" ${dis} oninput="gridCellRecalc(this)" onchange="dvCommit(this,'${S}','${c.cid}','${dvDay}')"></label>
         <label>${zh?'单价 RM':'Price RM'}<input type="number" inputmode="decimal" step="0.01" data-f="price" placeholder="${lp?lp.toFixed(2):''}" value="${price||''}" ${dis} oninput="gridCellRecalc(this)" onchange="dvCommit(this,'${S}','${c.cid}','${dvDay}')"></label>
@@ -4869,7 +4879,7 @@ function dayViewHTML(sup,month){
   const dayLabel=zh?`${dd.getMonth()+1}月${dd.getDate()}日 · 周${wd[dd.getDay()]}`:dvDay;
   const mTot=recs.reduce((s,r)=>s+(+r.price||0),0);
   return `<div class="dv-bar"><div class="seg"><button onclick="setLedgerView('day')" class="active">${zh?'按日':'Daily'}</button><button onclick="setLedgerView('grid')">${zh?'表格':'Grid'}</button></div>
-      <div style="display:flex;gap:8px;align-items:center;">${w&&AUTH()?`<button class="btn brand sm" onclick="invScan('${S}')">${zh?'拍照识别':'Scan invoice'}</button>`:''}${w?actm([{l:'+ '+(zh?'新增品项':'Add item'),on:"addGridItem('"+S+"')"},{l:zh?'复制上一次进货':'Copy last purchase',on:"dvCopyPrev('"+S+"','"+dvDay+"')"}]):''}</div></div>
+      <div style="display:flex;gap:8px;align-items:center;">${w&&AUTH()?`<button class="btn brand sm" onclick="invScan('${S}')">${zh?'拍照识别':'Scan invoice'}</button>`:''}${w?actm([{l:'+ '+(zh?'新增品项':'Add item'),on:"addGridItem('"+S+"')"},{l:zh?'复制上一次进货':'Copy last purchase',on:"dvCopyPrev('"+S+"','"+dvDay+"')"},{l:zh?'价格变动':'Price changes',on:"goProcSub('pricechg')"}]):''}</div></div>
     <div class="dv-strip" id="dvStrip">${chips}</div>
     <div class="card dv-head"><div style="flex:1;min-width:0;"><div class="dv-date">${dayLabel}${dvDay===TODAY?` <span class="pill p-g">${zh?'今天':'Today'}</span>`:''}</div>
       <input class="dv-inv" placeholder="Invoice No." value="${oEsc(gridInv(mod,sup,dvDay))}" ${w?'':'disabled'} onchange="setGridInv('${mod}','${S}','${dvDay}',this.value)"></div>
@@ -4929,6 +4939,7 @@ function invReview(){
   const rows=v.lines.map((l,i)=>`<div class="odc ${l.on?'':'inv-off'}" id="ivr-${i}">
     <div class="odc-h"><label class="inv-ck"><input type="checkbox" ${l.on?'checked':''} onchange="invSet(${i},'on',this.checked)"><span class="odc-n">${oEsc(l.name)}${l.unit?` <span class="mini">${oEsc(l.unit)}</span>`:''}</span></label></div>
     <div class="fr" style="margin:8px 0 0;"><label>${zh?'对应库存品项':'Matches item'}</label><select onchange="invSet(${i},'cid',this.value)">${opts(l.cid)}</select></div>
+    <div class="dv-flag" id="ivf-${i}" style="margin-top:6px;">${l.cid?priceFlagHTML(priceBefore(sup,l.cid,v.date),l.price):''}</div>
     <div class="odc-f"><label>${zh?'数量/重量':'Qty'}<input class="odnum" inputmode="decimal" value="${l.qty==null?'':l.qty}" oninput="invSet(${i},'qty',this.value)"></label>
       <label>${zh?'单价 RM':'Price'}<input class="odnum" inputmode="decimal" value="${l.price==null?'':l.price}" oninput="invSet(${i},'price',this.value)"></label>
       <div class="odc-a"><span>${zh?'金额':'Amt'}</span><b id="ivamt-${i}">${money((+l.qty||0)*(+l.price||0))}</b></div></div></div>`).join('')||`<div class="empty">${zh?'没读到货品行':'No lines'}</div>`;
@@ -4942,7 +4953,7 @@ function invReview(){
   invTotals();
 }
 function invSet(i,f,val){const l=_inv.lines[i];if(f==='on')l.on=!!val;else if(f==='cid'){l.cid=val;l.on=!!val;const ck=document.querySelector('#ivr-'+i+' input[type=checkbox]');if(ck)ck.checked=l.on;}else l[f]=val===''?null:+val;
-  const a=document.getElementById('ivamt-'+i);if(a)a.textContent=money((+l.qty||0)*(+l.price||0));const row=document.getElementById('ivr-'+i);if(row)row.classList.toggle('inv-off',!l.on);invTotals();}
+  const a=document.getElementById('ivamt-'+i);if(a)a.textContent=money((+l.qty||0)*(+l.price||0));const fl=document.getElementById('ivf-'+i);if(fl)fl.innerHTML=l.cid?priceFlagHTML(priceBefore(_inv.sup,l.cid,_inv.date),l.price):'';const row=document.getElementById('ivr-'+i);if(row)row.classList.toggle('inv-off',!l.on);invTotals();}
 function invTotals(){const on=_inv.lines.filter(l=>l.on&&l.cid&&(+l.qty||0)>0);const n=document.getElementById('iv-n'),t=document.getElementById('iv-t');if(n)n.textContent=on.length;if(t)t.textContent=money(on.reduce((s,l)=>s+(+l.qty||0)*(+l.price||0),0));}
 async function invApply(){
   const zh=LANG==="zh",v=_inv,sup=v.sup;const on=v.lines.filter(l=>l.on&&l.cid&&(+l.qty||0)>0);
@@ -4959,6 +4970,63 @@ async function invApply(){
   try{auditLog&&auditLog('拍照识别进货',sup+' '+v.date+' '+on.length+'项');}catch(e){}
   dvDay=v.date;try{ledgerMonth=v.date.slice(0,7);}catch(e){}closeM();render();
   alert(zh?`已写入 ${on.length} 项到 ${v.date} 的进货单`:`Saved ${on.length} items`);
+}
+
+/* ============ 进货价格变动提醒（mk99，参照 SUPY「Received Items / Price Updated」）============
+   每次进货单价和同供应商同品项「上一次」比，涨跌超过设定幅度（默认 5%）就标记；
+   「价格变动」页集中列出，逐条核对：确认新价 / 已向供应商追差价 / 忽略。判定结果存在 d().priceReview。 */
+function priceAlertPct(){const v=+(d().priceAlertPct);return v>0?v:5;}
+function priceBefore(sup,cid,date){let best=null;(d().purchases||[]).forEach(r=>{if(r.supplier===sup&&r.cid===cid&&(+r.unitPrice||0)>0&&(r.date||'')<date&&(!best||r.date>best.date))best=r;});return best?+best.unitPrice:0;}
+function priceFlagHTML(prev,now){
+  prev=+prev||0;now=+now||0;if(!(prev>0&&now>0))return '';
+  const pct=(now-prev)/prev*100;if(Math.abs(pct)<priceAlertPct())return '';
+  const zh=LANG==="zh";return `<span class="pflag ${pct>0?'up':'dn'}">${pct>0?(zh?'涨':'Up'):(zh?'跌':'Down')} ${pct>0?'+':''}${pct.toFixed(1)}% · ${zh?'上次':'prev'} ${money(prev)}</span>`;
+}
+function dvFlag(el){const row=el.closest&&el.closest('.dv-row');if(!row||row.dataset.prev==null)return;const box=row.querySelector('.dv-flag');if(!box)return;const pi=row.querySelector('input[data-f="price"]');box.innerHTML=priceFlagHTML(+row.dataset.prev,pi?+pi.value:0);}
+function priceChanges(){
+  const by={};(d().purchases||[]).forEach(r=>{if((+r.unitPrice||0)>0&&r.supplier&&r.cid){(by[r.supplier+'|'+r.cid]=by[r.supplier+'|'+r.cid]||[]).push(r);}});
+  const out=[],rv=d().priceReview||{};
+  Object.values(by).forEach(arr=>{arr.sort((a,b)=>(a.date||'').localeCompare(b.date||''));
+    for(let i=1;i<arr.length;i++){const a=arr[i-1],b=arr[i],p=+a.unitPrice,n=+b.unitPrice,pct=(n-p)/p*100;
+      if(Math.abs(pct)<priceAlertPct())continue;
+      const drive=FISH_SUPPLIERS.includes(b.supplier)?(+b.weight||0):(+b.qty||0);const key=b.supplier+'|'+b.cid+'|'+b.date;
+      out.push({key,sup:b.supplier,item:b.item,date:b.date,prevDate:a.date,prev:p,now:n,pct,drive,extra:(n-p)*drive,st:(rv[key]&&rv[key].st)||'new'});}});
+  return out.sort((x,y)=>(y.date||'').localeCompare(x.date||'')||Math.abs(y.extra)-Math.abs(x.extra));
+}
+let pcFilter='new',pcMonth='all',pcQuery='';
+function pcSet(k,v){if(k==='f')pcFilter=v;else pcMonth=v;render();}
+async function pcDecide(key,st){
+  d().priceReview=d().priceReview||{};d().priceReview[key]={st,ts:Date.now(),by:(curUser&&curUser.email)||curRole};
+  auditLog('价格变动核对',key.split('|').join(' · ')+' → '+({ok:'确认新价',credit:'已追差价',ignore:'忽略',new:'退回待核对'})[st],'','');
+  await save();render();
+}
+function pcSetThreshold(){const v=prompt(LANG==="zh"?'涨跌超过百分之几就提醒？（现在 '+priceAlertPct()+'%）':'Alert when price moves more than (%):',priceAlertPct());if(v==null)return;const n=+v;if(!(n>0&&n<100))return alert(LANG==="zh"?'请输入 1–99 之间的数字':'Enter 1-99');d().priceAlertPct=n;save();render();}
+function pgPriceChg(){
+  const zh=LANG==="zh",w=subCanW('purchase');const all=priceChanges();
+  const months=[...new Set(all.map(c=>(c.date||'').slice(0,7)))].sort().reverse();
+  const inM=all.filter(c=>pcMonth==='all'||(c.date||'').slice(0,7)===pcMonth);
+  const cnt=k=>inM.filter(c=>c.st===k).length;
+  const list=inM.filter(c=>pcFilter==='all'||c.st===pcFilter);
+  const up=inM.filter(c=>c.pct>0),upExtra=up.reduce((s,c)=>s+c.extra,0);
+  const stTxt={new:zh?'待核对':'Needs review',ok:zh?'已确认新价':'Accepted',credit:zh?'已追差价':'Credit issued',ignore:zh?'已忽略':'Ignored'};
+  const stCls={new:'p-a',ok:'p-g',credit:'p-b',ignore:''};
+  const tabs=[['new',zh?'待核对':'Needs review'],['ok',zh?'已确认':'Accepted'],['credit',zh?'已追差价':'Credit'],['ignore',zh?'已忽略':'Ignored'],['all',zh?'全部':'All']];
+  const cards=list.map(c=>`<div class="dv-row inv-card pc-card ${c.st==='new'?(c.pct>0?'low':''):''}" data-name="${oEsc(((c.item||'')+' '+(c.sup||'')).toLowerCase())}">
+    <div style="display:flex;justify-content:space-between;gap:10px;align-items:flex-start;"><div style="min-width:0;"><div class="dv-name">${oEsc(c.item||'')}</div><div class="mini">${oEsc(c.sup)} · ${c.date}</div></div>
+      <span class="pflag ${c.pct>0?'up':'dn'}" style="flex:none;">${c.pct>0?'+':''}${c.pct.toFixed(1)}%</span></div>
+    <div style="display:flex;justify-content:space-between;align-items:baseline;gap:10px;flex-wrap:wrap;"><div><span class="mini">${c.prevDate}</span> <b>${money(c.prev)}</b> → <b style="color:${c.pct>0?'var(--red,#b42318)':'var(--green,#1e7a3b)'}">${money(c.now)}</b></div>
+      <div class="mini">${zh?'本次数量':'Qty'} ${num(c.drive)} · ${zh?'多付':'Impact'} <b style="color:${c.extra>0?'var(--red,#b42318)':'var(--green,#1e7a3b)'}">${c.extra>0?'+':''}${money(c.extra)}</b></div></div>
+    <div style="display:flex;justify-content:space-between;gap:8px;align-items:center;flex-wrap:wrap;"><span class="pill ${stCls[c.st]}">${stTxt[c.st]}</span>
+      ${w?`<div style="display:flex;gap:6px;flex-wrap:wrap;">${c.st==='new'?`<button class="btn sm brand" onclick="pcDecide('${gEsc(c.key)}','ok')">${zh?'确认新价':'Accept'}</button>${c.pct>0?`<button class="btn sm ghost" onclick="pcDecide('${gEsc(c.key)}','credit')">${zh?'已追差价':'Credit issued'}</button>`:''}<button class="btn sm ghost" onclick="pcDecide('${gEsc(c.key)}','ignore')">${zh?'忽略':'Ignore'}</button>`:`<button class="btn sm ghost" onclick="pcDecide('${gEsc(c.key)}','new')">${zh?'退回待核对':'Reopen'}</button>`}</div>`:''}</div></div>`).join('')||`<div class="empty">${zh?(pcFilter==='new'?'没有待核对的价格变动':'这里没有记录'):'Nothing here'}</div>`;
+  return `<div class="fb"><h2 class="h" style="margin:0;">${zh?'价格变动':'Price changes'}</h2><div style="display:flex;gap:8px;align-items:center;"><button class="btn ghost sm" onclick="goProcSub('proc')">← ${zh?'进销存':'Back'}</button>${actm([{l:(zh?'设定提醒幅度（现在 ':'Alert threshold (now ')+priceAlertPct()+'%）',on:'pcSetThreshold()'}])}</div></div>
+    <div class="grid g3 sup-sum"><div class="kpi"><div class="k">${zh?'待核对':'Needs review'}</div><div class="v sm ${cnt('new')?'neg':''}">${cnt('new')}</div></div>
+      <div class="kpi"><div class="k">${zh?'涨价品项':'Price up'}</div><div class="v sm">${up.length}</div></div>
+      <div class="kpi"><div class="k">${zh?'涨价多付合计':'Extra cost'}</div><div class="v sm ${upExtra>0?'neg':''}">${money(upExtra)}</div></div></div>
+    <details class="hintd"><summary>${zh?'说明':'Notes'}</summary><div>${zh?`进货单价和同一供应商同一品项上一次的单价相比，涨跌超过 ${priceAlertPct()}% 就会出现在这里。「多付」＝（新价−旧价）×这次数量。核对后可「确认新价」、标记「已追差价」（已向供应商要回差额）或「忽略」。`:'Changes vs the previous purchase price.'}</div></details>
+    <div class="seg mtabs nox" style="margin-bottom:8px;">${tabs.map(([k,l])=>`<button class="${pcFilter===k?'active':''}" onclick="pcSet('f','${k}')">${l}${k!=='all'?' '+cnt(k):''}</button>`).join('')}</div>
+    ${months.length>1?`<div class="seg mtabs nox" style="margin-bottom:8px;"><button class="${pcMonth==='all'?'active':''}" onclick="pcSet('m','all')">${zh?'全部月份':'All'}</button>${months.map(m=>`<button class="${pcMonth===m?'active':''}" onclick="pcSet('m','${m}')">${monthLabel2(m)}</button>`).join('')}</div>`:''}
+    <div class="dv-tools"><input class="dv-search" type="search" placeholder="${zh?'搜索品项/供应商…':'Search…'}" oninput="dvFilter(this.value)" autocomplete="off"></div>
+    <div id="dvList" class="inv-grid">${cards}</div>`;
 }
 function dvAfter(){const s=document.getElementById('dvStrip'),c=s&&s.querySelector('.dv-chip.on');if(s&&c)s.scrollLeft=c.offsetLeft-s.clientWidth/2+c.offsetWidth/2;}
 
@@ -5757,7 +5825,7 @@ function payActionsHTML(w,fin,zh){
 
 /* 页面路由补充（ap/opex 不在底部tab，用函数导航） */
 const _pages={dash:pgDash,sales:pgSales,inv:pgInv,proc:pgProc,bom:pgBom,report:pgReport,settings:pgSettings,ap:pgAp,opex:pgOpex,opexm:pgOpexM,hr:pgHR,attend:pgAttend,schedule:pgSchedule,leave:pgLeave,ck:pgCK,stock:pgStock,
-  purchase:pgPurchase,grn:pgGRN,transfer:pgTransfer,waste2:pgWaste2,offer:pgOffer,monthend:pgMonthEnd,monthly:pgMonthly,ordersheet:pgOrderSheet,orderinv:pgOrderInv,opexlog:pgOpexLog};
+  purchase:pgPurchase,pricechg:pgPriceChg,grn:pgGRN,transfer:pgTransfer,waste2:pgWaste2,offer:pgOffer,monthend:pgMonthEnd,monthly:pgMonthly,ordersheet:pgOrderSheet,orderinv:pgOrderInv,opexlog:pgOpexLog};
 /* 顶栏在窄手机上文字太多会自动换行、变高(实测 375px 宽的手机顶栏可以到 139px 高)；
    量出顶栏"现在真正的高度"写进 --topH 这个 CSS 变量，侧边菜单/遮罩层跟着它定位，
    永远从顶栏结束的地方开始，不会被拉高的顶栏盖住导致点不到。 */
@@ -5886,7 +5954,7 @@ function ui2Tabs(){
   tb.style.display='';
   const zh=LANG==="zh",defs=[];
   const add=(icon,l1,l2,go,on,ok)=>{if(ok)defs.push({icon,label:zh?l1:l2,go,on});};
-  const subProc=['ordersheet','grn','waste2','offer','opexlog'];
+  const subProc=['ordersheet','grn','waste2','offer','opexlog','pricechg'];
   add('cart','采购','Procure',"nav('proc')",curPage==='proc'||subProc.includes(curPage),pageAllowed('proc'));
   add('inbox','进货','Goods-in',"goProcSub('purchase')",curPage==='purchase',pageAllowed('purchase'));
   add('box','库存','Stock',"nav('inv')",curPage==='inv',pageAllowed('inv'));
