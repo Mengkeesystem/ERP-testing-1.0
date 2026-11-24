@@ -930,6 +930,8 @@ html.ui2[data-theme="cn"] .m>button.btn.block.brand{box-shadow:0 -14px 12px 4px 
 @media(min-width:761px){.dv-foot{bottom:12px;}.dv-row{grid-template-columns:minmax(180px,1fr) auto;align-items:center;}}
 </style>
 <!-- Supabase 云端 SDK（未配置 key 时不影响运行，自动回退本地存储）-->
+<link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
+<link rel="preconnect" href="https://kmcdokwiyetlmsrdlgqw.supabase.co" crossorigin>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body>
@@ -955,7 +957,7 @@ html.ui2[data-theme="cn"] .m>button.btn.block.brand{box-shadow:0 -14px 12px 4px 
 
 <div class="mbg" id="mbg"><div class="m" id="mbox"></div></div>
 
-<script src="order-data.js?v=0912h"></script>
+<script>/* 中央厨房订货图片数据（约 500KB）不再卡住整个 App 启动：后台下载，用到的时候（中央厨房账号登录 / 打开订货表）才等它 */window.__orderSeedP=new Promise(function(r){var sc=document.createElement("script");sc.src="order-data.js?v=0912h";sc.onload=sc.onerror=function(){r();};document.head.appendChild(sc);});</script>
 <script>
 /* ================= 明记家乡小食店 ERP v2.0 — 完整应用逻辑 ================= */
 /* 数据持久化：window.storage。涵盖 FSD v2.0 十大模块。 */
@@ -1304,7 +1306,7 @@ function statusOf(d){if(d<=14)return{t:"健康",e:"Fresh",c:"p-g"};if(d<=30)retu
 function stTxt(s){return LANG==="zh"?s.t:s.e;}
 
 /* ================= 数据种子 ================= */
-const BUILD="1111mk101";  // 版本标记：页面右上/网格提示可见，用来确认已载入最新版
+const BUILD="1111mk102";  // 版本标记：页面右上/网格提示可见，用来确认已载入最新版
 const SEED_VERSION="bh-master-2026-09-1";  // 版本变更→下次载入自动重置为最新主数据（仅本店云端）
 function seed(outletId){
   const isCK = outletId==="ck";
@@ -1803,23 +1805,27 @@ function clearSession(){ // 换人登录/退出时：内存里和本机缓存里
 async function loadDB(){
   clearSession();
   try{const _t=document.querySelector('.top'),_h=document.getElementById('pageHost');if(_h&&_t&&_t.style.display!=='none')_h.innerHTML=skelHTML();}catch(e){}
-  try{if(typeof loadOrders==='function')await loadOrders();}catch(e){}
+  const pOrders=(typeof loadOrders==='function')?Promise.resolve().then(()=>loadOrders()).catch(()=>{}):Promise.resolve();   // 订单列表和各分店同时去读，不排队
   const dirty=new Set();const mine=myOutlets();   // 只载入自己能碰的分店
-  for(const o of mine){
-    let data=null;
-    try{const r=await Store.get('erpv2:'+o.id);data=r?JSON.parse(r.value):null;}catch(e){data=null;}
+  const got=await Promise.all(mine.map(async o=>{let data=null;try{const r=await Store.get('erpv2:'+o.id);data=r?JSON.parse(r.value):null;if(r)_rawSig[o.id]=_sigOf(r.value);}catch(e){data=null;}return {o,data};}));   // 11 间分店一起读（以前是一间一间排队，慢）
+  if(mine.some(o=>o.id==='ck')){try{await window.__orderSeedP;}catch(e){}}   // 只有中央厨房账号需要先等订货图片数据（要拿它铺订货表）
+  for(const {o,data:d0} of got){
+    let data=d0;
     if(!data || data._sv!==SEED_VERSION){ data=seed(o.id); DB[o.id]=data; syncMenuPrices(data); ensureDishCosts(data); ensureCatalogSeed(data,o.id); dirty.add(o.id); }
     else { DB[o.id]=data; let ch=syncMenuPrices(data); if(ensureDishCosts(data))ch=true; if(ensureCatalogSeed(data,o.id))ch=true; if(ch)dirty.add(o.id); }
+    _reloadAt[o.id]=Date.now();
   }
-  // 薪资记录（有权限的角色才会真的去读）：合并回内存；旧数据第一次迁移时顺带重存整包
-  const res=await Promise.all(mine.map(o=>attachPayroll(o.id).catch(()=>false)));
+  // 薪资记录 / 中央订货表 / 调拨申请：互不依赖，同时去读（以前一样一样排队）
+  const [res,ckCh,xrOk]=await Promise.all([Promise.all(mine.map(o=>attachPayroll(o.id).catch(()=>false))),loadCkOrder().catch(()=>false),loadXreqs().catch(()=>false)]);
+  await pOrders;
   mine.forEach((o,i)=>{if(res[i])dirty.add(o.id);});
-  try{if(await loadCkOrder())dirty.add('ck');}catch(e){}
-  try{if(await loadXreqs()){mine.forEach(o=>{if(applyApprovedFor(o.id))dirty.add(o.id);});}}catch(e){}
+  if(ckCh)dirty.add('ck');
+  if(xrOk){mine.forEach(o=>{if(applyApprovedFor(o.id))dirty.add(o.id);});}
   for(const id of dirty){try{await save(id);}catch(e){}}
   try{xferCheck(true);_xreqSig=XREQ.map(r=>r.id+':'+r.status).join(',');}catch(e){}
 }
 async function save(oid){
+  _aggCache=null;   // 数据有变动：汇总视图下次重算
   try{
     oid=oid||curOutlet;const db=DB[oid];if(!db)return;
     let main=db;
@@ -1831,10 +1837,22 @@ async function save(oid){
         await Store.set(payKey(oid),JSON.stringify(buildPay(db)));
       }
     }
-    await Store.set('erpv2:'+oid,JSON.stringify(main));
+    const body=JSON.stringify(main);_rawSig[oid]=_sigOf(body);
+    await Store.set('erpv2:'+oid,body);
   }catch(e){}
 }
-async function reloadOutlet(oid){if(!canWriteOutlet(oid))return;try{const r=await Store.get('erpv2:'+oid);if(r){DB[oid]=JSON.parse(r.value);let ch=await attachPayroll(oid);if(applyApprovedFor(oid))ch=true;if(ch)await save(oid);}}catch(e){}}
+const _reloadAt={};const _rawSig={};
+function _sigOf(v){return v.length+':'+v.slice(0,40)+v.slice(-40);}
+/* 重新读一间分店；回传 true＝内容真的变了（要重画）。同一间店正在存档 / 20 秒内刚读过就不重读。 */
+async function reloadOutlet(oid,force){
+  if(!canWriteOutlet(oid))return false;
+  const q=_cloudWrites['erpv2:'+oid];if(q&&(q.running||q.pending!=null))return false;   // 有没存完的改动：别拿旧的盖掉它
+  if(!force&&_reloadAt[oid]&&Date.now()-_reloadAt[oid]<20000)return false;
+  try{const r=await Store.get('erpv2:'+oid);if(r){const sg=_sigOf(r.value);const same=_rawSig[oid]===sg;
+    if(!same||!DB[oid]){DB[oid]=JSON.parse(r.value);let ch=await attachPayroll(oid);if(applyApprovedFor(oid))ch=true;if(ch)await save(oid);_aggCache=null;}
+    _rawSig[oid]=sg;_reloadAt[oid]=Date.now();return !same;}}catch(e){}
+  return false;
+}
 /* ---- 角色权限：全局配置，持久化到云端/本地，所有分店同步 ---- */
 const ROLE_DEFAULTS=Object.fromEntries(Object.keys(ROLES).map(k=>[k,ROLES[k].can.slice()]));
 async function loadRolePerms(){
@@ -2045,9 +2063,14 @@ function renderSidebar(){
   document.getElementById('sidebar').innerHTML=html;
 }
 function toggleSide(){document.getElementById('sidebar').classList.toggle('open');document.getElementById('backdrop').classList.toggle('show');}
-async function switchOutlet(){curOutlet=document.getElementById('outletSel').value;_aggCache=null;try{updateXferBell();}catch(e){}
-  if(CLOUD){try{if(curOutlet===ALL_ID){for(const id of branchIds())await reloadOutlet(id);}else if(curOutlet!==ALL_ID)await reloadOutlet(curOutlet);}catch(e){}}
-  render();}
+async function switchOutlet(){
+  curOutlet=document.getElementById('outletSel').value;_aggCache=null;try{updateXferBell();}catch(e){}
+  render();   // 先用手上已有的资料立刻画出来（不再等网络）
+  if(!CLOUD)return;
+  const want=curOutlet;const ids=want===ALL_ID?branchIds():[want];
+  try{const res=await Promise.all(ids.map(id=>reloadOutlet(id).catch(()=>false)));   // 后台同时重读（以前一间一间排队等）
+    if(curOutlet===want&&res.some(Boolean)){_aggCache=null;if(!(typeof isBusyEditing==='function'&&isBusyEditing())&&!document.getElementById('mbg').classList.contains('show'))render();}}catch(e){}
+}
 function switchRole(){curRole=document.getElementById('roleSel').value;if(!pageAllowed(curPage))curPage=firstAllowedPage();render();}
 function toggleLang(){LANG=LANG==="zh"?"en":"zh";render();}
 function goHome(){try{closeM();}catch(e){}try{const sb=document.getElementById('sidebar');if(sb&&sb.classList.contains('open'))toggleSide();}catch(e){}if(typeof sfx==='function')try{sfx('click');}catch(e){}nav(firstAllowedPage());window.scrollTo(0,0);}
@@ -2184,7 +2207,7 @@ function healthChecks(){
 }
 function pgHealth(){
   const zh=LANG==="zh";
-  if(isAgg())return `<div class="fb"><h2 class="h" style="margin:0;">${zh?'运营健康':'Ops health'}</h2></div><div class="card" style="padding:26px 18px;text-align:center;"><div style="font-weight:700;font-size:16px;margin-bottom:6px;">${zh?'请先选一间分店':'Pick one branch'}</div><div class="mini">${zh?'健康总览是按单间店算的：用右上角的分店选单，选好要看的那间店。':''}</div></div>`;
+  if(isAgg())return `<div class="fb"><h2 class="h" style="margin:0;">${zh?'运营健康':'Ops health'}</h2></div><div class="card" style="padding:26px 18px;text-align:center;"><div style="font-weight:700;font-size:16px;margin-bottom:6px;">${zh?'请选择分店':'Please select a branch'}</div><div class="mini">${zh?'健康总览是按单间店算的：用右上角的分店选单，选好要看的那间店。':''}</div></div>`;
   const cs=healthChecks();const bad=cs.filter(c=>c.st==='bad'),warn=cs.filter(c=>c.st==='warn'),ok=cs.filter(c=>c.st==='ok');
   const todos=[...bad,...warn].filter(c=>c.todo);
   const pill={ok:['p-g',zh?'正常':'OK'],warn:['p-a',zh?'要留意':'Watch'],bad:['p-r',zh?'要处理':'Action'],info:['',zh?'资料不齐':'Info']};
@@ -3570,7 +3593,8 @@ function pgLeave(){
 async function approveLeave(id,ok){const l=d().leaves.find(x=>x.id===id);if(!l)return;l.status=ok?"已批准":"已拒绝";auditLog("请假审批",l.type+" "+(ok?"批准":"拒绝"),"待批准",l.status);await save();render();}
 
 /* 中央厨房（独立页）*/
-const ORDER_SEED=window.ORDER_SEED||{A:[],B:[],C:[],uniform:[],uniformImg:""};
+let ORDER_SEED=window.ORDER_SEED||{A:[],B:[],C:[],uniform:[],uniformImg:""};
+window.__orderSeedP.then(function(){if(window.ORDER_SEED&&ORDER_SEED!==window.ORDER_SEED){ORDER_SEED=window.ORDER_SEED;try{if(typeof curPage!=='undefined'&&['ck','ordersheet','proc'].includes(curPage)&&typeof render==='function')render();}catch(e){}}});
 /* ============ 中央厨房 · 订货表 Order List ============ */
 const BH_ICON='icon-192.png';
 let ckTab='prod';
@@ -5998,7 +6022,6 @@ function render(){
   if(!pageAllowed(curPage)){curPage=firstAllowedPage();selSupplier=null;} // 权限收紧后自动落到可访问页
   renderTop();renderSidebar();
   syncTopH();
-  if(isAgg())_aggCache=null; // 每次渲染刷新汇总，反映最新各店数据
   const banner=isAgg()?`<div class="al al-b" style="margin-bottom:10px;"><div class="t">📊 ${LANG==="zh"?"全部分店总和视图（只读）":"All-Branches Aggregate (read-only)"}</div>${LANG==="zh"?"这是 11 间分店数据的合计，仅供总览；要录入或修改请切换到个别分店。":"Totals of all branches. Switch to a branch to edit."}</div>`:'';
   const preview=isPreviewing()?`<div class="al al-a" style="margin-bottom:10px;display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap;"><div><div class="t">👁 ${LANG==="zh"?"岗位预览模式":"Role Preview"}</div>${LANG==="zh"?`你正在以「${ROLES[curRole].name}」身份查看界面（真实身份：${curUser.name} · 老板/管理员）。`:`Previewing as ${ROLES[curRole].en}.`}</div><button class="btn ghost sm" onclick="exitPreview()">↩︎ ${LANG==="zh"?"退出预览":"Exit"}</button></div>`:'';
   document.getElementById('pageHost').innerHTML=`<div class="page active">${banner}${preview}${(_pages[curPage]||pgDash)()}</div>`;
