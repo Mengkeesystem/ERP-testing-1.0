@@ -1321,7 +1321,7 @@ function statusOf(d){if(d<=14)return{t:"健康",e:"Fresh",c:"p-g"};if(d<=30)retu
 function stTxt(s){return LANG==="zh"?s.t:s.e;}
 
 /* ================= 数据种子 ================= */
-const BUILD="1111mk110";  // 版本标记：页面右上/网格提示可见，用来确认已载入最新版
+const BUILD="1111mk111";  // 版本标记：页面右上/网格提示可见，用来确认已载入最新版
 const SEED_VERSION="bh-master-2026-09-1";  // 版本变更→下次载入自动重置为最新主数据（仅本店云端）
 function seed(outletId){
   const isCK = outletId==="ck";
@@ -2315,14 +2315,21 @@ function aiRender(){
   box.innerHTML=chips+_aiMsgs.map(m=>m.role==='user'?`<div class="ai-u">${oEsc(m.content)}</div>`:`<div class="ai-a">${aiFmt(m.content)}</div>`).join('')+(_aiBusy?`<div class="ai-a mini">${zh?'明记小助手正在看你的数据…（约 5–15 秒）':'Thinking…'}</div>`:'');
   box.scrollTop=box.scrollHeight;
 }
+let _aiQuota=null;
+function aiQuotaHTML(){const zh=LANG==="zh",q=_aiQuota;if(!q)return '';
+  return `<div class="mini" id="aiQuota" style="margin-bottom:6px;">${zh?`今天已问 ${q.user_used}/${q.user_limit} 次，还剩 ${q.user_left} 次 · 每次约 USD ${q.cost_per_ask_usd.toFixed(2)}（估算）· 今天约 USD ${q.cost_today_usd.toFixed(2)}`:`Today ${q.user_used}/${q.user_limit}`}</div>`;}
+function aiQuotaShow(){const e=document.getElementById('aiQuota');const h=aiQuotaHTML();if(e)e.outerHTML=h||'<div id="aiQuota"></div>';}
+async function aiQuotaLoad(){try{let token=SUPABASE_ANON_KEY;try{const {data}=await _sb.auth.getSession();if(data&&data.session&&data.session.access_token)token=data.session.access_token;}catch(e){}
+  const r=await fetch(AI_FN_URL,{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+token,'apikey':SUPABASE_ANON_KEY},body:JSON.stringify({quota:true})});
+  const j=await r.json();if(j&&j.quota){_aiQuota=j.quota;aiQuotaShow();}}catch(e){}}
 function openAi(){
   const zh=LANG==="zh";if(!aiAllowed())return alert(zh?'明记小助手只开放给经理以上的账号':'Managers and above only');if(!AUTH()||!AI_FN_URL)return alert(zh?'AI 助手需要登录云端账号后才能用':'Sign in to use AI');
   openForm(`<h3>${zh?'明记小助手':'Meng Kee Assistant'} <span class="x" onclick="closeM()">×</span></h3>
     <div class="mini" style="margin-bottom:8px;">${zh?'AI 只会看到这间店的汇总数字（不含员工资料、邮箱、薪资）。回答仅供参考，重要的请对照原数据。':''}</div>
-    <div id="aiBox" class="ai-box"></div>
+    <div id="aiQuota">${aiQuotaHTML()}</div><div id="aiBox" class="ai-box"></div>
     <div class="odfoot"><div style="display:flex;gap:8px;align-items:flex-end;"><textarea id="aiQ" rows="2" maxlength="500" placeholder="${zh?'问点什么…例如：上个月食材成本为什么变了？':'Ask…'}" style="flex:1;" onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();aiAsk();}"></textarea><button class="btn brand" style="flex:none;" onclick="aiAsk()">${zh?'发送':'Send'}</button></div>
       ${_aiMsgs.length?`<div style="text-align:right;margin-top:6px;"><button class="btn ghost sm" onclick="_aiMsgs=[];aiRender()">${zh?'清空对话':'Clear'}</button></div>`:''}</div>`);
-  const mb=document.getElementById('mbox');if(mb)mb.classList.add('m-wide');aiRender();
+  const mb=document.getElementById('mbox');if(mb)mb.classList.add('m-wide');aiRender();aiQuotaLoad();
 }
 async function aiAsk(q){
   const zh=LANG==="zh";if(_aiBusy)return;const inp=document.getElementById('aiQ');
@@ -2333,6 +2340,7 @@ async function aiAsk(q){
     const hist=_aiMsgs.slice(0,-1).slice(-6);
     const r=await fetch(AI_FN_URL,{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+token,'apikey':SUPABASE_ANON_KEY},body:JSON.stringify({question,context:aiContext(),history:hist})});
     let j={};try{j=await r.json();}catch(e){}
+    if(j&&j.quota){_aiQuota=j.quota;aiQuotaShow();}
     if(!r.ok||!j.answer)_aiMsgs.push({role:'assistant',content:'⚠ '+(j.message||(r.status===404?(zh?'AI 功能还没部署（找管理员）':'AI function not deployed'):(zh?'出错了，请再试一次':'Error')))});
     else _aiMsgs.push({role:'assistant',content:j.answer});
   }catch(e){_aiMsgs.push({role:'assistant',content:'⚠ '+(zh?'连不上 AI，请检查网络':'Network error')});}

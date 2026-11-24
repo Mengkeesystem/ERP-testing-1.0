@@ -17,6 +17,8 @@ const API_KEY = (Deno.env.get("ANTHROPIC_API_KEY") ?? "").trim().replace(/^["']+
 const MODEL = (Deno.env.get("AI_MODEL") ?? "claude-sonnet-5-5").trim();
 const ALLOWED_ORIGIN = "https://mengkeesystem.github.io";
 const MAX_CTX = 40000, MAX_Q = 600, MAX_HIST = 6, MAX_HIST_LEN = 1500;
+// 额度（2026-11-24 业主批准）：每人每天 30 次、全公司每天 150 次；每问一次按 USD 0.02 估算（估算值，不是实际账单）
+const DAILY_USER = 30, DAILY_TOTAL = 150, COST_PER_ASK = 0.02;
 const supabase = createClient(SUPABASE_URL, SERVICE_KEY);
 
 function corsFor(req: Request): Record<string, string> {
@@ -50,6 +52,18 @@ async function authenticate(req: Request) {
   return { email, role: String(data.role || "") };
 }
 
+const usageKey = () => "erpv2:aiusage:" + new Date(Date.now() + 8 * 3600_000).toISOString().slice(0, 10);   // 马来西亚日期
+async function readUsage(email: string) {
+  const { data } = await supabase.from("erp_store").select("value").eq("key", usageKey()).maybeSingle();
+  const v: any = data?.value || {};
+  const users: Record<string, number> = v.users || {};
+  const total = Number(v.total) || 0;
+  return { users, total, mine: Number(users[email]) || 0 };
+}
+function quotaOf(u: { total: number; mine: number }) {
+  return { user_used: u.mine, user_limit: DAILY_USER, total_used: u.total, total_limit: DAILY_TOTAL, cost_per_ask_usd: COST_PER_ASK,
+    user_left: Math.max(0, DAILY_USER - u.mine), cost_today_usd: +(u.mine * COST_PER_ASK).toFixed(2) };
+}
 const hits = new Map<string, number[]>();
 function tooMany(key: string): boolean {
   const now = Date.now();
@@ -86,6 +100,10 @@ Deno.serve(async (req) => {
 
   let body: any;
   try { body = await req.json(); } catch (_e) { return reply(req, { error: "bad_json" }, 400); }
+  const usage = await readUsage(who.email);
+  if (body?.quota) return reply(req, { quota: quotaOf(usage) });
+  if (usage.mine >= DAILY_USER) return reply(req, { error: "user_quota", message: `你今天的额度用完了（每人每天 ${DAILY_USER} 次），明天再问`, quota: quotaOf(usage) }, 429);
+  if (usage.total >= DAILY_TOTAL) return reply(req, { error: "total_quota", message: `全公司今天的额度用完了（每天 ${DAILY_TOTAL} 次），明天再问`, quota: quotaOf(usage) }, 429);
   const question = clip(body?.question, MAX_Q);
   if (!question) return reply(req, { error: "empty_question" }, 400);
   const context = clip(body?.context, MAX_CTX);
@@ -119,5 +137,7 @@ Deno.serve(async (req) => {
   const j = await r.json();
   const answer = String(j?.content?.find((c: any) => c.type === "text")?.text || "").trim();
   if (!answer) return reply(req, { error: "empty_answer", message: "AI 没有给出回答，请换个问法" }, 422);
-  return reply(req, { answer: answer.slice(0, 6000), usage: { in: j?.usage?.input_tokens ?? null, out: j?.usage?.output_tokens ?? null } });
+  usage.users[who.email] = usage.mine + 1; usage.total += 1; usage.mine += 1;   // 成功回答后才计数
+  await supabase.from("erp_store").upsert({ key: usageKey(), value: { total: usage.total, users: usage.users, cost_per_ask_usd: COST_PER_ASK }, updated_at: new Date().toISOString() });
+  return reply(req, { answer: answer.slice(0, 6000), quota: quotaOf(usage), usage: { in: j?.usage?.input_tokens ?? null, out: j?.usage?.output_tokens ?? null } });
 });
