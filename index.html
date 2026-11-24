@@ -297,11 +297,15 @@
 #aiBall .glow{position:absolute;inset:-9px;border-radius:50%;background:radial-gradient(circle,rgba(0,229,255,.55),rgba(124,92,255,.28) 55%,transparent 72%);opacity:.55;animation:aiGlow 3.2s ease-in-out infinite;pointer-events:none;}
 #aiBall .ring{position:absolute;inset:0;border-radius:50%;background:conic-gradient(from 0deg,#00E5FF,#6C63FF,#FF3DCB,#00E5FF);animation:aiSpin 5s linear infinite;will-change:transform;}
 #aiBall .core{position:absolute;inset:2.5px;border-radius:50%;background:radial-gradient(circle at 30% 24%,rgba(120,200,255,.28),rgba(255,255,255,0) 42%),radial-gradient(circle at 50% 60%,#14203a,#070b16 78%);box-shadow:inset 0 0 12px rgba(0,229,255,.28),inset 0 -6px 10px rgba(108,99,255,.25);}
+#aiBall .core{overflow:hidden;}
+#aiBall .core b{position:absolute;left:50%;top:50%;width:100%;height:100%;margin:-50% 0 0 -50%;border-radius:50%;background:radial-gradient(circle,rgba(0,229,255,.85) 0%,rgba(108,99,255,.55) 38%,rgba(255,61,203,.0) 70%);transform:scale(.12);opacity:0;animation:aiBreathe 3.6s ease-in-out infinite;will-change:transform,opacity;}
+#aiBall .core b+b{animation-delay:1.8s;}
+@keyframes aiBreathe{0%{transform:scale(.12);opacity:0;}18%{opacity:.95;}70%{transform:scale(1.05);opacity:.25;}100%{transform:scale(1.15);opacity:0;}}
 #aiBall .core::after{content:"";position:absolute;left:14%;top:9%;width:46%;height:26%;border-radius:50%;background:linear-gradient(180deg,rgba(255,255,255,.5),rgba(255,255,255,0));transform:rotate(-18deg);}
 #aiBall .t{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font:800 17px/1 "SF Pro Display",system-ui,sans-serif;letter-spacing:1px;color:#E8FBFF;text-shadow:0 0 8px rgba(0,229,255,.95),0 0 16px rgba(108,99,255,.6);}
 @keyframes aiSpin{to{transform:rotate(360deg);}}
 @keyframes aiGlow{0%,100%{opacity:.4;transform:scale(.96);}50%{opacity:.8;transform:scale(1.06);}}
-@media (prefers-reduced-motion:reduce){#aiBall .ring,#aiBall .glow{animation:none;}}
+@media (prefers-reduced-motion:reduce){#aiBall .ring,#aiBall .glow,#aiBall .core b{animation:none;}#aiBall .core b{opacity:.35;transform:scale(.6);}}
 #aiBallMenu{position:fixed;z-index:89;display:none;min-width:170px;background:var(--card,#fff);color:var(--ink,#222);border:1px solid var(--line,#ddd);border-radius:14px;padding:6px;box-shadow:0 12px 30px rgba(0,0,0,.28);}
 #aiBallMenu button{display:block;width:100%;text-align:left;padding:12px 14px;border:0;background:none;color:inherit;font-size:15px;border-radius:10px;cursor:pointer;}
 #aiBallMenu button:active{background:var(--hover,#eee);}
@@ -1339,7 +1343,7 @@ function statusOf(d){if(d<=14)return{t:"健康",e:"Fresh",c:"p-g"};if(d<=30)retu
 function stTxt(s){return LANG==="zh"?s.t:s.e;}
 
 /* ================= 数据种子 ================= */
-const BUILD="1111mk116";  // 版本标记：页面右上/网格提示可见，用来确认已载入最新版
+const BUILD="1111mk117";  // 版本标记：页面右上/网格提示可见，用来确认已载入最新版
 const SEED_VERSION="bh-master-2026-09-1";  // 版本变更→下次载入自动重置为最新主数据（仅本店云端）
 function seed(outletId){
   const isCK = outletId==="ck";
@@ -2325,7 +2329,7 @@ function aiContext(){
 }
 
 // ===== 明记小助手浮动圆球（类似 iPhone 辅助触控）=====
-// 点一下＝打开小助手；按住 2 秒＝弹出「打开 / 退出」；拖动＝换位置（放开自动吸到左/右边）；退出＝圆球消失，下次打开小助手（顶部 AI 按钮 / ⋯ 菜单 / 运营健康页）才会重新出现。
+// 点一下＝打开小助手；按住 0.7 秒＝弹出「打开 / 退出」；拖动＝换位置（放开自动吸到左/右边）；退出＝圆球消失，下次打开小助手（顶部 AI 按钮 / ⋯ 菜单 / 运营健康页）才会重新出现。
 (function(){
   const LS='erpAiBall',LP='erpAiBallPos',SZ=54;
   let el,menu,timer=null,sx=0,sy=0,ox=0,oy=0,moved=false,held=false,down=false;
@@ -2355,13 +2359,13 @@ function aiContext(){
   window.aiBallOn=function(){ss(LS,'on');sync();};
   window.aiBallSync=sync;
   function init(){
-    el=document.createElement('div');el.id='aiBall';el.innerHTML='<i class="glow"></i><div class="orb"><i class="ring"></i><i class="core"></i><span class="t">AI</span></div>';el.setAttribute('role','button');el.setAttribute('aria-label','明记小助手');
+    el=document.createElement('div');el.id='aiBall';el.innerHTML='<i class="glow"></i><div class="orb"><i class="ring"></i><i class="core"><b></b><b></b></i><span class="t">AI</span></div>';el.setAttribute('role','button');el.setAttribute('aria-label','明记小助手');
     menu=document.createElement('div');menu.id='aiBallMenu';document.body.appendChild(el);document.body.appendChild(menu);place();
     el.addEventListener('contextmenu',e=>e.preventDefault());
     let raf=0,tx=0,ty=0;
     el.addEventListener('pointerdown',e=>{down=true;moved=false;held=false;sx=e.clientX;sy=e.clientY;ox=cx;oy=cy;el.classList.remove('snap');
       try{el.setPointerCapture(e.pointerId);}catch(_){}
-      clearTimeout(timer);timer=setTimeout(()=>{if(down&&!moved){held=true;el.classList.add('hold');if(navigator.vibrate)try{navigator.vibrate(30);}catch(_){}openMenu();}},2000);});
+      clearTimeout(timer);timer=setTimeout(()=>{if(down&&!moved){held=true;el.classList.add('hold');if(navigator.vibrate)try{navigator.vibrate(30);}catch(_){}openMenu();}},700);});
     el.addEventListener('pointermove',e=>{if(!down||held)return;const dx=e.clientX-sx,dy=e.clientY-sy;
       if(!moved&&Math.hypot(dx,dy)>8){moved=true;clearTimeout(timer);el.classList.add('drag');}
       if(moved){tx=Math.max(0,Math.min(innerWidth-SZ,ox+dx));ty=Math.max(60,Math.min(innerHeight-SZ-90,oy+dy));
