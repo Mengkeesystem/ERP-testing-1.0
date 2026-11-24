@@ -1314,7 +1314,7 @@ function statusOf(d){if(d<=14)return{t:"健康",e:"Fresh",c:"p-g"};if(d<=30)retu
 function stTxt(s){return LANG==="zh"?s.t:s.e;}
 
 /* ================= 数据种子 ================= */
-const BUILD="1111mk106";  // 版本标记：页面右上/网格提示可见，用来确认已载入最新版
+const BUILD="1111mk107";  // 版本标记：页面右上/网格提示可见，用来确认已载入最新版
 const SEED_VERSION="bh-master-2026-09-1";  // 版本变更→下次载入自动重置为最新主数据（仅本店云端）
 function seed(outletId){
   const isCK = outletId==="ck";
@@ -2249,6 +2249,13 @@ function healthChecks(){
    if(!pms.length&&dayN>=3){st='bad';todo=zh?`${monthLabel2(pm)}的销量还没导入`:'Last month sales missing';}
    else if(!ms.length&&dayN>=10){st='warn';todo=zh?'本月销量还没导入':'This month sales missing';}
    add({k:'sales',st,t:zh?'销量（POS）':'Sales',go:"nav('monthly')",page:'monthly',lines:[zh?`上个月：${pms.length?pms.length+' 道菜 / '+num(q(pms))+' 份':'没有'}`:`Last ${pms.length}`,zh?`本月：${ms.length?ms.length+' 道菜 / '+num(q(ms))+' 份':'还没有'}`:`This ${ms.length}`],todo});}
+  // 4b 盘点排程
+  {const ss=schedSummary(),n=ss.all.length;let st='ok',todo='',l1;
+   if(!n){st='info';l1=zh?'还没设盘点排程（到「盘点」页设定）':'No schedule';}
+   else if(ss.od.length){st='bad';l1=zh?`逾期 ${ss.od.length} 项 · 今天到期 ${ss.td.length} 项`:`Overdue ${ss.od.length}`;todo=zh?`${ss.od.length} 项盘点已逾期：${ss.od.map(o=>o.s.name).slice(0,2).join('、')}${ss.od.length>2?'…':''}`:'Counts overdue';}
+   else if(ss.td.length){st='warn';l1=zh?`今天要盘 ${ss.td.length} 项`:`Due today ${ss.td.length}`;todo=zh?`今天要盘点：${ss.td.map(o=>o.s.name).slice(0,2).join('、')}`:'Count due today';}
+   else{const nx=ss.all.map(o=>o.x.next).sort()[0];l1=zh?`都在轨道上 · 下一次 ${nx}`:`On track`;}
+   add({k:'sched',st,t:zh?'盘点排程':'Count schedule',go:"nav('stock')",page:'stock',lines:[l1],todo});}
   // 5 成本差异
   {const v=varianceFor(pm);let st='ok',todo='',l1;
    if(v.diffPct==null){st='info';l1=zh?'上个月资料不齐，算不出差异（缺销量或月底盘点）':'Not enough data';}
@@ -2433,6 +2440,8 @@ function alertList(){
   });
   // 低于安全库存
   x.items.filter(i=>stockLevel(i)==='low'||stockLevel(i)==='neg').forEach(i=>out.push(`<div class="al al-a"><div class="t">🟡 ${stockLevel(i)==='neg'?(LANG==="zh"?"库存为负":"Negative stock"):(LANG==="zh"?"低于最低库存":"Below min")}：${i.name}</div>${LANG==="zh"?"剩":"Left"} ${i.qty}${i.unit}（${LANG==="zh"?"最低":"Min"} ${stockMin(i)==null?i.par:stockMin(i)} · ${LANG==="zh"?"标准":"Par"} ${i.par}）→ ${LANG==="zh"?"建议订货":"Reorder"} ${stockOrderQty(i)}${i.unit}</div>`));
+  // 盘点排程逾期/今天到期
+  try{const ss=schedSummary();ss.od.forEach(o=>out.push(`<div class="al al-r"><div class="t">${LANG==="zh"?"盘点已逾期":"Count overdue"}：${oEsc(o.s.name)}</div>${LANG==="zh"?`应在 ${o.x.next} 盘点，已逾期 ${-o.x.n} 天`:`Due ${o.x.next}`}</div>`));ss.td.forEach(o=>out.push(`<div class="al al-a"><div class="t">${LANG==="zh"?"今天要盘点":"Count due today"}：${oEsc(o.s.name)}</div></div>`));}catch(e){}
   // 应付到期
   x.payables.filter(p=>p.status!=="已付"&&days(p.due,TODAY)<=5).forEach(p=>out.push(`<div class="al al-b"><div class="t">🔵 ${LANG==="zh"?"应付账款即将到期":"Payable Due"}：${p.vendor}</div>${money(p.amt-(p.paid||0))} ${LANG==="zh"?"于":"due"} ${p.due} ${LANG==="zh"?"到期":""}</div>`));
   return out;
@@ -4263,6 +4272,86 @@ function pgCK(){
 let stockFilter='all',stockSort='var';
 function stockFilterSet(v){stockFilter=v;render();}
 function stockSortSet(v){stockSort=v;render();}
+
+/* ============ 定期盘点排程（mk107，参照 SUPY Schedule Counts）============
+   设定「几时要盘点」：每天 / 每周某天 / 每两周某天 / 每月某号（或月底）；类型＝实物盘点（逐品项）或月末盘点；范围＝全部或某家供应商。
+   系统按「上次盘点日」算「下次到期日」，到期/逾期会在「盘点」页、运营健康、提醒里催你。
+   上次盘点日＝手动按「标记已盘点」和系统自动认得的（月末盘点记录 / 实物盘点记录的日期）里最晚的那个。 */
+function schedFmt(dt){return dt.getFullYear()+'-'+String(dt.getMonth()+1).padStart(2,'0')+'-'+String(dt.getDate()).padStart(2,'0');}
+function schedAdd(ds,n){const a=ds.split('-').map(Number),dt=new Date(a[0],a[1]-1,a[2]+n);return schedFmt(dt);}
+function schedDiff(a,b){const f=x=>{const q=x.split('-').map(Number);return Date.UTC(q[0],q[1]-1,q[2]);};return Math.round((f(a)-f(b))/864e5);}
+function schedLastDone(s){
+  let last=s.lastDone||'';
+  if(s.kind==='monthend'){(d().monthEnd||[]).forEach(r=>{if(r.date&&(!s.supplier||r.supplier===s.supplier)&&r.date>last)last=r.date;});}
+  else{(d().stocktakes||[]).forEach(r=>{if(r.date&&(!s.supplier||itemSupplier(r.item)===s.supplier)&&r.date>last)last=r.date;});}
+  return last;
+}
+function schedNext(s){
+  const last=schedLastDone(s),start=s.created||TODAY;
+  const dowAfter=(base,dow)=>{let k=schedAdd(base,1);for(let i=0;i<7;i++){const a=k.split('-').map(Number);if(new Date(a[0],a[1]-1,a[2]).getDay()===dow)return k;k=schedAdd(k,1);}return k;};
+  const base=last||schedAdd(start,-1);
+  if(s.freq==='daily')return schedAdd(base,1);
+  if(s.freq==='weekly')return dowAfter(base,+s.dow||0);
+  if(s.freq==='biweekly')return dowAfter(last?schedAdd(last,13):base,+s.dow||0);
+  // monthly：dom=0 表示月底
+  let a=base.split('-').map(Number),y=a[0],m=a[1];
+  for(let i=0;i<14;i++){const ld=new Date(y,m,0).getDate(),day=(+s.dom===0)?ld:Math.min(+s.dom||1,ld);const c=y+'-'+String(m).padStart(2,'0')+'-'+String(day).padStart(2,'0');if(c>base)return c;m++;if(m>12){m=1;y++;}}
+  return schedAdd(base,30);
+}
+function schedStatus(s){
+  const next=schedNext(s);if(s.active===false)return {next,st:'paused',n:0};
+  const n=schedDiff(next,TODAY);   // 负数＝逾期天数
+  return {next,n,st:n<0?'overdue':n===0?'today':n<=2?'soon':'ok'};
+}
+function schedFreqText(s){const z=LANG==="zh",w=z?['日','一','二','三','四','五','六']:['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+  if(s.freq==='daily')return z?'每天':'Daily';if(s.freq==='weekly')return z?'每周'+w[+s.dow||0]:'Weekly '+w[+s.dow||0];if(s.freq==='biweekly')return z?'每两周'+w[+s.dow||0]:'Biweekly '+w[+s.dow||0];
+  return +s.dom===0?(z?'每月月底':'Month-end'):(z?`每月 ${s.dom} 号`:`Monthly day ${s.dom}`);}
+function schedList(){return (d().countSchedules||[]);}
+function schedSummary(){const z=LANG==="zh";const L=schedList().filter(s=>s.active!==false).map(s=>({s,x:schedStatus(s)}));return {all:L,od:L.filter(o=>o.x.st==='overdue'),td:L.filter(o=>o.x.st==='today')};}
+function schedCardsHTML(){
+  const zh=LANG==="zh",w=canW('stock');
+  if(isAgg())return '';
+  const L=schedList();
+  const pillOf=x=>x.st==='overdue'?`<span class="pill p-r">${zh?'已逾期 '+(-x.n)+' 天':'Overdue '+(-x.n)+'d'}</span>`:x.st==='today'?`<span class="pill p-a">${zh?'今天要盘':'Due today'}</span>`:x.st==='soon'?`<span class="pill p-a">${zh?x.n+' 天后':'in '+x.n+'d'}</span>`:x.st==='paused'?`<span class="pill">${zh?'已暂停':'Paused'}</span>`:`<span class="pill p-g">${zh?x.n+' 天后':'in '+x.n+'d'}</span>`;
+  const cards=L.map(s=>{const x=schedStatus(s),last=schedLastDone(s);
+    return `<div class="dv-row inv-card" style="${x.st==='overdue'?'border-left:5px solid var(--red,#b42318);':x.st==='today'?'border-left:5px solid var(--gold,#c08a2e);':''}"><div style="min-width:0;"><div class="dv-name">${oEsc(s.name)} ${pillOf(x)}</div>
+      <div class="mini">${s.kind==='monthend'?(zh?'月末盘点':'Month-end'):(zh?'实物盘点':'Stock take')} · ${schedFreqText(s)} · ${s.supplier?oEsc(s.supplier):(zh?'全部品项':'All items')}</div>
+      <div class="mini">${zh?'上次盘点':'Last'} ${last||(zh?'还没盘过':'never')} · ${zh?'下次':'Next'} <b>${x.next}</b></div></div>
+      <div class="inv-qty" style="display:flex;flex-direction:column;gap:6px;align-items:flex-end;"><button class="btn sm brand" onclick="nav('${s.kind==='monthend'?'monthend':'stock'}');${s.kind==='monthend'?'':"openM('stocktake')"}">${zh?'去盘点':'Count'}</button>
+        ${w?`<button class="btn sm ghost" onclick="schedMark('${s.id}')">${zh?'标记已盘点':'Mark done'}</button>${actm([{l:zh?'编辑':'Edit',on:"schedForm('"+s.id+"')"},{l:s.active===false?(zh?'恢复':'Resume'):(zh?'暂停':'Pause'),on:"schedToggle('"+s.id+"')"},{l:zh?'删除':'Delete',on:"schedDel('"+s.id+"')"}])}`:''}</div></div>`;}).join('');
+  const presets=w&&!L.length?`<div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px;"><button class="btn sm ghost" onclick="schedPreset('weekly')">${zh?'+ 每周一 实物盘点':'+ Weekly stock take'}</button><button class="btn sm ghost" onclick="schedPreset('monthly')">${zh?'+ 每月月底 月末盘点':'+ Month-end count'}</button></div>`:'';
+  return `<div class="fb" style="margin-top:10px;"><h2 class="h" style="margin:0;font-size:15px;">${zh?'盘点排程':'Count schedule'}</h2>${w?`<button class="btn ghost sm" onclick="schedForm()">+ ${zh?'排程':'Schedule'}</button>`:''}</div>
+    ${L.length?`<div class="inv-grid" style="margin:6px 0 4px;">${cards}</div>`:`<div class="card" style="padding:14px;margin:6px 0;"><div class="mini">${zh?'还没设盘点排程。设好之后，到日子系统会提醒你该盘点了，逾期会变红。':'No schedules yet.'}</div>${presets}</div>`}`;
+}
+async function schedMark(id){const s=schedList().find(x=>x.id===id);if(!s)return;if(!confirm(LANG==="zh"?'标记「今天已盘点」？':'Mark done today?'))return;s.lastDone=TODAY;try{auditLog('盘点排程',s.name+' 标记已盘点','','');}catch(e){}await save();render();}
+async function schedToggle(id){const s=schedList().find(x=>x.id===id);if(!s)return;s.active=(s.active===false);await save();render();}
+async function schedDel(id){const s=schedList().find(x=>x.id===id);if(!s||!confirm(LANG==="zh"?'删除这个盘点排程？（已有的盘点记录不会动）':'Delete?'))return;d().countSchedules=schedList().filter(x=>x.id!==id);await save();render();}
+async function schedPreset(k){d().countSchedules=schedList();const id='cs'+Date.now();
+  d().countSchedules.push(k==='weekly'?{id,name:'每周实物盘点',kind:'stock',freq:'weekly',dow:1,supplier:'',active:true,created:TODAY}:{id,name:'每月月末盘点',kind:'monthend',freq:'monthly',dom:0,supplier:'',active:true,created:TODAY});
+  await save();render();}
+function schedForm(id){
+  if(!canW('stock'))return;const zh=LANG==="zh",s=id?schedList().find(x=>x.id===id):null;
+  const sup=supplierList().map(v=>`<option value="${oEsc(v.name)}" ${s&&s.supplier===v.name?'selected':''}>${oEsc(v.name)}</option>`).join('');
+  const wd=(zh?['周日','周一','周二','周三','周四','周五','周六']:['Sun','Mon','Tue','Wed','Thu','Fri','Sat']).map((n,i)=>`<option value="${i}" ${s&&+s.dow===i||(!s&&i===1)?'selected':''}>${n}</option>`).join('');
+  const dm=`<option value="0" ${s&&+s.dom===0?'selected':''}>${zh?'月底最后一天':'Last day'}</option>`+Array.from({length:28},(_,i)=>`<option value="${i+1}" ${s&&+s.dom===i+1?'selected':''}>${i+1} ${zh?'号':''}</option>`).join('');
+  openForm(`<h3>${s?(zh?'编辑盘点排程':'Edit schedule'):(zh?'新增盘点排程':'New schedule')} <span class="x" onclick="closeM()">×</span></h3>
+    <div class="fr"><label>${zh?'名称':'Name'}</label><input id="cs_name" value="${oEsc(s?s.name:'')}" placeholder="${zh?'例：每周肉类盘点':''}"></div>
+    <div class="fg2"><div class="fr"><label>${zh?'盘点类型':'Type'}</label><select id="cs_kind"><option value="stock" ${s&&s.kind==='stock'?'selected':''}>${zh?'实物盘点（逐品项）':'Stock take'}</option><option value="monthend" ${s&&s.kind==='monthend'?'selected':''}>${zh?'月末盘点':'Month-end'}</option></select></div>
+      <div class="fr"><label>${zh?'多久一次':'Frequency'}</label><select id="cs_freq" onchange="schedFreqUi()"><option value="daily" ${s&&s.freq==='daily'?'selected':''}>${zh?'每天':'Daily'}</option><option value="weekly" ${!s||s.freq==='weekly'?'selected':''}>${zh?'每周':'Weekly'}</option><option value="biweekly" ${s&&s.freq==='biweekly'?'selected':''}>${zh?'每两周':'Biweekly'}</option><option value="monthly" ${s&&s.freq==='monthly'?'selected':''}>${zh?'每月':'Monthly'}</option></select></div></div>
+    <div class="fg2"><div class="fr" id="cs_dow_w"><label>${zh?'星期几':'Weekday'}</label><select id="cs_dow">${wd}</select></div><div class="fr" id="cs_dom_w"><label>${zh?'每月几号':'Day of month'}</label><select id="cs_dom">${dm}</select></div></div>
+    <div class="fr"><label>${zh?'范围（哪家供应商的品项）':'Scope'}</label><select id="cs_sup"><option value="">${zh?'全部品项':'All items'}</option>${sup}</select></div>
+    <button class="btn block brand" onclick="schedSave('${s?s.id:''}')">${zh?'保存':'Save'}</button>`);
+  schedFreqUi();
+}
+function schedFreqUi(){const f=document.getElementById('cs_freq');if(!f)return;const v=f.value;const a=document.getElementById('cs_dow_w'),b=document.getElementById('cs_dom_w');if(a)a.style.display=(v==='weekly'||v==='biweekly')?'':'none';if(b)b.style.display=v==='monthly'?'':'none';}
+async function schedSave(id){
+  const g=x=>document.getElementById(x).value;const name=g('cs_name').trim();if(!name)return alert(LANG==="zh"?'请填名称':'Name?');
+  d().countSchedules=schedList();let s=id?d().countSchedules.find(x=>x.id===id):null;
+  if(!s){s={id:'cs'+Date.now(),active:true,created:TODAY};d().countSchedules.push(s);}
+  Object.assign(s,{name,kind:g('cs_kind'),freq:g('cs_freq'),dow:+g('cs_dow'),dom:+g('cs_dom'),supplier:g('cs_sup')});
+  try{auditLog('盘点排程',name+' · '+schedFreqText(s),'','');}catch(e){}
+  await save();closeM();render();
+}
 function pgStock(){
   const x=d();const zh=LANG==="zh";
   const rows=(x.stocktakes||[]).map(s=>{const it=findItem(s.item);const v=s.theory-s.count;return {name:s.item,theory:s.theory,count:s.count,v,bad:Math.abs(v)>0.4,val:Math.abs(v)*(it?it.cost:0),unit:it?it.unit:''};});
@@ -4275,6 +4364,7 @@ function pgStock(){
       <div style="margin-top:4px;"><span class="pill ${r.bad?'p-r':'p-g'}">${r.bad?(zh?'有盘差':'Variance'):(zh?'正常':'OK')}</span></div></div>
     <div class="inv-qty"><div class="inv-q ${r.bad?'neg':''}">${r.v>0?'+':''}${num(r.v)} <small>${oEsc(r.unit)}</small></div><div class="inv-v ${r.bad?'neg':''}">${money(r.val)}</div><div class="mini">${zh?'盘差额':'Var value'}</div></div></div>`).join('');
   return `<div class="fb"><h2 class="h" style="margin:0;">${zh?"实物盘点":"Stock Take"}</h2>${canW('stock')?`<button class="btn brand sm" onclick="openM('stocktake')">+ ${zh?"盘点":"Count"}</button>`:''}</div>
+  ${schedCardsHTML()}
   <div class="grid g3 sup-sum"><div class="kpi"><div class="k">${zh?"盘点品项":"Counted"}</div><div class="v sm">${rows.length}</div></div>
     <div class="kpi"><div class="k">${zh?"有盘差":"With variance"}</div><div class="v sm ${nBad?'neg':'pos'}">${nBad}</div></div>
     <div class="kpi"><div class="k">${zh?"盘差额合计":"Variance value"}</div><div class="v sm ${totVal>0?'neg':''}">${money(totVal)}</div></div></div>
@@ -4719,7 +4809,7 @@ async function saveProduction(){
 async function saveStock(){
   const name=document.getElementById('st_item').value,count=+document.getElementById('st_count').value||0;
   const st=d().stocktakes.find(s=>s.item===name);const it=findItem(name);
-  if(st){st.theory=it?it.qty:st.theory;st.count=count;}else d().stocktakes.push({item:name,theory:it?it.qty:0,count});
+  if(st){st.theory=it?it.qty:st.theory;st.count=count;st.date=TODAY;}else d().stocktakes.push({item:name,theory:it?it.qty:0,count,date:TODAY});
   auditLog("实物盘点",name,it?it.qty+"":"",count+"");
   await save();closeM();nav('report');
 }
