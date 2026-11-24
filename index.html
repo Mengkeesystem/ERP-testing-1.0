@@ -327,6 +327,33 @@ html.ui2[data-theme="mech"] #aiBall .v-mech{display:block;filter:drop-shadow(0 0
 html.ui2[data-theme="mech"] #aiBall .glow{background:radial-gradient(circle,rgba(0,229,255,.7),rgba(40,90,255,.3) 55%,transparent 72%);}
 html.ui2[data-theme="mech"] #aiBall .eye{animation:aiEye 2.6s ease-in-out infinite;}
 @keyframes aiEye{0%,100%{opacity:.45;}50%{opacity:1;}}
+
+/* 退出：机械风＝变形金刚折叠；中式风＝灯笼熄灭后慢慢淡出 */
+#aiBall .f{transform-box:fill-box;}
+#aiBall .f-crest{transform-origin:50% 100%;}#aiBall .f-wl{transform-origin:100% 100%;}#aiBall .f-wr{transform-origin:0% 100%;}
+#aiBall .f-cl{transform-origin:100% 50%;}#aiBall .f-cr{transform-origin:0% 50%;}#aiBall .f-bar{transform-origin:50% 0%;}#aiBall .f-chin{transform-origin:50% 0%;}
+#aiBall.out-mech,#aiBall.out-cn{pointer-events:none;}
+#aiBall.out-mech .v-mech{animation:aiFoldAll 1.35s cubic-bezier(.6,0,.4,1) forwards;transform-origin:50% 50%;}
+#aiBall.out-mech .f-crest{animation:aiFCrest 1.35s steps(9,end) forwards;}
+#aiBall.out-mech .f-wl{animation:aiFWl 1.35s steps(9,end) forwards;}
+#aiBall.out-mech .f-wr{animation:aiFWr 1.35s steps(9,end) forwards;}
+#aiBall.out-mech .f-cl{animation:aiFCl 1.35s steps(9,end) forwards;}
+#aiBall.out-mech .f-cr{animation:aiFCr 1.35s steps(9,end) forwards;}
+#aiBall.out-mech .f-bar,#aiBall.out-mech .f-chin{animation:aiFBar 1.35s steps(9,end) forwards;}
+#aiBall.out-mech .glow{animation:aiSinkGlow 1.35s ease-in forwards;}
+@keyframes aiFCrest{0%,10%{transform:scaleY(1);}45%,100%{transform:scaleY(.3);}}
+@keyframes aiFWl{0%,10%{transform:rotate(0) scale(1);}50%,100%{transform:rotate(-62deg) scale(.78);}}
+@keyframes aiFWr{0%,10%{transform:rotate(0) scale(1);}50%,100%{transform:rotate(62deg) scale(.78);}}
+@keyframes aiFCl{0%,25%{transform:translateX(0) scaleX(1);}65%,100%{transform:translateX(5px) scaleX(.55);}}
+@keyframes aiFCr{0%,25%{transform:translateX(0) scaleX(1);}65%,100%{transform:translateX(-5px) scaleX(.55);}}
+@keyframes aiFBar{0%,30%{transform:scaleY(1);}70%,100%{transform:scaleY(.45);}}
+@keyframes aiFoldAll{0%,45%{transform:scale(1,1);opacity:1;}72%{transform:scale(1.3,.46);opacity:1;}88%{transform:scale(1.3,.46) translateX(0);opacity:1;}100%{transform:scale(.08,.03);opacity:0;}}
+#aiBall.out-cn .lit{animation:aiLitOut 1.3s ease-in forwards!important;}
+#aiBall.out-cn .glow{animation:aiGlowOut 1.5s ease-in forwards!important;}
+#aiBall.out-cn .v-cn{animation:aiLanOut 2.4s ease-in-out forwards!important;}
+@keyframes aiLitOut{0%{opacity:1;}100%{opacity:0;}}
+@keyframes aiGlowOut{0%{opacity:.7;}100%{opacity:0;}}
+@keyframes aiLanOut{0%{transform:rotate(-4deg);filter:brightness(1);opacity:1;}15%{transform:rotate(4deg);}35%{transform:rotate(-2deg);filter:brightness(.55);opacity:1;}55%{transform:rotate(1deg);filter:brightness(.32) saturate(.6);opacity:1;}100%{transform:rotate(0) translateY(8px) scale(.92);filter:brightness(.2) saturate(.4);opacity:0;}}
 @media (prefers-reduced-motion:reduce){#aiBall .ring,#aiBall .glow,#aiBall .core b,#aiBall .v,#aiBall .lit,#aiBall .eye{animation:none!important;}#aiBall .core b{opacity:.35;transform:scale(.6);}}
 #aiBallMenu{position:fixed;z-index:89;display:none;min-width:170px;background:var(--card,#fff);color:var(--ink,#222);border:1px solid var(--line,#ddd);border-radius:14px;padding:6px;box-shadow:0 12px 30px rgba(0,0,0,.28);}
 #aiBallMenu button{display:block;width:100%;text-align:left;padding:12px 14px;border:0;background:none;color:inherit;font-size:15px;border-radius:10px;cursor:pointer;}
@@ -1365,7 +1392,7 @@ function statusOf(d){if(d<=14)return{t:"健康",e:"Fresh",c:"p-g"};if(d<=30)retu
 function stTxt(s){return LANG==="zh"?s.t:s.e;}
 
 /* ================= 数据种子 ================= */
-const BUILD="1111mk121";  // 版本标记：页面右上/网格提示可见，用来确认已载入最新版
+const BUILD="1111mk122";  // 版本标记：页面右上/网格提示可见，用来确认已载入最新版
 const SEED_VERSION="bh-master-2026-09-1";  // 版本变更→下次载入自动重置为最新主数据（仅本店云端）
 function seed(outletId){
   const isCK = outletId==="ck";
@@ -2381,7 +2408,7 @@ function aiContext(){
   window.aiBallOn=function(){ss(LS,'on');sync();};
   window.aiBallSync=sync;
   function init(){
-    el=document.createElement('div');el.id='aiBall';el.innerHTML='<i class="glow"></i><div class="orb"><i class="ring"></i><i class="core"><b></b><b></b></i><span class="t">AI</span><svg class="v v-cn" viewBox="0 0 56 62"><defs><radialGradient id="lnB" cx="50%" cy="45%" r="60%"><stop offset="0" stop-color="#ff5a3c"/><stop offset="1" stop-color="#b3120f"/></radialGradient><radialGradient id="lnL"><stop offset="0" stop-color="#fff2a8"/><stop offset="1" stop-color="#ffb300" stop-opacity="0"/></radialGradient></defs><path d="M28 0v6" stroke="#d9a520" stroke-width="2"/><rect x="19" y="5" width="18" height="5" rx="1.5" fill="#e8b830"/><ellipse cx="28" cy="31" rx="24" ry="21" fill="url(#lnB)"/><ellipse class="lit" cx="28" cy="31" rx="17" ry="15" fill="url(#lnL)"/><path d="M28 10v42M17 12c-7 11-7 28 0 38M39 12c7 11 7 28 0 38" stroke="#7d0a08" stroke-opacity=".55" stroke-width="1.2" fill="none"/><rect x="19" y="50" width="18" height="5" rx="1.5" fill="#e8b830"/><path d="M28 55v5M24 55l-1 6M32 55l1 6" stroke="#e8b830" stroke-width="1.6" stroke-linecap="round"/><text x="28" y="36" text-anchor="middle" font-family="system-ui,sans-serif" font-weight="800" font-size="13.5" letter-spacing="1" fill="#ffe27a" stroke="#8a1a00" stroke-width=".5">明记</text></svg><svg class="v v-mech" viewBox="0 0 56 56"><defs><linearGradient id="mhN" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#00f0ff"/><stop offset="1" stop-color="#ff2bd6"/></linearGradient><linearGradient id="mhF" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#2b3a5c"/><stop offset=".5" stop-color="#18223d"/><stop offset="1" stop-color="#0a1020"/></linearGradient><g id="mhL"><path d="M2 8 14.2 4.6 10.6 10.2 26.6 22.4 23.8 27 2 20.6z"/><path d="M2 22.6 22.9 29V44.4l-7.4 6L2 38.4z"/></g></defs><g fill="url(#mhF)" stroke="url(#mhN)" stroke-width="1" stroke-linejoin="round"><path d="M17 4.6h22l3.4 5.5L28 21.6 13.6 10.1z"/><use href="#mhL"/><use href="#mhL" transform="translate(56 0) scale(-1 1)"/><path d="M24.3 23.6h7.4v15l-3.7 5.6-3.7-5.6z" fill="#103a52"/><path d="M22.6 46.4h10.8l-2 5.2h-6.8z"/></g><path d="M23 8.2h10L28 12.6z" fill="#ff2bd6" class="eye"/><g stroke="#00f0ff" stroke-width="1" stroke-linecap="round" opacity=".9"><path d="M5.8 12.2 14.5 19M5 16.4 14.4 23M50.2 12.2 41.5 19M51 16.4 41.6 23"/></g><path d="M11.5 31l10.4 3.4v2.2L11.5 33.2zM44.5 31 34.1 34.4v2.2l10.4-3.4z" fill="#00f0ff" class="eye"/></svg><i class="hole"></i></div>';el.setAttribute('role','button');el.setAttribute('aria-label','明记小助手');
+    el=document.createElement('div');el.id='aiBall';el.innerHTML='<i class="glow"></i><div class="orb"><i class="ring"></i><i class="core"><b></b><b></b></i><span class="t">AI</span><svg class="v v-cn" viewBox="0 0 56 62"><defs><radialGradient id="lnB" cx="50%" cy="45%" r="60%"><stop offset="0" stop-color="#ff5a3c"/><stop offset="1" stop-color="#b3120f"/></radialGradient><radialGradient id="lnL"><stop offset="0" stop-color="#fff2a8"/><stop offset="1" stop-color="#ffb300" stop-opacity="0"/></radialGradient></defs><path d="M28 0v6" stroke="#d9a520" stroke-width="2"/><rect x="19" y="5" width="18" height="5" rx="1.5" fill="#e8b830"/><ellipse cx="28" cy="31" rx="24" ry="21" fill="url(#lnB)"/><ellipse class="lit" cx="28" cy="31" rx="17" ry="15" fill="url(#lnL)"/><path d="M28 10v42M17 12c-7 11-7 28 0 38M39 12c7 11 7 28 0 38" stroke="#7d0a08" stroke-opacity=".55" stroke-width="1.2" fill="none"/><rect x="19" y="50" width="18" height="5" rx="1.5" fill="#e8b830"/><path d="M28 55v5M24 55l-1 6M32 55l1 6" stroke="#e8b830" stroke-width="1.6" stroke-linecap="round"/><g class="plq"><rect x="14.5" y="23.5" width="27" height="15" rx="3.2" fill="#ffd45a" stroke="#fff3b0" stroke-width=".8"/><rect x="16.3" y="25.3" width="23.4" height="11.4" rx="2" fill="#a80d0a" stroke="#7a0605" stroke-width=".6"/><text x="28" y="34.6" text-anchor="middle" font-family="Noto Serif SC,Songti SC,STSong,serif" font-weight="900" font-size="11.5" letter-spacing=".5" fill="#ffe27a">明记</text></g></svg><svg class="v v-mech" viewBox="0 0 56 56"><defs><linearGradient id="mhN" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#00f0ff"/><stop offset="1" stop-color="#ff2bd6"/></linearGradient><linearGradient id="mhF" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#2b3a5c"/><stop offset=".5" stop-color="#18223d"/><stop offset="1" stop-color="#0a1020"/></linearGradient><g id="mhW"><path d="M2 8 14.2 4.6 10.6 10.2 26.6 22.4 23.8 27 2 20.6z"/><path d="M5.8 12.2 14.5 19M5 16.4 14.4 23" fill="none" stroke="#00f0ff" stroke-linecap="round" opacity=".9"/></g><g id="mhC"><path d="M2 22.6 22.9 29V44.4l-7.4 6L2 38.4z"/><path d="M11.5 31l10.4 3.4v2.2L11.5 33.2z" fill="#00f0ff" stroke="none" class="eye"/></g></defs><g fill="url(#mhF)" stroke="url(#mhN)" stroke-width="1" stroke-linejoin="round"><path class="f f-crest" d="M17 4.6h22l3.4 5.5L28 21.6 13.6 10.1z"/><g class="f f-wl"><use href="#mhW"/></g><g class="f f-wr"><use href="#mhW" transform="translate(56 0) scale(-1 1)"/></g><g class="f f-cl"><use href="#mhC"/></g><g class="f f-cr"><use href="#mhC" transform="translate(56 0) scale(-1 1)"/></g><path class="f f-bar" d="M24.3 23.6h7.4v15l-3.7 5.6-3.7-5.6z" fill="#103a52"/><path class="f f-chin" d="M22.6 46.4h10.8l-2 5.2h-6.8z"/></g><path class="f f-crest" d="M23 8.2h10L28 12.6z" fill="#ff2bd6"/></svg><i class="hole"></i></div>';el.setAttribute('role','button');el.setAttribute('aria-label','明记小助手');
     menu=document.createElement('div');menu.id='aiBallMenu';document.body.appendChild(el);document.body.appendChild(menu);place();
     el.addEventListener('contextmenu',e=>e.preventDefault());
     let raf=0,tx=0,ty=0;
@@ -2398,7 +2425,7 @@ function aiContext(){
       else if(!held&&e.type==='pointerup'){openAi();}};
     el.addEventListener('pointerup',up);el.addEventListener('pointercancel',up);
     menu.addEventListener('click',e=>{const a=e.target&&e.target.getAttribute&&e.target.getAttribute('data-a');if(!a)return;closeMenu();
-      if(a==='open')openAi();else if(a==='exit'){el.classList.add('sink');setTimeout(()=>{ss(LS,'off');el.classList.remove('sink');sync();},780);}});
+      if(a==='open')openAi();else if(a==='exit'){const th=document.documentElement.getAttribute('data-theme');const k=th==='mech'?['out-mech',1400]:th==='cn'?['out-cn',2450]:['sink',780];el.classList.add(k[0]);setTimeout(()=>{ss(LS,'off');el.classList.remove(k[0]);sync();},k[1]);}});
     document.addEventListener('pointerdown',e=>{if(menu.style.display==='block'&&!menu.contains(e.target)&&e.target!==el)closeMenu();},true);
     addEventListener('resize',()=>place());addEventListener('orientationchange',()=>setTimeout(()=>place(),200));
     setInterval(sync,800);sync();
