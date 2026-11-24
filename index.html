@@ -859,6 +859,7 @@ html.ui2[data-theme="mech"] div.empty{border-color:#5A646E;}
 .odfoot{position:sticky;bottom:calc(-1 * (18px + env(safe-area-inset-bottom)));z-index:6;background:var(--card);margin:10px -2px calc(-1 * (18px + env(safe-area-inset-bottom)));padding:8px 2px calc(12px + env(safe-area-inset-bottom));box-shadow:0 -12px 10px 4px var(--card);}
 .odfoot .odtot{position:static;margin:0 0 8px;}
 .odacts{display:flex;gap:6px;justify-content:flex-end;flex-wrap:wrap;}
+html,body{overscroll-behavior-x:none;}
 html.ui2[data-theme="mech"] .odfoot{background:#E9ECEF;box-shadow:0 -12px 10px 4px #E9ECEF;}
 html.ui2[data-theme="cn"] .odfoot{background:#FFFAEB;box-shadow:0 -12px 10px 4px #FFFAEB;}
 /* ---- 进货价格变动（mk99）---- */
@@ -1313,7 +1314,7 @@ function statusOf(d){if(d<=14)return{t:"健康",e:"Fresh",c:"p-g"};if(d<=30)retu
 function stTxt(s){return LANG==="zh"?s.t:s.e;}
 
 /* ================= 数据种子 ================= */
-const BUILD="1111mk105";  // 版本标记：页面右上/网格提示可见，用来确认已载入最新版
+const BUILD="1111mk106";  // 版本标记：页面右上/网格提示可见，用来确认已载入最新版
 const SEED_VERSION="bh-master-2026-09-1";  // 版本变更→下次载入自动重置为最新主数据（仅本店云端）
 function seed(outletId){
   const isCK = outletId==="ck";
@@ -2088,21 +2089,49 @@ function openMenuByGesture(){
   toggleSide();   // 菜单开着就关、关着就开
 }
 (function(){
-  try{history.replaceState({erp:1},'',location.href);history.pushState({erp:2},'',location.href);}catch(e){}
-  window.addEventListener('popstate',function(){
-    try{history.pushState({erp:2},'',location.href);}catch(e){}   // 立刻补回一格，下次返回还是留在 App 里
-    if(Date.now()-_edgeAt<1500)return;   // 刚被边缘手势处理过：别再处理一次
-    openMenuByGesture();
-  });
-  document.addEventListener('touchstart',function(e){const t=e.touches[0];_tsx=t.clientX;_tsy=t.clientY;_tsok=(t.clientX<=24)&&e.touches.length===1;},{passive:true});
-  document.addEventListener('touchend',function(e){
-    if(!_tsok)return;_tsok=false;const t=e.changedTouches[0],dx=t.clientX-_tsx,dy=Math.abs(t.clientY-_tsy);
-    if(dx>70&&dy<60){
-      const sb=navGestureTarget(),mbg=document.getElementById('mbg');
-      if(!sb||(mbg&&mbg.classList.contains('show')))return;
-      _edgeAt=Date.now();if(!sb.classList.contains('open'))toggleSide();
-    }
+  const isIOS=/iP(hone|ad|od)/.test(navigator.userAgent)||(navigator.platform==='MacIntel'&&navigator.maxTouchPoints>1);
+  // Android / 一般浏览器：垫一格历史，返回键/手势改成开菜单。iPhone 不垫——垫了之后 iOS 系统的「返回」手势会出现白屏滑动动画（业主 11-24 录屏）。
+  if(!isIOS){
+    try{history.replaceState({erp:1},'',location.href);history.pushState({erp:2},'',location.href);}catch(e){}
+    window.addEventListener('popstate',function(){
+      try{history.pushState({erp:2},'',location.href);}catch(e){}
+      if(Date.now()-_edgeAt<1500)return;
+      openMenuByGesture();
+    });
+  }
+  // 左边缘往右拉：菜单跟着手指走（手指放开超过三分之一就打开，否则收回去）——不再依赖系统返回
+  let drag=null;
+  const narrow=()=>window.matchMedia('(max-width:760px)').matches;
+  document.addEventListener('touchstart',function(e){
+    drag=null;const t=e.touches[0];
+    if(e.touches.length!==1||t.clientX>28||!narrow())return;
+    const sb=navGestureTarget(),mbg=document.getElementById('mbg');
+    if(!sb||sb.classList.contains('open')||(mbg&&mbg.classList.contains('show')))return;
+    drag={x0:t.clientX,y0:t.clientY,active:false,w:sb.offsetWidth||236,sb,bd:document.getElementById('backdrop')};
   },{passive:true});
+  document.addEventListener('touchmove',function(e){
+    if(!drag)return;const t=e.touches[0],dx=t.clientX-drag.x0,dy=Math.abs(t.clientY-drag.y0);
+    if(!drag.active){
+      if(dy>30&&dy>dx){drag=null;return;}   // 明显是上下滑：放弃
+      if(dx>8&&dx>dy*1.2){drag.active=true;drag.sb.style.transition='none';drag.bd&&(drag.bd.style.transition='none',drag.bd.classList.add('show'),drag.bd.style.opacity='0');}
+      else return;
+    }
+    if(e.cancelable)e.preventDefault();
+    const x=Math.max(0,Math.min(drag.w,dx));
+    drag.sb.style.transform='translateX('+(x-drag.w)+'px)';
+    if(drag.bd)drag.bd.style.opacity=String(Math.min(1,x/drag.w));
+  },{passive:false});
+  function endDrag(e){
+    if(!drag)return;const d0=drag;drag=null;if(!d0.active)return;
+    const t=(e.changedTouches&&e.changedTouches[0])||{clientX:d0.x0},dx=t.clientX-d0.x0;
+    d0.sb.style.transition='';d0.sb.style.transform='';
+    if(d0.bd){d0.bd.style.transition='';d0.bd.style.opacity='';}
+    _edgeAt=Date.now();
+    if(dx>d0.w*0.35){d0.sb.classList.add('open');d0.bd&&d0.bd.classList.add('show');}
+    else{d0.sb.classList.remove('open');d0.bd&&d0.bd.classList.remove('show');}
+  }
+  document.addEventListener('touchend',endDrag,{passive:true});
+  document.addEventListener('touchcancel',endDrag,{passive:true});
 })();
 async function switchOutlet(){
   curOutlet=document.getElementById('outletSel').value;_aggCache=null;try{updateXferBell();}catch(e){}
