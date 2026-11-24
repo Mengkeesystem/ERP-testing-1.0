@@ -1306,7 +1306,7 @@ function statusOf(d){if(d<=14)return{t:"健康",e:"Fresh",c:"p-g"};if(d<=30)retu
 function stTxt(s){return LANG==="zh"?s.t:s.e;}
 
 /* ================= 数据种子 ================= */
-const BUILD="1111mk102";  // 版本标记：页面右上/网格提示可见，用来确认已载入最新版
+const BUILD="1111mk103";  // 版本标记：页面右上/网格提示可见，用来确认已载入最新版
 const SEED_VERSION="bh-master-2026-09-1";  // 版本变更→下次载入自动重置为最新主数据（仅本店云端）
 function seed(outletId){
   const isCK = outletId==="ck";
@@ -2185,8 +2185,8 @@ function healthChecks(){
    else{const a=Math.abs(v.diffPct);st=a<3?'ok':a<8?'warn':'bad';l1=zh?`上个月差异 ${v.diffPct>0?'+':''}${v.diffPct.toFixed(1)}%（${v.diff>0?'+':''}${money(v.diff)}）`:`Variance ${v.diffPct.toFixed(1)}%`;if(st!=='ok')todo=zh?`${monthLabel2(pm)}实际成本比理论${v.diff>0?'多':'少'} ${Math.abs(v.diffPct).toFixed(1)}%，查原因`:'Check variance';}
    add({k:'var',st,t:zh?'成本差异':'Cost variance',go:"nav('variance')",page:'variance',lines:[l1,zh?`理论 ${v.theo==null?'—':money(v.theo)} · 实际 ${v.actual==null?'—':money(v.actual)}`:''],todo});}
   // 6 库存
-  {const it=x.items||[];const neg=it.filter(i=>(+i.qty||0)<0).length,low=it.filter(i=>(+i.qty||0)>=0&&(+i.qty||0)<=(+i.par||0)).length;const st=neg?'bad':low?'warn':'ok';
-   add({k:'stock',st,t:zh?'库存':'Stock',go:"nav('inv')",page:'inv',lines:[zh?`低于安全库存 ${low} 项`:`Low ${low}`,zh?`库存为负 ${neg} 项`:`Negative ${neg}`],todo:neg?(zh?`${neg} 项库存是负数，查进货/盘点有没有漏记`:'Negative stock'):low?(zh?`${low} 项低于安全库存，该订货了`:'Low stock'):''});}
+  {const sc=stockCounts(x.items||[]);const neg=sc.neg,low=sc.low;const st=neg?'bad':low?'warn':'ok';
+   add({k:'stock',st,t:zh?'库存':'Stock',go:"nav('inv')",page:'inv',lines:[zh?`低于最低库存 ${low} 项`:`Low ${low}`,zh?`库存为负 ${neg} 项`:`Negative ${neg}`],todo:neg?(zh?`${neg} 项库存是负数，查进货/盘点有没有漏记`:'Negative stock'):low?(zh?`${low} 项低于最低库存，该订货了`:'Low stock'):''});}
   // 7 订单
   {const po=(typeof ORDERS!=='undefined'?ORDERS:[]).filter(o=>o&&o.status!=='confirmed'&&(!o.outlet||o.outlet===curOutlet));
    add({k:'orders',st:po.length&&canConfirmOrder()?'warn':'ok',t:zh?'订货单':'Orders',go:"openOrdersPanel()",page:'proc',lines:[zh?`待确认 ${po.length} 张`:`Pending ${po.length}`,canConfirmOrder()?'':(zh?'（由副经理以上确认）':'')],todo:po.length&&canConfirmOrder()?(zh?`${po.length} 张订货单待确认`:'Orders to confirm'):''});}
@@ -2361,7 +2361,7 @@ function alertList(){
     (i.batches||[]).forEach(b=>{const dleft=days(b.exp,TODAY);if(dleft<=3)out.push(`<div class="al al-r"><div class="t">🔴 ${LANG==="zh"?"临期批次":"Expiring"}：${i.name}</div>${b.qty}${i.unit} ${LANG==="zh"?"将于":"expires"} ${b.exp} ${LANG==="zh"?"到期（"+dleft+"天）→ 优先使用(FIFO)":""}</div>`);});
   });
   // 低于安全库存
-  x.items.filter(i=>i.qty<=i.par).forEach(i=>out.push(`<div class="al al-a"><div class="t">🟡 ${LANG==="zh"?"低于安全库存":"Below Par"}：${i.name}</div>${LANG==="zh"?"剩":"Left"} ${i.qty}${i.unit}（Par ${i.par}）→ ${LANG==="zh"?"建议订货":"Reorder"} ${Math.max(0,Math.round(i.par*1.5-i.qty))}${i.unit}</div>`));
+  x.items.filter(i=>stockLevel(i)==='low'||stockLevel(i)==='neg').forEach(i=>out.push(`<div class="al al-a"><div class="t">🟡 ${stockLevel(i)==='neg'?(LANG==="zh"?"库存为负":"Negative stock"):(LANG==="zh"?"低于最低库存":"Below min")}：${i.name}</div>${LANG==="zh"?"剩":"Left"} ${i.qty}${i.unit}（${LANG==="zh"?"最低":"Min"} ${stockMin(i)==null?i.par:stockMin(i)} · ${LANG==="zh"?"标准":"Par"} ${i.par}）→ ${LANG==="zh"?"建议订货":"Reorder"} ${stockOrderQty(i)}${i.unit}</div>`));
   // 应付到期
   x.payables.filter(p=>p.status!=="已付"&&days(p.due,TODAY)<=5).forEach(p=>out.push(`<div class="al al-b"><div class="t">🔵 ${LANG==="zh"?"应付账款即将到期":"Payable Due"}：${p.vendor}</div>${money(p.amt-(p.paid||0))} ${LANG==="zh"?"于":"due"} ${p.due} ${LANG==="zh"?"到期":""}</div>`));
   return out;
@@ -2383,7 +2383,7 @@ function invRow(i){
   const stt=expSoon<=3?{t:"临期",e:"Expiring",c:"p-r"}:st;
   return `<tr>
     <td><b>${oEsc(i.name)}</b> <span class="pill ${acctPill(itemAcctGroup(i.name))}">${acctLabel(itemAcctGroup(i.name))}</span><br><span class="mini">${oEsc(i.cat)} · ${LANG==="zh"?"得率":"Yield"}${i.yield}% · 1${oEsc(i.buyUnit)}=${i.conv}${oEsc(i.unit)}</span></td>
-    <td>${num(i.qty)} ${i.unit}<br><span class="mini ${i.qty<=i.par?'neg':''}">Par ${i.par}</span></td>
+    <td>${num(i.qty)} ${i.unit}<br><span class="mini ${stockLevel(i)==='low'||stockLevel(i)==='neg'?'neg':''}">${stockMin(i)==null?'Par '+i.par:(LANG==="zh"?'最低 ':'Min ')+stockMin(i)+' · '+(LANG==="zh"?'标准 ':'Par ')+i.par}</span></td>
     <td>${money(i.cost)}</td>
     <td>${money(netCost(i))}</td>
     <td>${money(i.qty*i.cost)}</td>
@@ -2394,21 +2394,23 @@ function invRow(i){
 function pgInv(){
   const x=d();const zh=LANG==="zh";
   const addBtns=`<div class="dv-tools" style="margin-top:2px;">${canW('proc')?`<button class="btn brand sm" onclick="openM('item')">+ ${zh?"品项":"Item"}</button>`:''}
-      ${actm([{l:zh?"建议订货":"Suggest order",on:"openM('suggest')"},canW('proc')&&{l:zh?"批量导入":"Bulk import",on:"bulkAddForm('item')"},canW('proc')&&{l:zh?"用月均价重算成本":"Recalc cost from month avg",on:"recalcCostForm()"},canW('proc')&&{l:zh?"导入供应商全部品项":"Import supplier items",on:"importSupplierItems()"}])}</div>`;
+      ${actm([{l:zh?"建议订货":"Suggest order",on:"openM('suggest')"},canW('proc')&&{l:zh?"批量设定最低/标准库存":"Set min / par",on:"openInvLevels('"+(invSupplier?invSupplier.replace(/\\/g,"\\\\").replace(/'/g,"\\'"):'')+"')"},canW('proc')&&{l:zh?"批量导入":"Bulk import",on:"bulkAddForm('item')"},canW('proc')&&{l:zh?"用月均价重算成本":"Recalc cost from month avg",on:"recalcCostForm()"},canW('proc')&&{l:zh?"导入供应商全部品项":"Import supplier items",on:"importSupplierItems()"}])}</div>`;
   // 按供应商分组
   const groups={};(x.items||[]).forEach(i=>{const s=itemSupplier(i.name);(groups[s]=groups[s]||[]).push(i);});
   const tHead=`<thead><tr><th>${zh?"品名":"Item"}</th><th>${zh?"库存":"Qty"}</th><th>${zh?"加权单价":"W.Cost"}</th><th>${zh?"净料成本":"Net Cost"}</th><th>${zh?"库存值":"Value"}</th><th>${zh?"批次/状态":"Batch"}</th>${canW('proc')?`<th>${zh?"操作":"Action"}</th>`:''}</tr></thead>`;
   // —— 供应商列表视图 ——
   if(!invSupplier){
     const keys=Object.keys(groups).sort((a,b)=>groups[b].length-groups[a].length);
-    const allVal=(x.items||[]).reduce((a,i)=>a+i.qty*i.cost,0),allLow=(x.items||[]).filter(i=>i.qty<=i.par).length;
-    const cards=keys.map(s=>{const items=groups[s];const val=items.reduce((a,i)=>a+i.qty*i.cost,0);const low=items.filter(i=>i.qty<=i.par).length;
+    const allVal=(x.items||[]).reduce((a,i)=>a+i.qty*i.cost,0),cnt=stockCounts(x.items||[]),allLow=cnt.low;
+    const cards=keys.map(s=>{const items=groups[s];const val=items.reduce((a,i)=>a+i.qty*i.cost,0);const low=items.filter(i=>{const l=stockLevel(i);return l==='low'||l==='neg';}).length;
       return `<div class="dv-row ap-card" data-name="${oEsc(s.toLowerCase())}" style="cursor:pointer;border-left:5px solid ${low?'var(--red)':'var(--green)'};" onclick="setInvSupplier('${s.replace(/\\/g,"\\\\").replace(/'/g,"\\'")}')">
-        <div style="min-width:0;"><div class="dv-name">${oEsc(s)}</div><div class="mini">${items.length} ${zh?"个品项":"items"}${low?` · <span class="neg">${low} ${zh?"低于安全库存":"low"}</span>`:''}</div></div>
+        <div style="min-width:0;"><div class="dv-name">${oEsc(s)}</div><div class="mini">${items.length} ${zh?"个品项":"items"}${low?` · <span class="neg">${low} ${zh?"低于最低":"low"}</span>`:''}</div></div>
         <div class="inv-qty"><div class="inv-q">${money(val)}</div><div class="mini">${zh?"库存值":"value"} ›</div></div></div>`;
     }).join('')||`<div class="empty">${zh?"暂无品项，先在采购或此页导入。":"No items"}</div>`;
     return `<div class="fb"><h2 class="h" style="margin:0;">${zh?"库存清单":"Inventory"}</h2></div>
-      <div class="grid g3 sup-sum"><div class="kpi"><div class="k">${zh?"库存总值":"Stock value"}</div><div class="v sm">${money(allVal)}</div></div><div class="kpi"><div class="k">${zh?"品项":"Items"}</div><div class="v sm">${(x.items||[]).length}</div></div><div class="kpi"><div class="k">${zh?"低于安全库存":"Low stock"}</div><div class="v sm ${allLow?'neg':'pos'}">${allLow}</div></div></div>
+      <div class="grid g3 sup-sum"><div class="kpi"><div class="k">${zh?"库存总值":"Stock value"}</div><div class="v sm">${money(allVal)}</div></div><div class="kpi"><div class="k">${zh?"低于最低":"Below min"}</div><div class="v sm ${allLow?'neg':'pos'}">${allLow}</div></div>
+        <div class="kpi"><div class="k">${zh?"库存为负":"Negative"}</div><div class="v sm ${cnt.neg?'neg':''}">${cnt.neg}</div></div><div class="kpi"><div class="k">${zh?"高于标准":"Above par"}</div><div class="v sm">${cnt.high}</div></div><div class="kpi"><div class="k">${zh?"未设定":"Not set"}</div><div class="v sm">${cnt.unset}</div></div></div>
+      ${lvlChips(x.items||[])}
       ${addBtns}
       <details class="hintd"><summary>${LANG==="zh"?'说明':'Notes'}</summary><div>${zh?"👉 功能：看每样食材还剩多少、值多少钱(按供应商分组)。进货会自动加、卖出/报废/调拨会自动减，剩太少会提醒你订货。":"See how much of each item is left & its value; auto-adjusts on purchase/sale/waste."}</div></details>
       ${(function(){const al=alertList();const n=al.length;return `<details class="alertBox"${n?'':' '} style="margin:2px 0 6px;">
@@ -2419,40 +2421,77 @@ function pgInv(){
         <div style="padding-top:8px;">${renderAlerts()}</div>
       </details>`;})()}
       <div class="dv-tools"><input class="dv-search" type="search" placeholder="${zh?'搜索供应商…':'Search suppliers…'}" oninput="dvFilter(this.value)" autocomplete="off"></div>
-      <div id="dvList">${cards}</div>`;
+      <div id="dvList" ${invLvl!=='all'?'class="inv-grid"':''}>${invLvl!=='all'?((x.items||[]).filter(i=>stockLevel(i)===invLvl).sort((p,q)=>(p.name||'').localeCompare(q.name||'')).map(invCard).join('')||`<div class="empty">${zh?"没有这一类的品项":"None"}</div>`):cards}</div>`;
   }
   // —— 单一供应商库存视图 ——
   const items=groups[invSupplier]||[];
   const val=items.reduce((a,i)=>a+i.qty*i.cost,0);
-  const low=items.filter(i=>i.qty<=i.par).length;
-  const sorted=items.slice();
+  const low=items.filter(i=>{const l=stockLevel(i);return l==='low'||l==='neg';}).length;
+  const sorted=items.filter(i=>invLvl==='all'||stockLevel(i)===invLvl);
   if(invSort==='name')sorted.sort((p,q)=>(p.name||'').localeCompare(q.name||''));
   else if(invSort==='val')sorted.sort((p,q)=>q.qty*q.cost-p.qty*p.cost);
-  else sorted.sort((p,q)=>((q.qty<=q.par)-(p.qty<=p.par))||(p.name||'').localeCompare(q.name||''));
+  else sorted.sort((p,q)=>{const r=l=>({neg:0,low:1,high:3,unset:4,ok:5})[stockLevel(l)];return r(p)-r(q)||(p.name||'').localeCompare(q.name||'');});
   return `<div class="fb"><h2 class="h" style="margin:0;">${invSupplier}</h2><button class="btn ghost sm" onclick="backInvSupplier()">← ${zh?"供应商列表":"Suppliers"}</button></div>
     <div class="grid g3 sup-sum"><div class="kpi"><div class="k">${zh?"库存值":"Value"}</div><div class="v sm">${money(val)}</div></div>
       <div class="kpi"><div class="k">${zh?"品项":"Items"}</div><div class="v sm">${items.length}</div></div>
-      <div class="kpi"><div class="k">${zh?"低于安全库存":"Low stock"}</div><div class="v sm ${low?'neg':''}">${low}</div></div></div>
+      <div class="kpi"><div class="k">${zh?"低于最低":"Below min"}</div><div class="v sm ${low?'neg':''}">${low}</div></div></div>
+    ${lvlChips(items)}
     ${addBtns}
     <div class="dv-tools"><input class="dv-search" type="search" placeholder="${zh?'搜索品项…':'Search items…'}" oninput="dvFilter(this.value)" autocomplete="off">
       <div class="seg"><button class="${invSort==='low'?'active':''}" onclick="invSortSet('low')">${zh?'低库存优先':'Low first'}</button><button class="${invSort==='name'?'active':''}" onclick="invSortSet('name')">${zh?'品名':'Name'}</button><button class="${invSort==='val'?'active':''}" onclick="invSortSet('val')">${zh?'库存值':'Value'}</button></div></div>
     <div id="dvList" class="inv-grid">${sorted.map(invCard).join('')||`<div class="empty">${zh?"该供应商暂无品项":"No items"}</div>`}</div>`;
 }
+
+/* ============ 最低 / 标准库存（mk103，参照 SUPY Minimum / Par）============
+   最低库存 min：降到这个数或以下 ＝「低于最低」，要订货了。
+   标准库存 par：平时备到这个数最理想；订货就订到标准（订货量＝标准−现有）；超过标准＝「高于标准」（备太多）。
+   旧品项只设过 par（以前叫安全库存，等于「降到它就要订」）：没设 min 的品项沿用旧算法，不会突然变样，也不判「高于标准」。
+   完全没设定（min、par 都没有）的品项，库存是 0 不再被当成「低于最低」（以前会）。库存为负永远是问题。 */
+function stockMin(i){return (i.min!=null&&i.min!=='')?(+i.min||0):null;}
+function stockLevel(i){const q=+i.qty||0,mn=stockMin(i),par=+i.par||0,thr=mn!=null?mn:par;
+  if(q<0)return 'neg';if(thr>0&&q<=thr)return 'low';if(mn!=null&&par>mn&&q>par)return 'high';if(!(thr>0))return 'unset';return 'ok';}
+function stockOrderQty(i){const q=+i.qty||0,mn=stockMin(i),par=+i.par||0;return (mn!=null&&par>0)?Math.max(0,Math.ceil(par-q)):Math.max(0,Math.round(par*1.5-q));}
+const STOCK_LV={neg:['p-r','库存为负','Negative'],low:['p-r','低于最低','Below min'],high:['p-b','高于标准','Above par'],ok:['p-g','正常','OK'],unset:['','未设定','Not set']};
+let invLvl='all';
+function invLvlSet(v){invLvl=v;render();}
+function stockCounts(items){const o={neg:0,low:0,high:0,ok:0,unset:0};items.forEach(i=>{o[stockLevel(i)]++;});return o;}
+function weeklyUse(name){const from=new Date(Date.now()-56*864e5).toISOString().slice(0,10);let q=0;(d().purchases||[]).forEach(r=>{if(r.item===name&&(r.date||'')>=from)q+=FISH_SUPPLIERS.includes(r.supplier)?(+r.weight||0):(+r.qty||0);});return q/8;}
+function openInvLevels(sup){
+  const zh=LANG==="zh";if(!canW('proc'))return;
+  const items=(d().items||[]).filter(i=>!sup||itemSupplier(i.name)===sup).slice().sort((a,b)=>(a.name||'').localeCompare(b.name||''));
+  window._lvItems=items.map(i=>i.id);
+  const rows=items.map((i,k)=>`<div class="odc"><div class="odc-h"><div class="odc-n">${oEsc(i.name)}</div><div class="mini" style="flex:none;">${zh?'现有':'Qty'} ${num(i.qty)} ${oEsc(i.unit)}${weeklyUse(i.name)>0?` · ${zh?'每周约进':'wk'} ${num(weeklyUse(i.name))}`:''}</div></div>
+    <div class="odc-f"><label>${zh?'最低库存':'Minimum'}<input class="odnum" id="lv_min_${k}" inputmode="decimal" value="${stockMin(i)==null?'':stockMin(i)}"></label><label>${zh?'标准库存':'Par'}<input class="odnum" id="lv_par_${k}" inputmode="decimal" value="${(+i.par||'')}"></label></div></div>`).join('')||`<div class="empty">${zh?'没有品项':'No items'}</div>`;
+  openForm(`<h3>${zh?'批量设定最低 / 标准库存':'Set min / par'}${sup?' · '+oEsc(sup):''} <span class="x" onclick="closeM()">×</span></h3>
+    <div class="hint">${zh?'最低库存＝降到这个数就该订货；标准库存＝平时备到这个数最理想（订货就订到标准）。「自动建议」按过去 8 周的进货量算：最低＝每周进货量的一半，标准＝每周进货量的 1.5 倍（只填你还没填的格子，也可以自己改）。':''}</div>
+    <div style="display:flex;gap:8px;margin:6px 0;"><button class="btn ghost sm" onclick="invLvlSuggest()">${zh?'自动建议':'Suggest'}</button></div>
+    <div class="odl" style="max-height:52vh;">${rows}</div>
+    <button class="btn block brand" style="margin-top:10px;" onclick="invLvlSave()">${zh?'保存':'Save'}</button>`);
+  const mb=document.getElementById('mbox');if(mb)mb.classList.add('m-wide');
+}
+function invLvlSuggest(){(window._lvItems||[]).forEach((id,k)=>{const i=(d().items||[]).find(x=>x.id===id);if(!i)return;const w=weeklyUse(i.name);if(!(w>0))return;const a=document.getElementById('lv_min_'+k),b=document.getElementById('lv_par_'+k);if(a&&a.value==='')a.value=Math.max(1,Math.ceil(w*0.5));if(b&&b.value==='')b.value=Math.max(1,Math.ceil(w*1.5));});}
+async function invLvlSave(){
+  let n=0;(window._lvItems||[]).forEach((id,k)=>{const i=(d().items||[]).find(x=>x.id===id);if(!i)return;const a=document.getElementById('lv_min_'+k).value.trim(),b=document.getElementById('lv_par_'+k).value.trim();
+    const nm=a===''?undefined:Math.max(0,+a||0),np=b===''?0:Math.max(0,+b||0);if(nm!==i.min||np!==(+i.par||0)){if(nm===undefined)delete i.min;else i.min=nm;i.par=np;n++;}});
+  try{auditLog('设定最低/标准库存',n+' 项','','');}catch(e){}
+  await save();closeM();render();alert(LANG==="zh"?`已更新 ${n} 项`:`Updated ${n}`);
+}
 let invSort='low';
 function invSortSet(v){invSort=v;render();}
+function lvlChips(items){const zh=LANG==='zh',c=stockCounts(items);const t=[['all',zh?'全部':'All',items.length],['low',zh?'低于最低':'Below min',c.low],['neg',zh?'库存为负':'Negative',c.neg],['high',zh?'高于标准':'Above par',c.high],['unset',zh?'未设定':'Not set',c.unset]];return `<div class="seg mtabs nox" style="margin:6px 0;">${t.map(([k,l,n])=>`<button class="${invLvl===k?'active':''}" onclick="invLvlSet('${k}')">${l} ${n}</button>`).join('')}</div>`;}
 function invCard(i){
   const zh=LANG==="zh";
   const firstBatch=(i.batches||[]).slice().sort((a,b)=>new Date(a.exp)-new Date(b.exp))[0];
   const st=firstBatch?statusOf(days(firstBatch.exp,TODAY)>60?0:days(TODAY,firstBatch.in)):statusOf(0);
   const expSoon=firstBatch?days(firstBatch.exp,TODAY):999;
   const stt=expSoon<=3?{t:"临期",e:"Expiring",c:"p-r"}:st;
-  const low=i.qty<=i.par;
+  const lv=stockLevel(i),low=lv==='low'||lv==='neg';
   return `<div class="dv-row inv-card ${low?'low':''}" data-name="${oEsc(((i.name||'')+' '+(i.cat||'')).toLowerCase())}">
     <div style="min-width:0;"><div class="dv-name">${oEsc(i.name)} <span class="pill ${acctPill(itemAcctGroup(i.name))}">${acctLabel(itemAcctGroup(i.name))}</span></div>
       <div class="mini">${oEsc(i.cat)} · ${zh?"得率":"Yield"}${i.yield}% · 1${oEsc(i.buyUnit)}=${i.conv}${oEsc(i.unit)}</div>
       <div class="mini">${zh?"加权单价":"Cost"} ${money(i.cost)} · ${zh?"净料":"Net"} ${money(netCost(i))}${firstBatch?` · ${zh?"效期":"Exp"} ${firstBatch.exp}`:''}</div>
-      <div style="margin-top:4px;"><span class="pill ${stt.c}">${stTxt(stt)}</span></div></div>
-    <div class="inv-qty"><div class="inv-q ${low?'neg':''}">${num(i.qty)} <small>${oEsc(i.unit)}</small></div><div class="mini ${low?'neg':''}">Par ${i.par}</div><div class="inv-v">${money(i.qty*i.cost)}</div>
+      <div style="margin-top:4px;"><span class="pill ${stt.c}">${stTxt(stt)}</span> ${lv!=='ok'?`<span class="pill ${STOCK_LV[lv][0]}">${zh?STOCK_LV[lv][1]:STOCK_LV[lv][2]}</span>`:''}</div></div>
+    <div class="inv-qty"><div class="inv-q ${low?'neg':''}">${num(i.qty)} <small>${oEsc(i.unit)}</small></div><div class="mini ${low?'neg':''}">${stockMin(i)==null?'Par '+i.par:(zh?'最低 ':'Min ')+stockMin(i)+' · '+(zh?'标准 ':'Par ')+i.par}</div><div class="inv-v">${money(i.qty*i.cost)}</div>
       ${canW('proc')?`<div class="inv-act"><button class="ib" onclick="openM('item',${i.id})">✏️</button><button class="ib" onclick="delItem(${i.id})">🗑️</button></div>`:''}</div></div>`;
 }
 
@@ -4341,7 +4380,8 @@ function openM(type,editId){
       <div class="fr"><label>${LANG==="zh"?"得率%":"Yield%"}</label><input id="i_yield" type="number" value="100"></div></div>
       <div class="fg3"><div class="fr"><label>${LANG==="zh"?"数量":"Qty"}</label><input id="i_qty" type="number"></div>
       <div class="fr"><label>${LANG==="zh"?"单价RM":"Cost"}</label><input id="i_cost" type="number" step="0.01"></div>
-      <div class="fr"><label>${LANG==="zh"?"安全库存":"Par"}</label><input id="i_par" type="number"></div></div>
+      <div class="fr"><label>${LANG==="zh"?"标准库存":"Par"}</label><input id="i_par" type="number"></div></div>
+      <div class="fg2"><div class="fr"><label>${LANG==="zh"?"最低库存（降到这个数要订货）":"Minimum"}</label><input id="i_min" type="number" placeholder="${LANG==="zh"?"不填＝沿用标准库存":""}"></div><div class="fr"><label class="mini" style="margin-top:22px;">${LANG==="zh"?"标准库存＝平时备到多少最理想（订货订到这个数）":""}</label></div></div>
       <div class="fr"><label>${LANG==="zh"?"效期":"Expiry"}</label><input id="i_exp" type="date"></div>
       <button class="btn block brand" onclick="saveItem()">${LANG==="zh"?"保存品项":"Save"}</button>`,
     po:`<h3>📥 ${LANG==="zh"?"采购进货 PO":"Purchase Order"} <span class="x" onclick="closeM()">×</span></h3>
@@ -4460,7 +4500,7 @@ function openM(type,editId){
 }
 function prefill(type,id){
   if(type==='item'){const it=d().items.find(i=>i.id===id);if(!it)return;
-    setV('i_name',it.name);setV('i_cat',it.cat);setV('i_unit',it.unit);setV('i_buy',it.buyUnit);setV('i_conv',it.conv);setV('i_yield',it.yield);setV('i_qty',it.qty);setV('i_cost',it.cost);setV('i_par',it.par);setV('i_exp',(it.batches&&it.batches[0])?it.batches[0].exp:'');
+    setV('i_name',it.name);setV('i_cat',it.cat);setV('i_unit',it.unit);setV('i_buy',it.buyUnit);setV('i_conv',it.conv);setV('i_yield',it.yield);setV('i_qty',it.qty);setV('i_cost',it.cost);setV('i_par',it.par);setV('i_min',it.min==null?'':it.min);setV('i_exp',(it.batches&&it.batches[0])?it.batches[0].exp:'');
     setTitle(LANG==="zh"?"编辑品项":"Edit Item");}
   if(type==='recipe'){const r=d().recipes.find(x=>x.id===id);if(!r)return;
     setV('r_name',r.name);setV('r_price',r.price);if(r.ing&&r.ing[0]){setV('r_ing',r.ing[0].n);setV('r_q',r.ing[0].q);}
@@ -4480,13 +4520,13 @@ document.getElementById('mbg').addEventListener('click',e=>{if(e.target.id==='mb
 document.addEventListener('keydown',e=>{if(e.key==='Escape'){const mbg=document.getElementById('mbg');if(mbg&&mbg.classList.contains('show'))closeM();}});
 function poHint(){const s=document.getElementById('p_item');if(!s)return;const it=findItem(s.value);document.getElementById('poHint').innerHTML=it?`1 ${it.buyUnit} = ${it.conv} ${it.unit} · ${LANG==="zh"?"现价":"now"} ${money(it.cost)}/${it.unit}`:'';}
 function stTheory(){const s=document.getElementById('st_item');if(!s)return;const it=findItem(s.value);document.getElementById('st_theory').value=it?it.qty+' '+it.unit:'';}
-function sugList(){const list=d().items.filter(i=>i.qty<=i.par).map(i=>{const need=Math.max(0,Math.round(i.par*1.5-i.qty));return `<div class="pl"><div class="row"><span><b>${i.name}</b><br><span class="mini">${LANG==="zh"?"现有":"On-hand"} ${i.qty} · Par ${i.par}</span></span><b class="pos">${LANG==="zh"?"订":"Order"} ${need} ${i.unit}</b></div></div>`;}).join('');document.getElementById('sugList').innerHTML=list||`<div class="empty">✅ ${LANG==="zh"?"库存充足":"All stocked"}</div>`;}
+function sugList(){const list=d().items.filter(i=>stockLevel(i)==='low'||stockLevel(i)==='neg').map(i=>{const need=stockOrderQty(i);return `<div class="pl"><div class="row"><span><b>${i.name}</b><br><span class="mini">${LANG==="zh"?"现有":"On-hand"} ${i.qty} · ${stockMin(i)==null?'Par '+i.par:(LANG==="zh"?"最低 ":"Min ")+stockMin(i)+' · '+(LANG==="zh"?"标准 ":"Par ")+i.par}</span></span><b class="pos">${LANG==="zh"?"订":"Order"} ${need} ${i.unit}</b></div></div>`;}).join('');document.getElementById('sugList').innerHTML=list||`<div class="empty">✅ ${LANG==="zh"?"库存充足":"All stocked"}</div>`;}
 
 /* ---------- 保存动作 ---------- */
 async function saveItem(){
   const n=document.getElementById('i_name').value.trim();if(!n)return alert(LANG==="zh"?"请输入品名":"Name required");
   const qty=+document.getElementById('i_qty').value||0;
-  const obj={name:n,cat:document.getElementById('i_cat').value,unit:document.getElementById('i_unit').value,buyUnit:document.getElementById('i_buy').value||'unit',conv:+document.getElementById('i_conv').value||1,qty,cost:+document.getElementById('i_cost').value||0,par:+document.getElementById('i_par').value||0,yield:+document.getElementById('i_yield').value||100};
+  const obj={name:n,cat:document.getElementById('i_cat').value,unit:document.getElementById('i_unit').value,buyUnit:document.getElementById('i_buy').value||'unit',conv:+document.getElementById('i_conv').value||1,qty,cost:+document.getElementById('i_cost').value||0,par:+document.getElementById('i_par').value||0,min:(document.getElementById('i_min').value.trim()===''?undefined:Math.max(0,+document.getElementById('i_min').value||0)),yield:+document.getElementById('i_yield').value||100};
   if(_editId){const it=d().items.find(i=>i.id===_editId);if(it){Object.assign(it,obj);if(it.batches&&it.batches[0])it.batches[0].exp=document.getElementById('i_exp').value||it.batches[0].exp;auditLog("编辑品项",n,"","");}}
   else{d().items.push({id:Date.now(),...obj,batches:[{qty,exp:document.getElementById('i_exp').value||"2027-01-01",in:TODAY}]});auditLog("新增品项",n,"","+"+qty);}
   await save();closeM();render();
