@@ -1306,7 +1306,7 @@ function statusOf(d){if(d<=14)return{t:"健康",e:"Fresh",c:"p-g"};if(d<=30)retu
 function stTxt(s){return LANG==="zh"?s.t:s.e;}
 
 /* ================= 数据种子 ================= */
-const BUILD="1111mk103";  // 版本标记：页面右上/网格提示可见，用来确认已载入最新版
+const BUILD="1111mk104";  // 版本标记：页面右上/网格提示可见，用来确认已载入最新版
 const SEED_VERSION="bh-master-2026-09-1";  // 版本变更→下次载入自动重置为最新主数据（仅本店云端）
 function seed(outletId){
   const isCK = outletId==="ck";
@@ -2188,8 +2188,9 @@ function healthChecks(){
   {const sc=stockCounts(x.items||[]);const neg=sc.neg,low=sc.low;const st=neg?'bad':low?'warn':'ok';
    add({k:'stock',st,t:zh?'库存':'Stock',go:"nav('inv')",page:'inv',lines:[zh?`低于最低库存 ${low} 项`:`Low ${low}`,zh?`库存为负 ${neg} 项`:`Negative ${neg}`],todo:neg?(zh?`${neg} 项库存是负数，查进货/盘点有没有漏记`:'Negative stock'):low?(zh?`${low} 项低于最低库存，该订货了`:'Low stock'):''});}
   // 7 订单
-  {const po=(typeof ORDERS!=='undefined'?ORDERS:[]).filter(o=>o&&o.status!=='confirmed'&&(!o.outlet||o.outlet===curOutlet));
-   add({k:'orders',st:po.length&&canConfirmOrder()?'warn':'ok',t:zh?'订货单':'Orders',go:"openOrdersPanel()",page:'proc',lines:[zh?`待确认 ${po.length} 张`:`Pending ${po.length}`,canConfirmOrder()?'':(zh?'（由副经理以上确认）':'')],todo:po.length&&canConfirmOrder()?(zh?`${po.length} 张订货单待确认`:'Orders to confirm'):''});}
+  {const all=(typeof ORDERS!=='undefined'?ORDERS:[]).filter(o=>o&&(!o.outlet||o.outlet===curOutlet));const po=all.filter(o=>o.status==='pending'||!o.status),rc=all.filter(o=>['shipped','partial'].includes(o.status));
+   const needC=po.length&&canConfirmOrder(),needR=rc.length&&can('proc');
+   add({k:'orders',st:(needC||needR)?'warn':'ok',t:zh?'订货单':'Orders',go:"openOrdersPanel()",page:'proc',lines:[zh?`待确认 ${po.length} 张${canConfirmOrder()?'':'（由副经理以上确认）'}`:`Pending ${po.length}`,zh?`已发货/部分收货，等收货 ${rc.length} 张`:`To receive ${rc.length}`],todo:needC?(zh?`${po.length} 张订货单待确认`:'Orders to confirm'):needR?(zh?`${rc.length} 张订货单等你收货`:'Orders to receive'):''});}
   // 8 调拨
   {const me=xferPendingForMe(),mine=XREQ.filter(r=>r.status==='pending'&&r.reqBy===curOutlet);
    add({k:'xfer',st:me.length?'warn':'ok',t:zh?'跨店调拨':'Transfers',go:"goProcSub('transfer')",page:'transfer',lines:[zh?`等我批准 ${me.length} 张`:`To approve ${me.length}`,zh?`我发出、对方还没批 ${mine.length} 张`:`Sent ${mine.length}`],todo:me.length?(zh?`${me.length} 张调拨申请等你批准`:'Transfer requests'):''});}
@@ -2501,6 +2502,7 @@ function pgProc(){
   const cards=[];
   if(can('proc')){
     cards.push(["ordersheet","🛒",LANG==="zh"?"订货单":"Order Sheet",LANG==="zh"?"按供应商下单 · 通知老板/副经理":"By supplier · notify boss",var_amber()]);
+    {const vis=ordVisible(),op=vis.filter(o=>['pending','confirmed','shipped','partial'].includes(o.status)).length;cards.push(["ordtrack","📦",LANG==="zh"?"订单进度":"Order status",LANG==="zh"?(op?op+" 张进行中 · 确认/发货/收货":"确认 · 发货 · 收货"):"Track orders",op?var_blue():var_teal()]);}
     cards.push(["purchase","📥",LANG==="zh"?"进货单":"Goods-In",LANG==="zh"?"按供应商 · 每年月日进货记录":"By supplier · dated records",var_green()]);
     {const pn=priceChanges().filter(c=>c.st==='new').length;cards.push(["pricechg","📈",LANG==="zh"?"价格变动":"Price Changes",LANG==="zh"?(pn?pn+" 项待核对 · 进货涨跌提醒":"进货价格涨跌提醒"):"Purchase price alerts",pn?var_red():var_teal()]);}
     cards.push(["grn","📋",LANG==="zh"?"退货 / 补货":"GRN / Returns",LANG==="zh"?"按供应商 · 含补货/免费/取消":"By supplier · settlement",var_blue()]);
@@ -2514,7 +2516,7 @@ function pgProc(){
   <h2 class="h" style="margin-top:2px;">🔄 ${LANG==="zh"?"进销存作业":"Operations"} <span class="tag">v${BUILD}</span></h2>
   <div class="hint">${LANG==="zh"?"每个作业已拆分为独立界面，点选进入。":"Each operation now has its own dedicated page."}</div>
   <div class="grid g2" style="margin-bottom:12px;">
-    ${cards.map(([k,ic,label,desc,color])=>`<button class="card" style="text-align:left;padding:14px;border-left:4px solid ${color};cursor:pointer;background:var(--card);" onclick="goProcSub('${k}')">
+    ${cards.map(([k,ic,label,desc,color])=>`<button class="card" style="text-align:left;padding:14px;border-left:4px solid ${color};cursor:pointer;background:var(--card);" onclick="${k==='ordtrack'?'openOrdersPanel()':`goProcSub('${k}')`}">
       <div style="font-size:22px;">${ic}</div>
       <div style="font-weight:800;font-size:14px;margin-top:4px;color:var(--ink);">${label}</div>
       <div class="mini" style="margin-top:2px;">${desc}</div>
@@ -2531,7 +2533,7 @@ let apSel=null;
 function setApSel(s){apSel=s;render();window.scrollTo(0,0);}
 function backAp(){apSel=null;render();window.scrollTo(0,0);}
 function apSupOf(o){return o.supplier||CK_SUPPLIER_NAME;}
-function apOrders(){return (typeof ORDERS!=='undefined'?ORDERS:[]).filter(o=>o&&o.status==='confirmed'&&o.outlet===curOutlet);}
+function apOrders(){return (typeof ORDERS!=='undefined'?ORDERS:[]).filter(o=>o&&ordConfirmedLike(o)&&o.outlet===curOutlet);}
 /* 进货单(按供应商/按日 key in 的每一笔)自动出现在应付账款；中央厨房不算在内，
    中央厨房走「订货单→Invoice」那一套(apOrders 已经处理)。 */
 function apGridGroups(){
@@ -2730,7 +2732,7 @@ let oiSel=null, oiMonth=null;
 function setOiSel(s){oiSel=s;oiMonth=null;render();window.scrollTo(0,0);}
 function setOiMonth(m){oiMonth=m;render();window.scrollTo(0,0);}
 function backOi(){if(oiMonth)oiMonth=null;else oiSel=null;render();window.scrollTo(0,0);}
-function oiInvoices(){return (typeof ORDERS!=='undefined'?ORDERS:[]).filter(o=>o&&o.status==='confirmed'&&o.invoiceNo&&o.outlet===curOutlet);}
+function oiInvoices(){return (typeof ORDERS!=='undefined'?ORDERS:[]).filter(o=>o&&ordConfirmedLike(o)&&o.invoiceNo&&o.outlet===curOutlet);}
 function oiMonthOf(o){return new Date(o.confirmedAt||o.ts).toLocaleDateString('en-CA').slice(0,7);}
 function oiCanDel(){return ['owner','area','hrmgr'].includes(curRole)&&!isAgg();}
 async function delInvoice(id){if(!oiCanDel()){alert(LANG==="zh"?"只有区域副经理及以上可删除 Invoice。":"Only Area Manager & above can delete.");return;}if(!confirm(LANG==="zh"?"删除此 Invoice？此操作无法复原。":"Delete this invoice?"))return;await loadOrders();ORDERS=ORDERS.filter(o=>o.id!==id);await saveOrders();try{if(typeof auditLog==='function')auditLog(LANG==="zh"?"删除Invoice":"Delete invoice",id,"","");}catch(e){}render();}
@@ -3870,15 +3872,71 @@ function orderLineHTML(order){
   const uni=(order.uniform||[]).map(u=>`<tr><td>${LANG==="zh"?"制服":"Uniform"} · Size ${oEsc(u.size)}</td><td style="text-align:center;font-weight:700;">${oEsc(u.q)}</td></tr>`).join('');
   return `<table class="tbl-mini" style="width:100%;border-collapse:collapse;margin-top:6px;font-size:12px;"><tbody>${rows}${uni}</tbody></table>`;
 }
+
+/* ============ 订货单状态流程（mk104，参照 SUPY Orders：Submitted/Approved/Shipped/Partially Received/Closed/Rejected/Cancelled）============
+   待确认 pending → 已确认 confirmed（副经理以上确认，生成 Invoice）→ 已发货 shipped（副经理以上/中央厨房标记）→ 已收货 received（下单的分店收货；
+   少收＝部分收货 partial，可再收，或「关闭（不补了）」）。另有 已拒绝 rejected（带原因）、已取消 cancelled。每一步记进 o.history（谁、几时、备注）。
+   确认之后的状态（含已收货）都算「已确认的订单」：应付账款、订单发票照旧看得到。收货只记「收了多少」，不会动库存（库存走「进货单」，免得算两次）。 */
+const ORD_ST={pending:['p-a','待确认','Pending'],confirmed:['p-g','已确认','Confirmed'],shipped:['p-b','已发货','Shipped'],partial:['p-a','部分收货','Partially received'],received:['p-g','已收货','Received'],rejected:['p-r','已拒绝','Rejected'],cancelled:['','已取消','Cancelled']};
+function ordConfirmedLike(o){return !!o&&['confirmed','shipped','partial','received'].includes(o.status);}
+function ordPill(o){const z=LANG==="zh",x=ORD_ST[o.status]||ORD_ST.pending;return `<span class="pill ${x[0]}">${z?x[1]:x[2]}</span>`;}
+function ordIsApprover(){return ['owner','area','hrmgr'].includes(curRole);}
+function ordCanShip(){return ordIsApprover()||['ckmgr','ckstaff'].includes(curRole);}
+function ordMine(o){return !!o&&(!o.outlet||o.outlet===curOutlet);}
+function ordCanReceive(o){return ['confirmed','shipped','partial'].includes(o.status)&&can('proc')&&(ordMine(o)||ordIsApprover());}
+function ordCanCancel(o){return o.status==='pending'?(ordMine(o)&&can('proc'))||ordIsApprover():['confirmed','shipped'].includes(o.status)&&ordIsApprover();}
+function ordWho(){return curUser?curUser.name:ROLES[curRole].name;}
+function ordHist(o,st,note){(o.history=o.history||[]).push({st,ts:Date.now(),by:ordWho(),note:note||''});}
+async function ordSetStatus(id,st,note,msg){
+  await orderEditFlush();const o=orderById(id);if(!o)return;o.status=st;ordHist(o,st,note);await saveOrders();
+  try{auditLog('订单状态',(o.supplier||o.outletName||'')+' → '+ORD_ST[st][1]+(note?'（'+note+'）':''),'','');}catch(e){}
+  if(msg)try{alert(msg);}catch(e){}
+  openOrderDetail(id);
+}
+async function ordShip(id){if(!ordCanShip())return alert(LANG==="zh"?'只有副经理以上或中央厨房可标记发货':'No permission');if(!confirm(LANG==="zh"?'标记为「已发货」？':'Mark shipped?'))return;await ordSetStatus(id,'shipped','');}
+async function ordReject(id){if(!ordIsApprover())return;const r=prompt(LANG==="zh"?'拒绝这张订货单的原因：':'Reason to reject:');if(r==null)return;await ordSetStatus(id,'rejected',r.trim()||'未写原因');}
+async function ordCancel(id){const o=orderById(id);if(!o||!ordCanCancel(o))return;if(!confirm(LANG==="zh"?'取消这张订货单？':'Cancel this order?'))return;await ordSetStatus(id,'cancelled','');}
+async function ordReopen(id){if(!ordIsApprover())return;if(!confirm(LANG==="zh"?'把这张订单退回「待确认」？':'Reopen as pending?'))return;await ordSetStatus(id,'pending','退回待确认');}
+function ordQtyNum(q){const n=parseFloat(String(q||'').replace(/[^0-9.\-]/g,''));return isNaN(n)?0:n;}
+function openOrderReceive(id){
+  const o=orderById(id);if(!o||!ordCanReceive(o))return;const zh=LANG==="zh";
+  const all=[...(o.lines||[]).map((l,i)=>({arr:'lines',i,name:(l.d||'').replace(/\n/g,' / '),q:l.q,r:l.rcv||0})),...(o.uniform||[]).map((u,i)=>({arr:'uniform',i,name:(zh?'制服 Size ':'Uniform ')+u.size,q:u.q,r:u.rcv||0}))];
+  window._rcv={id,rows:all};
+  const rows=all.map((r,k)=>{const need=ordQtyNum(r.q),left=Math.max(0,need-r.r);return `<div class="odc"><div class="odc-h"><div class="odc-n">${oEsc(r.name)}</div></div>
+    <div class="mini" style="margin-top:4px;">${zh?'订':'Ordered'} ${oEsc(r.q)} · ${zh?'已收':'Received'} ${num(r.r)} · ${zh?'还欠':'Left'} ${num(left)}</div>
+    <div class="odc-f"><label>${zh?'这次收到':'Received now'}<input class="odnum" id="rv_${k}" inputmode="decimal" value="${left||''}"></label><div></div></div></div>`;}).join('');
+  openForm(`<h3>${zh?'收货':'Receive'} <span class="x" onclick="closeM()">×</span></h3>
+    <div class="hint">${zh?'填这次实际收到多少（默认＝还欠的全部）。收齐了订单就变「已收货」；没收齐是「部分收货」，之后可以再收。收货只记数量，不会动库存（库存请走「进货单」）。':''}</div>
+    <div class="odl" style="max-height:52vh;">${rows}</div>
+    <button class="btn block brand" style="margin-top:10px;" onclick="ordReceiveSave()">${zh?'确认收货':'Confirm'}</button>`);
+  const mb=document.getElementById('mbox');if(mb)mb.classList.add('m-wide');
+}
+async function ordReceiveSave(){
+  const R=window._rcv;if(!R)return;await orderEditFlush();const o=orderById(R.id);if(!o)return;let got=0;
+  R.rows.forEach((r,k)=>{const v=ordQtyNum((document.getElementById('rv_'+k)||{}).value);if(v>0){const it=o[r.arr][r.i];it.rcv=(+it.rcv||0)+v;got+=v;}});
+  if(!got)return alert(LANG==="zh"?'没填收到的数量':'Nothing received');
+  const done=[...(o.lines||[]),...(o.uniform||[])].every(l=>{const need=ordQtyNum(l.q);return need>0?(+l.rcv||0)>=need:(+l.rcv||0)>0;});
+  await ordSetStatus(R.id,done?'received':'partial',done?'':'还没收齐');
+}
+async function ordCloseShort(id){const o=orderById(id);if(!o||o.status!=='partial'||!ordCanReceive(o))return;if(!confirm(LANG==="zh"?'没收齐的部分不补了，把订单关闭（算已收货）？':'Close with shortage?'))return;await ordSetStatus(id,'received','短收，不补了');}
+let ordFilter='open',ordScopeAll=false;
+function ordFilterSet(v){ordFilter=v;openOrdersPanel();}
+function ordVisible(){return ORDERS.filter(o=>o&&(ordIsApprover()||ordMine(o)));}
+function ordHistHTML(o){const z=LANG==="zh";const h=o.history&&o.history.length?o.history:[{st:'pending',ts:o.ts,by:(o.by&&o.by.name)||''}];
+  return `<div class="card" style="padding:12px 14px;margin:10px 0;"><div style="font-weight:800;margin-bottom:6px;font-size:13px;">${z?'订单进度':'Timeline'}</div>${h.map(x=>`<div class="hl-todo" style="align-items:flex-start;"><span class="hl-dot ${x.st==='rejected'||x.st==='cancelled'?'hl-bad':x.st==='received'||x.st==='confirmed'?'':'hl-warn'}" style="margin-top:5px;${x.st==='received'||x.st==='confirmed'?'background:var(--green,#1e7a3b);':''}"></span><div style="flex:1;font-size:13px;"><b>${(ORD_ST[x.st]||ORD_ST.pending)[z?1:2]}</b> <span class="mini">${oEsc(x.by||'')} · ${new Date(x.ts).toLocaleString('en-MY',{hour12:false})}</span>${x.note?`<div class="mini">${oEsc(x.note)}</div>`:''}</div></div>`).join('')}</div>`;}
 function openOrdersPanel(){
   _orderEditing=false; // 回到列表=不再编辑单一订单
   markOrdersSeen();
-  const list=[...ORDERS].sort((a,b)=>b.ts-a.ts);
+  const vis=ordVisible();const grp={open:['pending','confirmed','shipped','partial'],pending:['pending'],confirmed:['confirmed'],shipped:['shipped'],partial:['partial'],received:['received'],closed:['rejected','cancelled'],all:null};
+  const cnt=k=>grp[k]?vis.filter(o=>grp[k].includes(o.status)).length:vis.length;
+  const list=vis.filter(o=>!grp[ordFilter]||grp[ordFilter].includes(o.status)).sort((a,b)=>b.ts-a.ts);
+  const zh0=LANG==="zh";const tabs=[['open',zh0?'进行中':'Open'],['pending',zh0?'待确认':'Pending'],['confirmed',zh0?'已确认':'Confirmed'],['shipped',zh0?'已发货':'Shipped'],['partial',zh0?'部分收货':'Partial'],['received',zh0?'已收货':'Received'],['closed',zh0?'拒绝/取消':'Rej/Canc'],['all',zh0?'全部':'All']];
+  const chips=`<div class="seg mtabs nox" style="margin-bottom:8px;">${tabs.map(([k,l])=>`<button class="${ordFilter===k?'active':''}" onclick="ordFilterSet('${k}')">${l} ${cnt(k)}</button>`).join('')}</div>`;
   const body=list.length?list.map(o=>{
     const dt=new Date(o.ts);const when=dt.toLocaleString('en-MY',{hour12:false});
     const cnt=(o.lines||[]).length+(o.uniform||[]).length;
-    const badge=o.status==='confirmed'?`<span class="pill p-g">${LANG==="zh"?"已确认":"Confirmed"}${o.invoiceNo?(' '+o.invoiceNo):''}</span>`:`<span class="pill p-a">${LANG==="zh"?"待确认":"Pending"}</span>`;
-    return `<div class="card ordc ${o.status==='confirmed'?'ok':''}" onclick="openOrderDetail('${o.id}')">
+    const badge=ordPill(o)+(ordConfirmedLike(o)&&o.invoiceNo?` <span class="mini">${o.invoiceNo}</span>`:'');
+    return `<div class="card ordc ${ordConfirmedLike(o)?'ok':''}" style="${o.status==='rejected'||o.status==='cancelled'?'border-left-color:var(--grey);opacity:.75;':o.status==='shipped'?'border-left-color:var(--blue,#2a5fa0);':''}" onclick="openOrderDetail('${o.id}')">
       <div class="r1"><div class="nm">${oEsc(o.by&&o.by.name||'-')} <span class="mini" style="font-weight:400;">${oEsc(ROLES[o.by&&o.by.role]?ROLES[o.by.role].name:(o.by&&o.by.role||''))}</span></div>${badge}</div>
       <div class="meta"><span>${oEsc(o.outletName||'')}</span>${o.supplier?`<span>· ${oEsc(o.supplier)}</span>`:''}<span>· <span class="cnt">${cnt}</span> ${LANG==="zh"?"项":"items"}</span></div>
       <div class="mini" style="margin-top:4px;">${when} ›</div>
@@ -3886,10 +3944,10 @@ function openOrdersPanel(){
   const perm=('Notification'in window)?Notification.permission:'unsupported';
   const permTxt=perm==='granted'?(LANG==="zh"?'✅ 通知已允许':'✅ granted'):perm==='denied'?(LANG==="zh"?'❌ 通知被拒绝（去浏览器设置里允许）':'❌ denied'):(LANG==="zh"?'尚未开启':'not set');
   const notifBtn=('Notification'in window)?`<button class="btn gold sm" onclick="reqNotify()">🔔 ${LANG==="zh"?"开启/登记本机接收通知":"Enable / register this device"}</button> <span class="mini" id="notifStatus">${permTxt}</span>`:'';
-  openForm(`<h3>${LANG==="zh"?"收到的订单":"Received Orders"} <span class="x" onclick="closeM()">×</span></h3>
+  openForm(`<h3>${LANG==="zh"?(ordIsApprover()?"收到的订单":"订单进度"):"Orders"} <span class="x" onclick="closeM()">×</span></h3>
     <div style="margin-bottom:8px;">${notifBtn}</div>
-    <div class="hint" style="margin-top:0;">${LANG==="zh"?"点一张订单进去 → 可改数量/删项/填单价 → 确定订单 → 生成 Invoice。":"Tap an order to edit & confirm."}</div>
-    <div style="max-height:62vh;overflow:auto;">${body}</div>`);
+    <div class="hint" style="margin-top:0;">${LANG==="zh"?"点一张订单进去：副经理以上可「确认/拒绝」，确认后标记「已发货」；下单的分店在货到后点「收货」。":"Tap an order to edit & confirm."}</div>
+    ${chips}<div style="max-height:58vh;overflow:auto;">${body}</div>`);
 }
 function orderById(id){return ORDERS.find(o=>o.id===id);}
 function orderTotals(o){let tq=0,ta=0;const add=arr=>(o[arr]||[]).forEach(l=>{const q=+l.q||0,p=+l.price||0;tq+=q;ta+=q*p;});add('lines');add('uniform');return{tq,ta};}
@@ -3900,10 +3958,11 @@ function setOL(id,arr,i,field,v){const o=orderById(id);if(!o||!o[arr]||!o[arr][i
 function odRecalc(id){const o=orderById(id);if(!o)return;['lines','uniform'].forEach(arr=>(o[arr]||[]).forEach((l,i)=>{const el=document.getElementById('oda-'+arr+'-'+i);if(el)el.textContent=money((+l.q||0)*(+l.price||0));}));const t=orderTotals(o);const q=document.getElementById('odTQ');if(q)q.textContent=num(t.tq,2);const a=document.getElementById('odTA');if(a)a.textContent=money(t.ta);}
 async function delOL(id,arr,i){const o=orderById(id);if(!o)return;const it=o[arr][i];if(!confirm(LANG==="zh"?("移除『"+String((it.d||('Size '+it.size)||'')).split('\n')[0]+"』？"):"Remove item?"))return;o[arr].splice(i,1);await saveOrders();openOrderDetail(id);}
 function odRow(id,arr,i,name,l){
+  const oo=orderById(id),rcvInfo=(oo&&['shipped','partial','received'].includes(oo.status))?`<div class="mini" style="margin-top:4px;">${LANG==="zh"?'已收':'Received'} <b>${num(+l.rcv||0)}</b> / ${LANG==="zh"?'订':'ordered'} ${oEsc(l.q)}</div>`:'';
   return `<div class="odc"><div class="odc-h"><div class="odc-n">${oEsc(name)}</div><button class="ib" onclick="delOL('${id}','${arr}',${i})" title="删除">🗑️</button></div>
     <div class="odc-f"><label>数量/重量 Qty<input class="odnum" inputmode="decimal" value="${oEsc(l.q)}" oninput="setOL('${id}','${arr}',${i},'q',this.value)"></label>
     <label>单价 Price<input class="odnum" inputmode="decimal" placeholder="0" value="${oEsc(l.price!=null?l.price:'')}" oninput="setOL('${id}','${arr}',${i},'price',this.value)"></label>
-    <div class="odc-a"><span>金额 Amt</span><b id="oda-${arr}-${i}">${money((+l.q||0)*(+l.price||0))}</b></div></div></div>`;
+    <div class="odc-a"><span>金额 Amt</span><b id="oda-${arr}-${i}">${money((+l.q||0)*(+l.price||0))}</b></div></div>${rcvInfo}</div>`;
 }
 function openOrderDetail(id){
   const o=orderById(id);if(!o)return;const zh=LANG==="zh";_orderEditing=true; // 打开订单详情=正在编辑，暂停轮询覆盖
@@ -3913,18 +3972,28 @@ function openOrderDetail(id){
   ].join('')||`<div class="empty">—</div>`;
   const t=orderTotals(o);
   const dt=new Date(o.ts);const when=dt.toLocaleString('en-MY',{hour12:false});
-  const badge=o.status==='confirmed'?`<span class="pill p-g">${zh?"已确认":"Confirmed"} ${o.invoiceNo||''}</span>`:`<span class="pill p-a">${zh?"待确认":"Pending"}</span>`;
+  const badge=ordPill(o)+(ordConfirmedLike(o)&&o.invoiceNo?` ${o.invoiceNo}`:'');
+  const acts=[];
+  if(o.status==='pending'&&ordIsApprover()){acts.push(`<button class="btn brand sm" onclick="confirmOrder('${o.id}')">${zh?"确认订单":"Confirm"}</button>`,`<button class="btn ghost sm" onclick="ordReject('${o.id}')">${zh?"拒绝":"Reject"}</button>`);}
+  if(ordConfirmedLike(o)&&ordIsApprover())acts.push(`<button class="btn gold sm" onclick="openInvoice('${o.id}')">${zh?"创建 Invoice":"Create Invoice"}</button>`);
+  if(o.status==='confirmed'&&ordCanShip())acts.push(`<button class="btn sm" onclick="ordShip('${o.id}')">${zh?"标记已发货":"Mark shipped"}</button>`);
+  if(ordCanReceive(o))acts.push(`<button class="btn brand sm" onclick="openOrderReceive('${o.id}')">${zh?"收货":"Receive"}</button>`);
+  if(o.status==='partial'&&ordCanReceive(o))acts.push(`<button class="btn ghost sm" onclick="ordCloseShort('${o.id}')">${zh?"关闭（不补了）":"Close short"}</button>`);
+  if(ordCanCancel(o))acts.push(`<button class="btn ghost sm" onclick="ordCancel('${o.id}')">${zh?"取消订单":"Cancel"}</button>`);
+  if((o.status==='rejected'||o.status==='cancelled')&&ordIsApprover())acts.push(`<button class="btn ghost sm" onclick="ordReopen('${o.id}')">${zh?"退回待确认":"Reopen"}</button>`);
+  if(ordIsApprover())acts.push(`<button class="btn ghost sm" onclick="deleteOrder('${o.id}')">${zh?"删除订单":"Delete"}</button>`);
   openForm(`<div style="display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap;">
       <h3 style="margin:0;flex:1;">${zh?"订单详情":"Order"} <span class="x" onclick="closeM()">×</span></h3>
       <button class="btn ghost sm" onclick="openOrdersPanel()">← ${zh?"返回列表":"Back"}</button>
     </div>
     <div class="mini" style="margin:6px 0;">${oEsc(o.by&&o.by.name||'')} · ${o.supplier?oEsc(o.supplier)+' · ':''}${oEsc(o.outletName||'')} · ${when} · ${badge}</div>
+    ${o.status==='rejected'?`<div class="al al-r" style="margin-bottom:8px;">${zh?'已拒绝：':'Rejected: '}${oEsc((o.history||[]).filter(x=>x.st==='rejected').slice(-1).map(x=>x.note).join('')||'')}</div>`:''}
+    ${ordHistHTML(o)}
     <div class="hint" style="margin-top:0;">${zh?"货物不够就改数量或🗑️删掉；可填单价算金额。改动自动保存。":"Adjust qty / remove / set price."}</div>
     <div class="odl">${rows}</div>
     <div class="odtot"><span>${zh?"合计":"Total"} · ${zh?"数量":"Qty"} <b id="odTQ">${num(t.tq,2)}</b></span><span>${zh?"金额":"Amt"} <b id="odTA">${money(t.ta)}</b></span></div>
     <div style="display:flex;gap:6px;justify-content:flex-end;margin-top:10px;flex-wrap:wrap;">
-      ${o.status!=='confirmed'?`<button class="btn brand sm" onclick="confirmOrder('${o.id}')">✅ ${zh?"确定订单":"Confirm"}</button>`:`<button class="btn gold sm" onclick="openInvoice('${o.id}')">🧾 ${zh?"创建 Invoice":"Create Invoice"}</button>`}
-      <button class="btn ghost sm" onclick="deleteOrder('${o.id}')">🗑️ ${zh?"删除订单":"Delete"}</button>
+      ${acts.join('')}
     </div>`);
   const mb=document.getElementById('mbox');if(mb)mb.classList.add('m-wide');
 }
@@ -3940,7 +4009,7 @@ async function confirmOrder(id){
   if(!canConfirmOrder()){alert(LANG==="zh"?"只有区域副经理及以上可确认。":"Only Area Manager & above.");return;}
   if(!confirm(LANG==="zh"?"确定此订单？确认后可创建 Invoice。":"Confirm this order?"))return;
   await orderEditFlush();const o=orderById(id);if(!o){openOrdersPanel();return;}
-  o.status='confirmed';if(!o.invoiceNo)o.invoiceNo=nextInvoiceNo();
+  o.status='confirmed';if(!o.invoiceNo)o.invoiceNo=nextInvoiceNo();ordHist(o,'confirmed',o.invoiceNo);
   o.confirmedBy=curUser?curUser.name:ROLES[curRole].name;o.confirmedAt=Date.now();
   await saveOrders();
   try{if(typeof auditLog==='function')auditLog(LANG==="zh"?"订单确认":"Order confirmed",(o.supplier||o.outletName||'')+" · "+o.invoiceNo,"","");}catch(e){}
@@ -4045,7 +4114,7 @@ function pgOrderSheet(){
         <div style="min-width:0;"><div class="dv-name">${oEsc(v.name)}${isck?` <span class="pill p-b">${zh?"含图片":"photos"}</span>`:''}</div><div class="mini">${zh?"点进去填数量下单":"Tap to order"}</div></div>
         ${supManage&&wSup?`<div class="sup-act" onclick="event.stopPropagation()"><button class="ib" onclick="renameSupplier(${v.id})">✏️</button><button class="ib" onclick="delSupplier(${v.id})">🗑️</button></div>`:`<span class="sup-go">›</span>`}</div>`;
     }).join('')||`<div class="empty">${zh?"暂无供应商，点「+ 新增供应商」添加。":"No suppliers"}</div>`;
-    return `<div class="fb"><h2 class="h" style="margin:0;">${zh?"订货单":"Order Sheet"}</h2><div style="display:flex;gap:8px;align-items:center;">${wSup?`<button class="btn brand sm" onclick="addSupplier()">+ ${zh?"供应商":"Supplier"}</button>${actm([{l:supManage?(zh?'完成管理':'Done managing'):(zh?'管理供应商（改名/删除）':'Manage suppliers'),on:'supManage=!supManage;render()'}])}`:''}${back}</div></div>
+    return `<div class="fb"><h2 class="h" style="margin:0;">${zh?"订货单":"Order Sheet"}</h2><div style="display:flex;gap:8px;align-items:center;"><button class="btn ghost sm" onclick="openOrdersPanel()">${zh?"订单进度":"Status"}</button>${wSup?`<button class="btn brand sm" onclick="addSupplier()">+ ${zh?"供应商":"Supplier"}</button>${actm([{l:supManage?(zh?'完成管理':'Done managing'):(zh?'管理供应商（改名/删除）':'Manage suppliers'),on:'supManage=!supManage;render()'}])}`:''}${back}</div></div>
       <div class="grid g2 sup-sum"><div class="kpi"><div class="k">${zh?"供应商":"Suppliers"}</div><div class="v sm">${sups.length}</div></div><div class="kpi"><div class="k">${zh?"流程":"Flow"}</div><div class="v sm" style="font-size:13px;">${zh?"选供应商 → 填数量 → 下单":"Pick → qty → order"}</div></div></div>
       <div class="dv-tools"><input class="dv-search" type="search" placeholder="${zh?'搜索供应商…':'Search suppliers…'}" value="${oEsc(supQuery||'')}" oninput="supQuery=this.value;dvFilter(this.value)" autocomplete="off"></div>
       <details class="hintd"><summary>${zh?'说明':'Notes'}</summary><div>${zh?"下单会通知老板与区域副经理。中央厨房 (TCY OKR) 是含图片的版本。":"Orders notify owner & area manager."}</div></details>
