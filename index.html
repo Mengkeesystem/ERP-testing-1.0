@@ -860,6 +860,14 @@ html.ui2[data-theme="mech"] div.empty{border-color:#5A646E;}
 .dv-row.pc-card{display:flex;flex-direction:column;align-items:stretch;gap:8px;}.dv-row.pc-card>div{min-width:0;}
 .dv-flag:empty{display:none;}.dv-flag{margin-top:4px;}
 html.ui2[data-theme="mech"] .pflag.up{background:#3a0f14;color:#ff7b86;}html.ui2[data-theme="mech"] .pflag.dn{background:#0d3324;color:#5fe0a4;}
+
+/* ---- 运营健康（mk101）---- */
+.hl-grid{margin-top:10px;gap:10px;}
+.hl-tile{padding:13px 14px;cursor:pointer;border-left:4px solid var(--line2);}
+.hl-tile.hl-ok{border-left-color:var(--green,#1e7a3b);}.hl-tile.hl-warn{border-left-color:var(--gold,#c08a2e);}.hl-tile.hl-bad{border-left-color:var(--red,#b42318);}
+.hl-tile .pill{white-space:nowrap;flex:none;}.hl-go{margin-top:8px;font-size:12px;color:var(--ink2);font-weight:600;}
+.hl-todo{display:flex;gap:10px;align-items:center;padding:7px 0;border-top:1px solid var(--row-line);}.hl-todo:first-of-type{border-top:0;}
+.hl-dot{width:10px;height:10px;border-radius:50%;flex:none;background:var(--grey);}.hl-dot.hl-warn{background:var(--gold,#c08a2e);}.hl-dot.hl-bad{background:var(--red,#b42318);}
 /* ---- 小弹窗补充（mk93）---- */
 html.ui2 .m input[type=file]{width:100%;box-sizing:border-box;font-size:14px;padding:10px;border:1.5px dashed var(--line2);border-radius:var(--radius-sm);background:var(--soft);color:var(--ink2);}
 html.ui2 .m input[type=file]::file-selector-button{border:0;border-radius:99px;padding:8px 14px;margin-right:10px;background:var(--brand);color:#fff;font-weight:600;font-size:13px;}
@@ -1296,7 +1304,7 @@ function statusOf(d){if(d<=14)return{t:"健康",e:"Fresh",c:"p-g"};if(d<=30)retu
 function stTxt(s){return LANG==="zh"?s.t:s.e;}
 
 /* ================= 数据种子 ================= */
-const BUILD="1111mk100";  // 版本标记：页面右上/网格提示可见，用来确认已载入最新版
+const BUILD="1111mk101";  // 版本标记：页面右上/网格提示可见，用来确认已载入最新版
 const SEED_VERSION="bh-master-2026-09-1";  // 版本变更→下次载入自动重置为最新主数据（仅本店云端）
 function seed(outletId){
   const isCK = outletId==="ck";
@@ -1977,7 +1985,7 @@ function auditLog(act,detail,oldv,newv){
 function can(p){return ROLES[curRole].can.includes(p);}
 // 作业中心(proc)只要拥有任一子作业权限即可进入；子页与页面级访问统一由 pageAllowed 判定
 function hasAnyOp(){return ['proc','transfer','waste','ent','stock'].some(p=>can(p));}
-function pageAllowed(p){if(p==='proc')return hasAnyOp();if(p==='monthly'||p==='variance')return can('report');if(p==='opexm')return can('opex');if(p==='payrun'||p==='payroll')return PAYROLL_ON&&can('payroll');if(p==='orderinv')return ['owner','area','hrmgr','manager','headchef'].includes(curRole);if(typeof PROC_SUB!=='undefined'&&PROC_SUB[p])return can(PROC_SUB[p]);return can(p);}
+function pageAllowed(p){if(p==='proc')return hasAnyOp();if(p==='monthly'||p==='variance')return can('report');if(p==='health')return can('dash')||can('proc');if(p==='opexm')return can('opex');if(p==='payrun'||p==='payroll')return PAYROLL_ON&&can('payroll');if(p==='orderinv')return ['owner','area','hrmgr','manager','headchef'].includes(curRole);if(typeof PROC_SUB!=='undefined'&&PROC_SUB[p])return can(PROC_SUB[p]);return can(p);}
 function firstAllowedPage(){const order=['dash','attend','leave','hr','schedule','sales','inv','proc','ck','stock','opex','ap','bom','report','settings'];for(const p of order)if(pageAllowed(p))return p;return 'dash';}
 function canW(p){if(isAgg())return false;if((p==='payroll'||p==='payrun')&&ROLES[curRole].salaryLock)return false;return can(p);} // 汇总视图只读；店面经理薪资只读(锁死)
 function renderTop(){
@@ -2019,13 +2027,13 @@ function renderTop(){
 }
 // 侧边栏菜单分组（ERP 结构，方便日后扩充）
 const MENU=[
-  ["营运 Operations",[["dash","💰","dash"],["sales","🧾","sales"],["proc","🔄","proc"],["orderinv","🧾","orderinv"],["ck","🏭","ck"]]],
+  ["营运 Operations",[["dash","💰","dash"],["health","⚠","health"],["sales","🧾","sales"],["proc","🔄","proc"],["orderinv","🧾","orderinv"],["ck","🏭","ck"]]],
   ["库存 Inventory",[["inv","📦","inv"],["bom","🍲","bom"],["stock","🔎","stock"],["monthend","📋","monthend"],["opexm","💵","opexm"]]],
   ["财务 Finance",[["ap","💳","ap"],["opex","💵","opex"],["monthly","📅","monthly"],["variance","🧮","variance"],["report","📈","report"]]],
   ["人事 HR",[["hr","👤","hr"],["attend","🕐","attend"],["schedule","📅","schedule"],["leave","🌴","leave"]]],
   ["系统 System",[["settings","⚙️","settings"]]],
 ];
-const MENU_LABELS={variance:{zh:"成本差异",en:"Cost Variance"},pricechg:{zh:"价格变动",en:"Price Changes"},sales:{zh:"销售 (POS)",en:"Sales (POS)"},orderinv:{zh:"订单发票",en:"Order Invoices"},ck:{zh:"中央厨房",en:"Central Kitchen"},stock:{zh:"盘点",en:"Stock Take"},hr:{zh:"员工档案",en:"Staff Profiles"},attend:{zh:"打卡考勤",en:"Attendance"},schedule:{zh:"排班",en:"Schedule"},leave:{zh:"请假",en:"Leave"},monthly:{zh:"月度核算",en:"Monthly Cost"},bom:{zh:"配方成本",en:"Recipe Cost"},opexm:{zh:"运营开销录入",en:"OpEx Entry"},monthend:{zh:"月末盘点",en:"Month-End Count"},payrun:{zh:"薪资发放 Payroll",en:"Payroll Run"}};
+const MENU_LABELS={health:{zh:"运营健康",en:"Ops Health"},variance:{zh:"成本差异",en:"Cost Variance"},pricechg:{zh:"价格变动",en:"Price Changes"},sales:{zh:"销售 (POS)",en:"Sales (POS)"},orderinv:{zh:"订单发票",en:"Order Invoices"},ck:{zh:"中央厨房",en:"Central Kitchen"},stock:{zh:"盘点",en:"Stock Take"},hr:{zh:"员工档案",en:"Staff Profiles"},attend:{zh:"打卡考勤",en:"Attendance"},schedule:{zh:"排班",en:"Schedule"},leave:{zh:"请假",en:"Leave"},monthly:{zh:"月度核算",en:"Monthly Cost"},bom:{zh:"配方成本",en:"Recipe Cost"},opexm:{zh:"运营开销录入",en:"OpEx Entry"},monthend:{zh:"月末盘点",en:"Month-End Count"},payrun:{zh:"薪资发放 Payroll",en:"Payroll Run"}};
 function mlabel(p){if(MENU_LABELS[p])return MENU_LABELS[p][LANG];return t(p);}
 function renderSidebar(){
   const html=MENU.map(([grp,items])=>{
@@ -2118,6 +2126,75 @@ function itemVarianceRows(m){
   const buy={};(d().purchases||[]).forEach(r=>{if(String(r.date||'').slice(0,7)===m){const q=FISH_SUPPLIERS.includes(r.supplier)?(+r.weight||0):(+r.qty||0);buy[r.item]=(buy[r.item]||0)+q;}});
   return Object.keys(th).map(item=>{const theoQ=th[item];const ok=co&&cc&&(item in co||item in cc);const actQ=ok?((co[item]||0)+(buy[item]||0)-(cc[item]||0)):null;const pr=monthAvgPrice(m,item)||0;
     return {item,theoQ,actQ,diffQ:actQ==null?null:actQ-theoQ,pr,diffV:actQ==null?null:(actQ-theoQ)*pr};}).sort((a,b)=>Math.abs(b.diffV||0)-Math.abs(a.diffV||0)||b.theoQ-a.theoQ);
+}
+
+/* ============ 运营健康总览（mk101，参照 SUPY Ops Tower / Action Queue）============
+   一页看完这间店「哪些事该做还没做」：进货有没有天天录、价格涨跌待核对、月末盘点、销量导入、成本差异、库存、订单、调拨、应付、报废、请假。
+   每块有状态（正常/要留意/要处理）+ 数字 + 「去处理」按钮；最上面把要处理的列成待办清单。全部由现有资料即时算出，不另存。 */
+function hlDaysAgo(ds){return Math.round((new Date(TODAY+'T00:00:00')-new Date(ds+'T00:00:00'))/864e5);}
+function healthChecks(){
+  const zh=LANG==="zh",x=d(),out=[];const m=TODAY.slice(0,7),pm=prevMonthOf(m),dayN=+TODAY.slice(8,10);
+  const lastDay=new Date(+m.slice(0,4),+m.slice(5,7),0).getDate();
+  const add=(o)=>out.push(o);
+  // 1 进货录入
+  {const ds=(x.purchases||[]).map(r=>r.date).filter(Boolean).sort();const last=ds[ds.length-1];const todayN=(x.purchases||[]).filter(r=>r.date===TODAY).length;
+   const ago=last?hlDaysAgo(last):null;const st=last==null?'warn':ago<=1?'ok':ago<=3?'warn':'bad';
+   add({k:'purchase',st,t:zh?'进货录入':'Goods-in',go:"goProcSub('purchase')",page:'purchase',
+     lines:[last?(zh?`最近一次录入：${last}（${ago===0?'今天':ago+' 天前'}）`:`Last: ${last}`):(zh?'还没有任何进货记录':'No purchases yet'),zh?`今天已录 ${todayN} 项 · 本月进货 ${money(purchasesOf(m))}`:`Today ${todayN}`],
+     todo:st==='ok'?'':(last==null?(zh?'开始录进货单':'Start goods-in'):(zh?`进货已 ${ago} 天没录，补录进货单`:`No goods-in for ${ago} days`))});}
+  // 2 价格变动
+  {const pc=priceChanges().filter(c=>c.st==='new');const up=pc.filter(c=>c.pct>0),ex=up.reduce((q,c)=>q+c.extra,0);
+   add({k:'price',st:pc.length?'warn':'ok',t:zh?'进货价格变动':'Price changes',go:"goProcSub('pricechg')",page:'pricechg',
+     lines:[zh?`待核对 ${pc.length} 项（涨价 ${up.length}）`:`${pc.length} to review`,zh?`涨价多付合计 ${money(ex)}`:`Extra ${money(ex)}`],todo:pc.length?(zh?`核对 ${pc.length} 项进货价格变动`:`Review ${pc.length} price changes`):''});}
+  // 3 月末盘点
+  {const pv=monthEndValue(pm),cv=monthEndValue(m);let st='ok',todo='';
+   if(pv==null&&dayN>=3){st='bad';todo=zh?`${monthLabel2(pm)}月底还没做月末盘点`:'Last month count missing';}
+   else if(cv==null&&lastDay-dayN<=3){st='warn';todo=zh?'月底快到了，准备做月末盘点':'Month-end count due';}
+   add({k:'count',st,t:zh?'月末盘点':'Month-end count',go:"nav('monthend')",page:'monthend',lines:[zh?`上个月：${pv==null?'没盘':'已盘 '+money(pv)}`:`Last month ${pv==null?'no':money(pv)}`,zh?`本月：${cv==null?'还没盘':'已盘 '+money(cv)}`:`This month ${cv==null?'no':money(cv)}`],todo});}
+  // 4 销量
+  {const ms=monthSales(m),pms=monthSales(pm);const q=a=>a.reduce((s2,r)=>s2+(+r.qty||0),0);let st='ok',todo='';
+   if(!pms.length&&dayN>=3){st='bad';todo=zh?`${monthLabel2(pm)}的销量还没导入`:'Last month sales missing';}
+   else if(!ms.length&&dayN>=10){st='warn';todo=zh?'本月销量还没导入':'This month sales missing';}
+   add({k:'sales',st,t:zh?'销量（POS）':'Sales',go:"nav('monthly')",page:'monthly',lines:[zh?`上个月：${pms.length?pms.length+' 道菜 / '+num(q(pms))+' 份':'没有'}`:`Last ${pms.length}`,zh?`本月：${ms.length?ms.length+' 道菜 / '+num(q(ms))+' 份':'还没有'}`:`This ${ms.length}`],todo});}
+  // 5 成本差异
+  {const v=varianceFor(pm);let st='ok',todo='',l1;
+   if(v.diffPct==null){st='info';l1=zh?'上个月资料不齐，算不出差异（缺销量或月底盘点）':'Not enough data';}
+   else{const a=Math.abs(v.diffPct);st=a<3?'ok':a<8?'warn':'bad';l1=zh?`上个月差异 ${v.diffPct>0?'+':''}${v.diffPct.toFixed(1)}%（${v.diff>0?'+':''}${money(v.diff)}）`:`Variance ${v.diffPct.toFixed(1)}%`;if(st!=='ok')todo=zh?`${monthLabel2(pm)}实际成本比理论${v.diff>0?'多':'少'} ${Math.abs(v.diffPct).toFixed(1)}%，查原因`:'Check variance';}
+   add({k:'var',st,t:zh?'成本差异':'Cost variance',go:"nav('variance')",page:'variance',lines:[l1,zh?`理论 ${v.theo==null?'—':money(v.theo)} · 实际 ${v.actual==null?'—':money(v.actual)}`:''],todo});}
+  // 6 库存
+  {const it=x.items||[];const neg=it.filter(i=>(+i.qty||0)<0).length,low=it.filter(i=>(+i.qty||0)>=0&&(+i.qty||0)<=(+i.par||0)).length;const st=neg?'bad':low?'warn':'ok';
+   add({k:'stock',st,t:zh?'库存':'Stock',go:"nav('inv')",page:'inv',lines:[zh?`低于安全库存 ${low} 项`:`Low ${low}`,zh?`库存为负 ${neg} 项`:`Negative ${neg}`],todo:neg?(zh?`${neg} 项库存是负数，查进货/盘点有没有漏记`:'Negative stock'):low?(zh?`${low} 项低于安全库存，该订货了`:'Low stock'):''});}
+  // 7 订单
+  {const po=(typeof ORDERS!=='undefined'?ORDERS:[]).filter(o=>o&&o.status!=='confirmed'&&(!o.outlet||o.outlet===curOutlet));
+   add({k:'orders',st:po.length&&canConfirmOrder()?'warn':'ok',t:zh?'订货单':'Orders',go:"openOrdersPanel()",page:'proc',lines:[zh?`待确认 ${po.length} 张`:`Pending ${po.length}`,canConfirmOrder()?'':(zh?'（由副经理以上确认）':'')],todo:po.length&&canConfirmOrder()?(zh?`${po.length} 张订货单待确认`:'Orders to confirm'):''});}
+  // 8 调拨
+  {const me=xferPendingForMe(),mine=XREQ.filter(r=>r.status==='pending'&&r.reqBy===curOutlet);
+   add({k:'xfer',st:me.length?'warn':'ok',t:zh?'跨店调拨':'Transfers',go:"goProcSub('transfer')",page:'transfer',lines:[zh?`等我批准 ${me.length} 张`:`To approve ${me.length}`,zh?`我发出、对方还没批 ${mine.length} 张`:`Sent ${mine.length}`],todo:me.length?(zh?`${me.length} 张调拨申请等你批准`:'Transfer requests'):''});}
+  // 9 应付账款
+  try{const sups=[...new Set([...apOrders().map(apSupOf),...apGridGroups().map(g=>g.supplier)])];let owed=0,unp=0,unrec=0;
+   sups.forEach(sp=>{if(!apIsPaid(sp)){unp++;owed+=apSupTotal(sp);if(!apSupReconciled(sp))unrec++;}});
+   add({k:'ap',st:unrec?'warn':'ok',t:zh?'应付账款':'Payables',go:"nav('ap')",page:'ap',lines:[zh?`未付 ${unp} 家，共 ${money(owed)}`:`Unpaid ${unp}`,zh?`还没核对的 ${unrec} 家`:`Unreconciled ${unrec}`],todo:unrec?(zh?`${unrec} 家供应商的单还没核对`:'Reconcile suppliers'):''});}catch(e){}
+  // 10 报废招待
+  {const w=(x.wasteLog||[]).filter(r=>(r.date||'').slice(0,7)===m).reduce((q,r)=>q+(+r.cost||0)*(+r.qty||0),0),o2=(x.offers||[]).filter(r=>(r.date||'').slice(0,7)===m).reduce((q,r)=>q+(+r.total||0),0),pu=purchasesOf(m);const pct=pu>0?w/pu*100:0;const st=pu>0&&pct>3?'warn':'ok';
+   add({k:'waste',st,t:zh?'报废与招待':'Waste & offers',go:"goProcSub('waste2')",page:'waste2',lines:[zh?`本月报废 ${money(w)}${pu>0?`（占进货 ${pct.toFixed(1)}%）`:''}`:`Waste ${money(w)}`,zh?`本月招待赠送 ${money(o2)}`:`Offers ${money(o2)}`],todo:st==='warn'?(zh?`本月报废占进货 ${pct.toFixed(1)}%，偏高`:'High waste'):''});}
+  // 11 请假
+  {const lv=(x.leaves||[]).filter(l=>l.status==='待批准').length;const ok=hrScope()==='all'||hrScope()==='branch';
+   add({k:'leave',st:lv&&ok?'warn':'ok',t:zh?'请假':'Leave',go:"nav('leave')",page:'leave',lines:[zh?`待批准 ${lv} 张`:`Pending ${lv}`],todo:lv&&ok?(zh?`${lv} 张请假待批准`:'Leave requests'):''});}
+  return out.filter(c=>c.page==='proc'?true:pageAllowed(c.page));
+}
+function pgHealth(){
+  const zh=LANG==="zh";
+  if(isAgg())return `<div class="fb"><h2 class="h" style="margin:0;">${zh?'运营健康':'Ops health'}</h2></div><div class="card" style="padding:26px 18px;text-align:center;"><div style="font-weight:700;font-size:16px;margin-bottom:6px;">${zh?'请先选一间分店':'Pick one branch'}</div><div class="mini">${zh?'健康总览是按单间店算的：用右上角的分店选单，选好要看的那间店。':''}</div></div>`;
+  const cs=healthChecks();const bad=cs.filter(c=>c.st==='bad'),warn=cs.filter(c=>c.st==='warn'),ok=cs.filter(c=>c.st==='ok');
+  const todos=[...bad,...warn].filter(c=>c.todo);
+  const pill={ok:['p-g',zh?'正常':'OK'],warn:['p-a',zh?'要留意':'Watch'],bad:['p-r',zh?'要处理':'Action'],info:['',zh?'资料不齐':'Info']};
+  const tile=c=>`<div class="card hl-tile hl-${c.st}" onclick="${c.go}"><div style="display:flex;justify-content:space-between;align-items:center;gap:8px;"><div style="font-weight:800;font-size:14px;">${c.t}</div><span class="pill ${pill[c.st][0]}">${pill[c.st][1]}</span></div>
+    ${c.lines.filter(Boolean).map(l=>`<div class="mini" style="margin-top:4px;">${l}</div>`).join('')}<div class="hl-go">${zh?'去看看':'Open'} ›</div></div>`;
+  return `<div class="fb"><h2 class="h" style="margin:0;">${zh?'运营健康':'Ops health'} <span class="tag">${oEsc(outletObj().name||'')}</span></h2></div>
+    <div class="grid g3 sup-sum"><div class="kpi"><div class="k">${zh?'要处理':'Action'}</div><div class="v sm ${bad.length?'neg':''}">${bad.length}</div></div><div class="kpi"><div class="k">${zh?'要留意':'Watch'}</div><div class="v sm">${warn.length}</div></div><div class="kpi"><div class="k">${zh?'正常':'OK'}</div><div class="v sm pos">${ok.length}</div></div></div>
+    ${todos.length?`<div class="card" style="padding:14px;margin:10px 0;"><div style="font-weight:800;margin-bottom:6px;">${zh?'今天该做的事':'To do'}</div>${todos.map(c=>`<div class="hl-todo"><span class="hl-dot hl-${c.st}"></span><span style="flex:1;font-size:13.5px;">${c.todo}</span><button class="btn sm ghost" style="flex:none;white-space:nowrap;" onclick="${c.go}">${zh?'去处理':'Go'}</button></div>`).join('')}</div>`:`<div class="card" style="padding:18px;margin:10px 0;text-align:center;"><div style="font-weight:800;">${zh?'目前没有要处理的事':'All clear'}</div><div class="mini" style="margin-top:4px;">${zh?'下面每一块都正常。':''}</div></div>`}
+    <details class="hintd"><summary>${zh?'这页怎么判断':'About'}</summary><div>${zh?'红色「要处理」＝已经拖了：进货 3 天没录、上个月月底没盘点、上个月销量没导入、库存是负数、上个月成本差异超过 8%。黄色「要留意」＝快要出问题：进货 2–3 天没录、有价格变动待核对、有调拨/订货单/请假等你批、报废占进货超过 3%、成本差异 3–8%。这些天数和百分比是我们设的参考线。所有数字都是从你们已经录入的资料即时算出来的，没有录入就会显示没做。':''}</div></details>
+    <div class="grid g2 hl-grid">${cs.map(tile).join('')}</div>`;
 }
 function varSetMonth(m){varMonth=m;render();}
 function pgVariance(){
@@ -5901,7 +5978,7 @@ function payActionsHTML(w,fin,zh){
 
 /* 页面路由补充（ap/opex 不在底部tab，用函数导航） */
 const _pages={dash:pgDash,sales:pgSales,inv:pgInv,proc:pgProc,bom:pgBom,report:pgReport,settings:pgSettings,ap:pgAp,opex:pgOpex,opexm:pgOpexM,hr:pgHR,attend:pgAttend,schedule:pgSchedule,leave:pgLeave,ck:pgCK,stock:pgStock,
-  purchase:pgPurchase,pricechg:pgPriceChg,variance:pgVariance,grn:pgGRN,transfer:pgTransfer,waste2:pgWaste2,offer:pgOffer,monthend:pgMonthEnd,monthly:pgMonthly,ordersheet:pgOrderSheet,orderinv:pgOrderInv,opexlog:pgOpexLog};
+  purchase:pgPurchase,pricechg:pgPriceChg,variance:pgVariance,health:pgHealth,grn:pgGRN,transfer:pgTransfer,waste2:pgWaste2,offer:pgOffer,monthend:pgMonthEnd,monthly:pgMonthly,ordersheet:pgOrderSheet,orderinv:pgOrderInv,opexlog:pgOpexLog};
 /* 顶栏在窄手机上文字太多会自动换行、变高(实测 375px 宽的手机顶栏可以到 139px 高)；
    量出顶栏"现在真正的高度"写进 --topH 这个 CSS 变量，侧边菜单/遮罩层跟着它定位，
    永远从顶栏结束的地方开始，不会被拉高的顶栏盖住导致点不到。 */
