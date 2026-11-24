@@ -862,6 +862,12 @@ html.ui2[data-theme="mech"] div.empty{border-color:#5A646E;}
 html,body{overscroll-behavior-x:none;}
 html.ui2[data-theme="mech"] .odfoot{background:#E9ECEF;box-shadow:0 -12px 10px 4px #E9ECEF;}
 html.ui2[data-theme="cn"] .odfoot{background:#FFFAEB;box-shadow:0 -12px 10px 4px #FFFAEB;}
+
+/* ---- AI 助手（mk109）---- */
+.ai-box{max-height:48vh;overflow:auto;padding:2px;}
+.ai-u{margin:8px 0 8px 18%;padding:9px 12px;border-radius:14px 14px 4px 14px;background:var(--brand);color:#fff;font-size:14px;line-height:1.5;word-break:break-word;}
+.ai-a{margin:8px 12% 8px 0;padding:10px 12px;border-radius:14px 14px 14px 4px;background:var(--soft);color:var(--ink);font-size:14px;line-height:1.55;word-break:break-word;}
+#aiQ{font-size:16px;padding:10px 12px;border:1px solid var(--line2);border-radius:var(--radius-sm);background:var(--card);color:var(--ink);resize:none;box-sizing:border-box;}
 /* ---- 进货价格变动（mk99）---- */
 .pflag{display:inline-flex;align-items:center;font-size:11.5px;font-weight:700;padding:2px 9px;border-radius:99px;white-space:nowrap;}
 .pflag.up{background:#fde8e8;color:#b42318;}.pflag.dn{background:#e3f4e8;color:#1e7a3b;}
@@ -946,6 +952,7 @@ html.ui2[data-theme="cn"] .m>button.btn.block.brand{box-shadow:0 -14px 12px 4px 
 <div class="top">
   <div class="l"><button class="menu-btn" onclick="toggleSide()">☰</button><span class="brand-logo" role="button" tabindex="0" title="回主页 Home" onclick="goHome()" onkeydown="if(event.key==='Enter')goHome()" style="cursor:pointer;-webkit-tap-highlight-color:transparent;"><svg width="34" height="34" viewBox="0 0 100 100" aria-label="明记" style="border-radius:7px;"><rect x="4" y="4" width="92" height="92" rx="16" fill="#7C1619"/><rect x="4" y="4" width="92" height="92" rx="16" fill="none" stroke="#F2B417" stroke-width="7"/><text x="50" y="33" text-anchor="middle" dominant-baseline="central" font-family="'Microsoft YaHei','PingFang SC',sans-serif" font-weight="800" font-size="40" fill="#F2B417">明</text><text x="50" y="70" text-anchor="middle" dominant-baseline="central" font-family="'Microsoft YaHei','PingFang SC',sans-serif" font-weight="800" font-size="40" fill="#F2B417">记</text></svg></span><h1 id="appTitle">明记家乡小食店</h1><span id="topBranchTag" style="margin-left:8px;font-size:10px;padding:2px 6px;border-radius:6px;background:#F2B417;color:#12203A;font-weight:800;">-</span></div>
   <div class="r">
+    <button class="lang" id="aiBtn" onclick="openAi()" title="问 AI Ask AI" style="font-weight:800;">AI</button>
     <button class="lang" id="installBtn" onclick="installApp()" title="安装为App Install">📲</button>
     <button class="lang" id="xferBellBtn" onclick="openXferInbox()" title="跨店调拨申请 Transfer requests" style="display:none;position:relative;">🔁<span id="xferBellCount" style="display:none;position:absolute;top:-4px;right:-4px;min-width:16px;height:16px;line-height:16px;padding:0 3px;border-radius:9px;background:#d92d20;color:#fff;font-size:10px;font-weight:700;text-align:center;">0</span></button>
     <button class="lang" id="bellBtn" onclick="openOrdersPanel()" title="收到的订单 Orders" style="display:none;position:relative;">🔔<span id="bellCount" style="display:none;position:absolute;top:-4px;right:-4px;min-width:16px;height:16px;line-height:16px;padding:0 3px;border-radius:9px;background:#d92d20;color:#fff;font-size:10px;font-weight:800;text-align:center;">0</span></button>
@@ -1314,7 +1321,7 @@ function statusOf(d){if(d<=14)return{t:"健康",e:"Fresh",c:"p-g"};if(d<=30)retu
 function stTxt(s){return LANG==="zh"?s.t:s.e;}
 
 /* ================= 数据种子 ================= */
-const BUILD="1111mk108";  // 版本标记：页面右上/网格提示可见，用来确认已载入最新版
+const BUILD="1111mk109";  // 版本标记：页面右上/网格提示可见，用来确认已载入最新版
 const SEED_VERSION="bh-master-2026-09-1";  // 版本变更→下次载入自动重置为最新主数据（仅本店云端）
 function seed(outletId){
   const isCK = outletId==="ck";
@@ -2224,6 +2231,110 @@ function itemVarianceRows(m){
 /* ============ 运营健康总览（mk101，参照 SUPY Ops Tower / Action Queue）============
    一页看完这间店「哪些事该做还没做」：进货有没有天天录、价格涨跌待核对、月末盘点、销量导入、成本差异、库存、订单、调拨、应付、报废、请假。
    每块有状态（正常/要留意/要处理）+ 数字 + 「去处理」按钮；最上面把要处理的列成待办清单。全部由现有资料即时算出，不另存。 */
+
+/* ============ AI 助手（mk109，参照 SUPY 的 Ask Bruce）============
+   点右上角「AI」→ 问问题（例：上个月食材成本为什么变了？哪些东西涨价最多？今天先做什么？）。
+   网页把「这间店目前的数据摘要」（只含汇总数字；不含员工资料/邮箱/薪资）+ 问题送给 Edge Function ask-ai，由 Claude 只根据摘要回答。
+   老板/副经理还会带上「各分店对比」。摘要在 aiContext() 里组出来，限制长度。 */
+const AI_FN_URL=SUPABASE_URL?(SUPABASE_URL+"/functions/v1/ask-ai"):"";
+let _aiMsgs=[],_aiBusy=false;
+function aiMonthLine(m){
+  const v=varianceFor(m),pnl=monthlyPnL(m);const net=pnl.rev/1.06;const pc=x=>(x!=null&&net>0)?(x/net*100).toFixed(1)+'%':'—';
+  const parts=[`${m}：销量 ${num(pnl.orders)} 份`,`营业额(含税) ${money(pnl.rev)}`,`理论成本 ${v.theo==null?'—':money(v.theo)}（${pc(v.theo)}）`];
+  parts.push(v.actual==null?'实际成本：算不出（缺'+(v.close==null?'月底盘点 ':'')+(v.open==null?'上月底盘点':'')+'）':`实际成本 ${money(v.actual)}（${pc(v.actual)}）= 月初库存 ${money(v.open)} + 进货 ${money(v.pur)} − 月底库存 ${money(v.close)}`);
+  if(v.diff!=null)parts.push(`差异 ${v.diff>0?'+':''}${money(v.diff)}（${v.diffPct==null?'':(v.diffPct>0?'+':'')+v.diffPct.toFixed(1)+'%'}）；其中已记录报废 ${money(v.waste)}、招待赠送 ${money(v.offer)}`);
+  return '- '+parts.join('；');
+}
+function aiBrief(oid){   // 一间店的简要体检（用来做「各分店对比」）
+  const keep=curOutlet;
+  try{
+    curOutlet=oid;_aggCache=null;
+    const m=TODAY.slice(0,7),pm=prevMonthOf(m);const v=varianceFor(pm),pnl=monthlyPnL(pm);const net=pnl.rev/1.06;
+    const ds=(d().purchases||[]).map(r=>r.date).filter(Boolean).sort();const last=ds[ds.length-1];
+    const sc=stockCounts(d().items||[]);const ss=schedSummary();
+    return {name:nm(outletObj(oid)),net,theoPct:(v.theo!=null&&net>0)?v.theo/net*100:null,actPct:(v.actual!=null&&net>0)?v.actual/net*100:null,diffPct:v.diffPct,lastBuy:last?hlDaysAgo(last):null,
+      pc:priceChanges().filter(c=>c.st==='new').length,lowNeg:sc.low+sc.neg,od:ss.od.length};
+  }finally{curOutlet=keep;_aggCache=null;}
+}
+function aiContext(){
+  const zh=true,L=[];const m=TODAY.slice(0,7),pm=prevMonthOf(m),pm2=prevMonthOf(pm);
+  const isAggNow=isAgg();
+  L.push(`今天：${TODAY}（马来西亚）。使用者角色：${ROLES[curRole]?ROLES[curRole].name:curRole}。`);
+  if(isAggNow){L.push('目前选的是「全部分店」视图：下面只有各分店对比；要看某间店的细节，请使用者先在右上角选一间店。');}
+  else{
+    L.push(`现在看的分店：${nm(outletObj())}。`);
+    L.push('\n## 近三个月成本与营业额（理论成本＝销量×配方成本；成本率按不含 SST 营业额）');
+    [pm2,pm,m].forEach(x=>L.push(aiMonthLine(x)));
+    const iv=itemVarianceRows(pm).filter(r=>r.diffV!=null).slice(0,8);
+    if(iv.length){L.push(`\n## 上个月按食材的用量差异（差异金额最大前 ${iv.length}；正数＝实际用得比理论多）`);iv.forEach(r=>L.push(`- ${r.item}：理论 ${num(r.theoQ)}，实际 ${num(r.actQ)}，差 ${r.diffQ>0?'+':''}${num(r.diffQ)}（约 ${r.diffV>0?'+':''}${money(r.diffV)}）`));}
+    // 进货
+    const bySup=(mm)=>{const o={};(d().purchases||[]).forEach(r=>{if((r.date||'').slice(0,7)===mm)o[r.supplier]=(o[r.supplier]||0)+(+r.price||0);});return o;};
+    const a=bySup(m),b=bySup(pm);const sups=[...new Set([...Object.keys(a),...Object.keys(b)])].sort((x,y)=>(b[y]||0)+(a[y]||0)-(b[x]||0)-(a[x]||0)).slice(0,8);
+    if(sups.length){L.push(`\n## 各供应商进货金额（本月 ${m} / 上月 ${pm}）`);sups.forEach(sp=>L.push(`- ${sp}：本月 ${money(a[sp]||0)} / 上月 ${money(b[sp]||0)}`));}
+    // 价格变动
+    const pcs=priceChanges().slice(0,14);
+    if(pcs.length){L.push(`\n## 进货价格变动（涨跌超过 ${priceAlertPct()}%；状态：new＝待核对）`);pcs.forEach(c=>L.push(`- ${c.item}（${c.sup}）${c.date}：${money(c.prev)} → ${money(c.now)}（${c.pct>0?'+':''}${c.pct.toFixed(1)}%），这次数量 ${num(c.drive)}，多付约 ${money(c.extra)}；${c.st}`));}
+    // 库存
+    const its=d().items||[];const sc=stockCounts(its);
+    L.push(`\n## 库存：总值 ${money(its.reduce((q,i)=>q+(+i.qty||0)*(+i.cost||0),0))}；低于最低 ${sc.low} 项、库存为负 ${sc.neg} 项、高于标准 ${sc.high} 项、未设定最低/标准 ${sc.unset} 项`);
+    its.filter(i=>{const l=stockLevel(i);return l==='low'||l==='neg';}).slice(0,15).forEach(i=>L.push(`- ${i.name}：剩 ${num(i.qty)}${i.unit||''}，最低 ${stockMin(i)==null?i.par:stockMin(i)}，标准 ${i.par}，建议订 ${stockOrderQty(i)}`));
+    // 报废招待
+    const wm=(mm)=>(d().wasteLog||[]).filter(r=>(r.date||'').slice(0,7)===mm);const wv=(a2)=>a2.reduce((q,r)=>q+(+r.cost||0)*(+r.qty||0),0);
+    const w1=wm(m),w0=wm(pm);const rs={};w1.forEach(r=>{const k=r.reason||'未填原因';rs[k]=(rs[k]||0)+(+r.cost||0)*(+r.qty||0);});
+    const topItems={};w1.concat(w0).forEach(r=>{topItems[r.item]=(topItems[r.item]||0)+(+r.cost||0)*(+r.qty||0);});
+    L.push(`\n## 报废：本月 ${money(wv(w1))}（${w1.length} 笔）/ 上月 ${money(wv(w0))}（${w0.length} 笔）；本月进货 ${money(purchasesOf(m))}`);
+    Object.entries(rs).sort((x,y)=>y[1]-x[1]).slice(0,5).forEach(([k,v])=>L.push(`- 原因「${k}」：${money(v)}`));
+    Object.entries(topItems).sort((x,y)=>y[1]-x[1]).slice(0,5).forEach(([k,v])=>L.push(`- 报废最多的品项「${k}」（两个月合计）：${money(v)}`));
+    // 销量
+    const ms=monthSales(pm),dishes=d().dishCosts||[];
+    if(ms.length){L.push(`\n## 上个月卖得最多的菜（前 8，份数/营业额含税）`);ms.map(x=>({dc:dishes.find(z=>z.id===x.dishId),q:+x.qty||0})).filter(x=>x.dc).sort((x,y)=>y.q-x.q).slice(0,8).forEach(x=>L.push(`- ${x.dc.cn||x.dc.en}：${num(x.q)} 份，${money((+x.dc.price||0)*x.q)}`));}
+    // 订货单
+    const os=(typeof ORDERS!=='undefined'?ORDERS:[]).filter(o=>o&&(!o.outlet||o.outlet===curOutlet));const cnt={};os.forEach(o=>{cnt[o.status||'pending']=(cnt[o.status||'pending']||0)+1;});
+    L.push(`\n## 订货单（本店）状态数量：${Object.keys(cnt).map(k=>(ORD_ST[k]?ORD_ST[k][1]:k)+' '+cnt[k]).join('、')||'没有'}`);
+    // 运营健康
+    try{const hc=healthChecks();L.push('\n## 系统自动检查的结果（运营健康页）');hc.forEach(c=>L.push(`- ${c.t}：${({ok:'正常',warn:'要留意',bad:'要处理',info:'资料不齐'})[c.st]||c.st}；${c.lines.filter(Boolean).join('；')}`));}catch(e){}
+  }
+  // 各分店对比（只有看得到多间店的角色）
+  const ids=branchIds().filter(id=>DB[id]&&canWriteOutlet(id));
+  if(ids.length>1&&(ROLES[curRole].allBranch)){
+    L.push(`\n## 各分店对比（上个月 ${pm}；理论/实际成本率按不含 SST 营业额）`);
+    ids.forEach(id=>{try{const b=aiBrief(id);L.push(`- ${b.name}：营业额(不含SST) ${money(b.net)}；理论成本率 ${b.theoPct==null?'—':b.theoPct.toFixed(1)+'%'}；实际成本率 ${b.actPct==null?'—':b.actPct.toFixed(1)+'%'}；差异 ${b.diffPct==null?'—':(b.diffPct>0?'+':'')+b.diffPct.toFixed(1)+'%'}；最近进货距今 ${b.lastBuy==null?'无记录':b.lastBuy+' 天'}；价格变动待核对 ${b.pc}；低/负库存 ${b.lowNeg} 项；盘点逾期 ${b.od} 项`);}catch(e){}});
+  }
+  return L.join('\n').slice(0,36000);
+}
+function aiFmt(t){
+  const e=oEsc(String(t)).replace(/\*\*(.+?)\*\*/g,'<b>$1</b>');
+  return e.split('\n').map(l=>/^\s*([-•*]|\d+[.、)])\s+/.test(l)?`<div style="padding-left:14px;text-indent:-12px;margin:3px 0;">${l.replace(/^\s*([-•*])\s+/,'• ')}</div>`:(l.trim()?`<div style="margin:4px 0;">${l}</div>`:'<div style="height:6px;"></div>')).join('');
+}
+function aiRender(){
+  const box=document.getElementById('aiBox');if(!box)return;const zh=LANG==="zh";
+  const chips=_aiMsgs.length?'':`<div class="mini" style="margin-bottom:8px;">${zh?'试试这样问：':'Try:'}</div><div style="display:flex;flex-wrap:wrap;gap:8px;">${(zh?['上个月食材成本为什么变了？','哪些东西涨价最多？','哪些库存有问题，该订什么货？','今天最该先做哪三件事？','报废最多的是什么？','各分店比一比，哪间成本最高？']:['Why did food cost move?','Biggest price rises?']).map(q=>`<button class="btn sm ghost" onclick="aiAsk(this.textContent)">${q}</button>`).join('')}</div>`;
+  box.innerHTML=chips+_aiMsgs.map(m=>m.role==='user'?`<div class="ai-u">${oEsc(m.content)}</div>`:`<div class="ai-a">${aiFmt(m.content)}</div>`).join('')+(_aiBusy?`<div class="ai-a mini">${zh?'AI 正在看你的数据…（约 5–15 秒）':'Thinking…'}</div>`:'');
+  box.scrollTop=box.scrollHeight;
+}
+function openAi(){
+  const zh=LANG==="zh";if(!AUTH()||!AI_FN_URL)return alert(zh?'AI 助手需要登录云端账号后才能用':'Sign in to use AI');
+  openForm(`<h3>${zh?'问 AI':'Ask AI'} <span class="x" onclick="closeM()">×</span></h3>
+    <div class="mini" style="margin-bottom:8px;">${zh?'AI 只会看到这间店的汇总数字（不含员工资料、邮箱、薪资）。回答仅供参考，重要的请对照原数据。':''}</div>
+    <div id="aiBox" class="ai-box"></div>
+    <div class="odfoot"><div style="display:flex;gap:8px;align-items:flex-end;"><textarea id="aiQ" rows="2" maxlength="500" placeholder="${zh?'问点什么…例如：上个月食材成本为什么变了？':'Ask…'}" style="flex:1;" onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();aiAsk();}"></textarea><button class="btn brand" style="flex:none;" onclick="aiAsk()">${zh?'发送':'Send'}</button></div>
+      ${_aiMsgs.length?`<div style="text-align:right;margin-top:6px;"><button class="btn ghost sm" onclick="_aiMsgs=[];aiRender()">${zh?'清空对话':'Clear'}</button></div>`:''}</div>`);
+  const mb=document.getElementById('mbox');if(mb)mb.classList.add('m-wide');aiRender();
+}
+async function aiAsk(q){
+  const zh=LANG==="zh";if(_aiBusy)return;const inp=document.getElementById('aiQ');
+  const question=String(q||(inp&&inp.value)||'').trim();if(!question)return;
+  _aiMsgs.push({role:'user',content:question});if(inp)inp.value='';_aiBusy=true;aiRender();
+  try{
+    let token=SUPABASE_ANON_KEY;try{const {data}=await _sb.auth.getSession();if(data&&data.session&&data.session.access_token)token=data.session.access_token;}catch(e){}
+    const hist=_aiMsgs.slice(0,-1).slice(-6);
+    const r=await fetch(AI_FN_URL,{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+token,'apikey':SUPABASE_ANON_KEY},body:JSON.stringify({question,context:aiContext(),history:hist})});
+    let j={};try{j=await r.json();}catch(e){}
+    if(!r.ok||!j.answer)_aiMsgs.push({role:'assistant',content:'⚠ '+(j.message||(r.status===404?(zh?'AI 功能还没部署（找管理员）':'AI function not deployed'):(zh?'出错了，请再试一次':'Error')))});
+    else _aiMsgs.push({role:'assistant',content:j.answer});
+  }catch(e){_aiMsgs.push({role:'assistant',content:'⚠ '+(zh?'连不上 AI，请检查网络':'Network error')});}
+  _aiBusy=false;if(_aiMsgs.length>30)_aiMsgs=_aiMsgs.slice(-30);aiRender();
+}
 function hlDaysAgo(ds){return Math.round((new Date(TODAY+'T00:00:00')-new Date(ds+'T00:00:00'))/864e5);}
 function healthChecks(){
   const zh=LANG==="zh",x=d(),out=[];const m=TODAY.slice(0,7),pm=prevMonthOf(m),dayN=+TODAY.slice(8,10);
@@ -2291,7 +2402,7 @@ function pgHealth(){
   const pill={ok:['p-g',zh?'正常':'OK'],warn:['p-a',zh?'要留意':'Watch'],bad:['p-r',zh?'要处理':'Action'],info:['',zh?'资料不齐':'Info']};
   const tile=c=>`<div class="card hl-tile hl-${c.st}" onclick="${c.go}"><div style="display:flex;justify-content:space-between;align-items:center;gap:8px;"><div style="font-weight:800;font-size:14px;">${c.t}</div><span class="pill ${pill[c.st][0]}">${pill[c.st][1]}</span></div>
     ${c.lines.filter(Boolean).map(l=>`<div class="mini" style="margin-top:4px;">${l}</div>`).join('')}<div class="hl-go">${zh?'去看看':'Open'} ›</div></div>`;
-  return `<div class="fb"><h2 class="h" style="margin:0;">${zh?'运营健康':'Ops health'} <span class="tag">${oEsc(outletObj().name||'')}</span></h2></div>
+  return `<div class="fb"><h2 class="h" style="margin:0;">${zh?'运营健康':'Ops health'} <span class="tag">${oEsc(outletObj().name||'')}</span></h2><button class="btn ghost sm" onclick="openAi()">${zh?'问 AI':'Ask AI'}</button></div>
     <div class="grid g3 sup-sum"><div class="kpi"><div class="k">${zh?'要处理':'Action'}</div><div class="v sm ${bad.length?'neg':''}">${bad.length}</div></div><div class="kpi"><div class="k">${zh?'要留意':'Watch'}</div><div class="v sm">${warn.length}</div></div><div class="kpi"><div class="k">${zh?'正常':'OK'}</div><div class="v sm pos">${ok.length}</div></div></div>
     ${todos.length?`<div class="card" style="padding:14px;margin:10px 0;"><div style="font-weight:800;margin-bottom:6px;">${zh?'今天该做的事':'To do'}</div>${todos.map(c=>`<div class="hl-todo"><span class="hl-dot hl-${c.st}"></span><span style="flex:1;font-size:13.5px;">${c.todo}</span><button class="btn sm ghost" style="flex:none;white-space:nowrap;" onclick="${c.go}">${zh?'去处理':'Go'}</button></div>`).join('')}</div>`:`<div class="card" style="padding:18px;margin:10px 0;text-align:center;"><div style="font-weight:800;">${zh?'目前没有要处理的事':'All clear'}</div><div class="mini" style="margin-top:4px;">${zh?'下面每一块都正常。':''}</div></div>`}
     <details class="hintd"><summary>${zh?'这页怎么判断':'About'}</summary><div>${zh?'红色「要处理」＝已经拖了：进货 3 天没录、上个月月底没盘点、上个月销量没导入、库存是负数、上个月成本差异超过 8%。黄色「要留意」＝快要出问题：进货 2–3 天没录、有价格变动待核对、有调拨/订货单/请假等你批、报废占进货超过 3%、成本差异 3–8%。这些天数和百分比是我们设的参考线。所有数字都是从你们已经录入的资料即时算出来的，没有录入就会显示没做。':''}</div></details>
@@ -6380,7 +6491,7 @@ function ui2Observe(){
   mo.observe(document.body,{childList:true,subtree:true,characterData:true});
 }
 /* 手机顶栏：☰ + logo + 页面标题 + 分店 + ⋯ ；其余按钮收进 ⋯ 面板 */
-const UI2_MOVE=['installBtn','xferBellBtn','bellBtn','updBellBtn','langBtn','logoutBtn','roleSel'];
+const UI2_MOVE=['aiBtn','installBtn','xferBellBtn','bellBtn','updBellBtn','langBtn','logoutBtn','roleSel'];
 function ui2LayoutTop(){
   if(!UI2)return;const top=document.querySelector('.top'),r=top&&top.querySelector('.r'),more=document.getElementById('topMore'),mb=document.getElementById('moreBtn'),out=document.getElementById('outletSel');
   if(!r||!more||!mb)return;
