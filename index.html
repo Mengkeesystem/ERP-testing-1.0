@@ -1461,7 +1461,7 @@ function statusOf(d){if(d<=14)return{t:"健康",e:"Fresh",c:"p-g"};if(d<=30)retu
 function stTxt(s){return LANG==="zh"?s.t:s.e;}
 
 /* ================= 数据种子 ================= */
-const BUILD="1111mk143";  // 版本标记：页面右上/网格提示可见，用来确认已载入最新版
+const BUILD="1111mk144";  // 版本标记：页面右上/网格提示可见，用来确认已载入最新版
 const SEED_VERSION="bh-master-2026-09-1";  // 版本变更→下次载入自动重置为最新主数据（仅本店云端）
 function seed(outletId){
   const isCK = outletId==="ck";
@@ -4047,24 +4047,30 @@ function pgHR(){
 /* 打卡考勤（以本店打卡位置为中心，默认 5 米内才能打卡）*/
 function haversine(la1,lo1,la2,lo2){const R=6371;const dLa=(la2-la1)*Math.PI/180,dLo=(lo2-lo1)*Math.PI/180;const a=Math.sin(dLa/2)**2+Math.cos(la1*Math.PI/180)*Math.cos(la2*Math.PI/180)*Math.sin(dLo/2)**2;return R*2*Math.atan2(Math.sqrt(a),Math.sqrt(1-a));}
 let attQuery='';
+function attRowText(a,zh){
+  if(!a.brk&&!a.back)return a.in+' → '+(a.out||(zh?'上班中':'on duty'));
+  return a.in+' → '+a.brk+(zh?' ｜ 下午 ':' | PM ')+(a.back?a.back+' → '+(a.out||(zh?'上班中':'on duty')):(zh?'（休息中）':'(on break)'));
+}
 function pgAttend(){
   const zh=LANG==="zh";const o=outletObj();
   const att=(d().attendance||[]).filter(a=>hrScope()==="self"?a.empId===currentEmpId():true).slice().sort((x,y)=>(y.date||'').localeCompare(x.date||'')||(y.in||'').localeCompare(x.in||''));
   const me=currentEmpId();const today=att.find(a=>a.empId===me&&a.date===TODAY);
-  const nowIn=today&&!today.out;
-  const todayAll=(d().attendance||[]).filter(a=>a.date===TODAY);const onDuty=todayAll.filter(a=>!a.out).length;
+  const nowIn=today&&!today.out;const nx=attNext(today);const sc=attSched(TODAY);
+  const todayAll=(d().attendance||[]).filter(a=>a.date===TODAY);const onDuty=todayAll.filter(a=>!a.out&&!(a.brk&&!a.back)).length;
   const m=TODAY.slice(0,7);const monthHrs=att.filter(a=>(a.date||'').slice(0,7)===m).reduce((q,a)=>q+(+a.hours||0),0);
   const wd=zh?['日','一','二','三','四','五','六']:['Su','Mo','Tu','We','Th','Fr','Sa'];
   const byDate={};att.filter(a=>(a.date||'').slice(0,7)===m).forEach(a=>{(byDate[a.date]=byDate[a.date]||[]).push(a);});
   const body=Object.keys(byDate).sort().reverse().map(dt=>{const dd=new Date(dt+'T00:00:00');
     return `<div class="grn-day"><span>${zh?`${dd.getMonth()+1}月${dd.getDate()}日 · 周${wd[dd.getDay()]}`:dt}${dt===TODAY?` <span class="pill p-g">${zh?'今天':'Today'}</span>`:''}</span><b>${byDate[dt].length} ${zh?'人':''}</b></div>`+byDate[dt].map(a=>{const e=empById(a.empId);
-      return `<div class="dv-row inv-card ${a.out?'':'has'}" data-name="${oEsc(((e&&e.name)||'')+' '+(a.empId||'')).toLowerCase()}"><div style="min-width:0;"><div class="dv-name">${e?oEsc(e.name):oEsc(a.empId)}</div><div class="mini">${a.in} → ${a.out||(zh?'上班中':'on duty')}</div></div>
-        <div class="inv-qty"><div class="inv-q">${a.hours?(+a.hours).toFixed(1):'—'} <small>${zh?'小时':'h'}</small></div>${a.out?'':`<span class="pill p-g">${zh?'在岗':'On'}</span>`}</div></div>`;}).join('');}).join('');
+      return `<div class="dv-row inv-card ${a.out?'':'has'}" data-name="${oEsc(((e&&e.name)||'')+' '+(a.empId||'')).toLowerCase()}"><div style="min-width:0;"><div class="dv-name">${e?oEsc(e.name):oEsc(a.empId)}</div><div class="mini">${attRowText(a,zh)}</div></div>
+        <div class="inv-qty"><div class="inv-q">${a.hours?(+a.hours).toFixed(1):'—'} <small>${zh?'小时':'h'}</small></div>${a.out?'':(a.brk&&!a.back?`<span class="pill p-a">${zh?'休息中':'Break'}</span>`:`<span class="pill p-g">${zh?'在岗':'On'}</span>`)}</div></div>`;}).join('');}).join('');
   return `<div class="fb"><h2 class="h" style="margin:0;">${zh?"打卡考勤":"Attendance"} <span class="tag">${nm(o)}</span></h2></div>
   <div class="card" style="padding:18px 16px;text-align:center;margin-bottom:12px;">
     <div class="mini" style="margin-bottom:6px;">${zh?"门市位置":"Outlet"}: ${nm(o)}</div>
-    <div id="gpsStatus" style="font-size:14px;margin-bottom:12px;color:var(--ink2);">${nowIn?(zh?`你已于 ${today.in} 上班，下班时再点一次`:`Clocked in at ${today.in}`):(today?(zh?`今天已打卡：${today.in} – ${today.out}`:'Done today'):(zh?'点下方按钮定位并打卡':'Tap to locate & clock in'))}</div>
-    <button class="btn brand block" style="padding:14px;font-size:16px;" onclick="doClockIn()">${nowIn?(zh?'定位下班打卡':'Clock out'):(zh?'定位上班打卡':'Clock in')}</button>
+    <div id="gpsStatus" style="font-size:14px;margin-bottom:12px;color:var(--ink2);">${nx==='done'?(zh?`今天已打完卡：${attRowText(today,true)}`:'Done today'):nx==='in'?(zh?'点下方按钮定位并打卡':'Tap to locate & clock in'):nx==='brk'?(zh?`你已于 ${today.in} 上班。中午休息时点一次`:`Clocked in at ${today.in}`):nx==='back'?(zh?`${today.brk} 去休息了。下午回来上班时点一次`:'On break'):(zh?`下午 ${today.back} 已上班，晚上下班时再点一次`:'Back from break')}</div>
+    ${nx==='done'?'':`<button class="btn brand block" style="padding:14px;font-size:16px;" onclick="doClockIn()">${{in:zh?'定位上班打卡':'Clock in',brk:zh?'定位中午休息打卡':'Break',back:zh?'定位下午上班打卡':'Back from break',out:zh?'定位晚上下班打卡':'Clock out'}[nx]}</button>`}
+    ${nx==='brk'?`<button class="btn ghost sm" style="margin-top:8px;" onclick="doClockIn('out')">${zh?'今天没休息，直接下班':'No break, clock out'}</button>`:''}
+    <div class="mini" style="margin-top:10px;line-height:1.7;">${zh?(attIsWeekend(TODAY)?'今天是周末':'今天是平日')+`标准时间：上班时间 ${sc.in} ｜ 中午休息 ${sc.brk} ｜ 下午上班 ${sc.back} ｜ 晚上下班 ${sc.out}`:`Std: ${sc.in} / ${sc.brk} / ${sc.back} / ${sc.out}`}</div>
     <div class="mini" style="margin-top:8px;">${zh?"需在打卡位置 "+geoRadius()+" 米内（GPS 验证）":"Within "+geoRadius()+" m of the outlet (GPS)"}</div>
     ${canSetGeo()?`<div class="mini" style="margin-top:10px;padding-top:10px;border-top:1px dashed var(--line);">${zh?"打卡位置：":"Location: "}${d().geo&&d().geo.lat?(zh?`已设定（精度 ±${d().geo.acc} 米 · ${oEsc(d().geo.by||'')} ${oEsc(d().geo.ts||'')}）`:'set'):(zh?"还没设定":"not set")}</div>
       <div style="display:flex;gap:8px;justify-content:center;flex-wrap:wrap;margin-top:8px;"><button class="btn ghost sm" onclick="setGeoHere()">${zh?"设定本店打卡位置（请站在店里）":"Set outlet location"}</button><button class="btn ghost sm" onclick="setGeoRadius()">${zh?"改打卡范围（米）":"Change radius (m)"}</button></div>`:''}
@@ -4106,8 +4112,18 @@ async function setGeoRadius(){
   const n=Math.round(+v);if(!(n>=2&&n<=200))return alert(zh?'请填 2 到 200 之间的数字':'Enter 2–200');
   const old=geoRadius();d().geoRadius=n;try{auditLog('改打卡范围',old+'米 → '+n+'米');}catch(e){}await save();render();
 }
+// 标准打卡时间（四次）：平日(周一~五) 与 周末(周六日) 不同
+const ATT_SCHED={wd:{in:'10:00',brk:'15:00',back:'17:00',out:'22:00'},we:{in:'10:00',brk:'14:30',back:'16:30',out:'22:00'}};
+function attSched(dt){const w=new Date((dt||TODAY)+'T00:00:00').getDay();return (w===0||w===6)?ATT_SCHED.we:ATT_SCHED.wd;}
+function attIsWeekend(dt){const w=new Date((dt||TODAY)+'T00:00:00').getDay();return w===0||w===6;}
+// 这一天下一步该打哪一下：in 上班 / brk 中午休息 / back 下午上班 / out 晚上下班 / done 已完成
+function attNext(a){if(!a)return 'in';if(a.out)return 'done';if(!a.brk&&!a.back)return 'brk';if(a.brk&&!a.back)return 'back';return 'out';}
+function attHours(a){const m=toMin;let h=0;
+  if(a.brk){h+=Math.max(0,m(a.brk)-m(a.in));if(a.back&&a.out)h+=Math.max(0,m(a.out)-m(a.back));}
+  else if(a.out)h=Math.max(0,m(a.out)-m(a.in));
+  return +(h/60).toFixed(1);}
 function toMin(hhmm){const a=String(hhmm||'0:0').split(':');return (+a[0]||0)*60+(+a[1]||0);}
-async function doClockIn(){
+async function doClockIn(mode){
   const st=document.getElementById('gpsStatus');const zh=LANG==="zh";const o=outletObj();
   if(!currentEmpId()){st.innerHTML="⚠️ "+(zh?"你的账号尚未绑定员工档案，无法打卡。请联系管理员在「员工档案」里填入你的登入邮箱。":"Account not linked to an employee record. Ask an admin to set your login email in Employee Profile.");return;}
   if(!navigator.geolocation){st.innerHTML="⚠️ "+(zh?"此设备不支持定位":"No geolocation");return;}
@@ -4129,9 +4145,15 @@ async function doClockIn(){
     const hhmm=new Date().toTimeString().slice(0,5);
     if(!d().attendance)d().attendance=[];
     const today=d().attendance.find(a=>a.empId===currentEmpId()&&a.date===TODAY);
-    if(today&&!today.out){today.out=hhmm;today.hours=+(Math.max(0,toMin(hhmm)-toMin(today.in))/60).toFixed(1);today.outDist=+dist.toFixed(1);today.outAcc=acc;st.innerHTML="✅ "+(zh?"下班打卡成功":"Clock-out OK")+` (${dist.toFixed(1)}m)`;}
-    else{d().attendance.unshift({empId:currentEmpId(),date:TODAY,in:hhmm,out:"",hours:0,inDist:+dist.toFixed(1),inAcc:acc});st.innerHTML="✅ "+(zh?"上班打卡成功":"Clock-in OK")+` (${dist.toFixed(1)}m)`;}
-    auditLog("GPS打卡",nm(o)+" 距离"+dist.toFixed(1)+"米 精度±"+acc+"米","","");await save();setTimeout(render,900);
+    const nx=attNext(today);const dm=` (${dist.toFixed(1)}m)`;let label='';
+    if(nx==='done'){st.innerHTML="ℹ️ "+(zh?"今天已经打完卡了":"Already done today");return;}
+    if(nx==='in'){d().attendance.unshift({empId:currentEmpId(),date:TODAY,in:hhmm,out:"",hours:0,inDist:+dist.toFixed(1),inAcc:acc});label=zh?'上班':'Clock-in';}
+    else if(nx==='brk'&&mode==='out'){today.out=hhmm;today.hours=attHours(today);today.outDist=+dist.toFixed(1);today.outAcc=acc;label=zh?'下班(没休息)':'Clock-out';}
+    else if(nx==='brk'){today.brk=hhmm;today.hours=attHours(today);today.brkDist=+dist.toFixed(1);today.brkAcc=acc;label=zh?'中午休息':'Break';}
+    else if(nx==='back'){today.back=hhmm;today.backDist=+dist.toFixed(1);today.backAcc=acc;label=zh?'下午上班':'Back';}
+    else{today.out=hhmm;today.hours=attHours(today);today.outDist=+dist.toFixed(1);today.outAcc=acc;label=zh?'下班':'Clock-out';}
+    st.innerHTML="✅ "+label+(zh?"打卡成功":" OK")+dm;
+    auditLog("GPS打卡 "+label,nm(o)+" 距离"+dist.toFixed(1)+"米 精度±"+acc+"米","","");await save();setTimeout(render,900);
   }else{
     st.innerHTML="❌ "+(zh?`你距离打卡位置约 ${Math.round(dist)} 米，要在 ${R} 米内才能打卡（定位精度 ±${acc} 米）`:`${Math.round(dist)} m away; must be within ${R} m (±${acc} m)`);
     try{auditLog('GPS打卡失败(太远)',who+' '+nm(o)+' 距离'+dist.toFixed(1)+'米 精度±'+acc+'米 范围'+R+'米');await save();}catch(e){}
