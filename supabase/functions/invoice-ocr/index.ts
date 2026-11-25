@@ -56,6 +56,22 @@ function tooMany(key: string): boolean {
   arr.push(now); hits.set(key, arr); return false;
 }
 
+const MON: Record<string, number> = { jan: 1, feb: 2, mar: 3, apr: 4, may: 5, jun: 6, jul: 7, aug: 8, sep: 9, oct: 10, nov: 11, dec: 12 };
+// 日期兜底：模型有时没照格式输出（25/11/2026、25/Nov/2026、24/11/26）。马来西亚是日/月/年；年份要在今年前后才算数，不然当作没读到。
+function normDate(v: unknown): string {
+  const t = String(v ?? "").trim();
+  let y = 0, mo = 0, d = 0, m: RegExpExecArray | null;
+  if ((m = /^(\d{4})-(\d{1,2})-(\d{1,2})/.exec(t))) { y = +m[1]; mo = +m[2]; d = +m[3]; }
+  else if ((m = /^(\d{1,2})[\/.\-\s]+([A-Za-z]{3,9})[\/.\-\s,]+(\d{2,4})/.exec(t))) { d = +m[1]; mo = MON[m[2].slice(0, 3).toLowerCase()] || 0; y = +m[3]; }
+  else if ((m = /^(\d{1,2})[\/.\-](\d{1,2})[\/.\-](\d{2,4})/.exec(t))) { d = +m[1]; mo = +m[2]; y = +m[3]; }
+  if (y > 0 && y < 100) y += 2000;
+  const now = new Date().getFullYear();
+  if (!(y >= now - 2 && y <= now + 1) || mo < 1 || mo > 12 || d < 1 || d > 31) return "";
+  const dim = new Date(y, mo, 0).getDate();
+  if (d > dim) return "";
+  return `${y}-${String(mo).padStart(2, "0")}-${String(d).padStart(2, "0")}`;
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { status: 204, headers: corsFor(req) });
   const url = new URL(req.url);
@@ -79,10 +95,16 @@ Deno.serve(async (req) => {
   const supplier = clean(body?.supplier, 80);
   const items: string[] = Array.isArray(body?.items) ? body.items.slice(0, 400).map((s: unknown) => clean(s, 90)).filter(Boolean) : [];
 
-  const prompt = `你是马来西亚中餐小食店的进货录入助手。图片是供应商的发票/送货单（可能是手写、可能有马来文/英文/中文）。
+  const prompt = `你是马来西亚中餐小食店的进货录入助手。图片是供应商的发票/送货单/收据（可能是手写、可能有马来文/英文/中文混写，可能是手拿着拍的、有折痕、有手指遮住边角）。
 请读出每一行货品，只输出 JSON，不要任何其他文字：
-{"supplier":"发票上的供应商名或空","date":"YYYY-MM-DD 或空","invoiceNo":"单号或空","lines":[{"name":"发票上的品名原文","qty":数字,"unit":"单位如 kg/pkt/ctn 或空","unitPrice":数字或null,"amount":数字或null,"match":"最像的库存品名（必须从下面清单里原样复制）或 null"}],"total":数字或null,"note":"看不清/可疑之处，没有就空"}
-规则：数字不要带 RM 或逗号；看不清的数字用 null，不要猜；不是货品的行（合计、税、折扣、运费）不要放进 lines；match 只有在确定是同一样东西时才填，不确定就 null。
+{"supplier":"发票抬头的供应商名（卖方）或空","buyer":"买方/客户名（发票上写的「卖给谁」，例如 MK KELANA SDN BHD (PJ MK)、手写的 明记 PJ）或空","date":"YYYY-MM-DD 或空","invoiceNo":"单号或空","lines":[{"name":"发票上的品名原文（中英文都写上）","qty":数字,"unit":"单位如 kg/pkt/ctn/box 或空","unitPrice":数字或null,"amount":数字或null,"match":"最像的库存品名（必须从下面清单里原样复制）或 null"}],"total":数字或null,"note":"看不清/可疑之处，没有就空"}
+规则：
+1. 数字不要带 RM 或逗号；看不清的数字用 null，不要猜；不是货品的行（合计、税、折扣、运费、找零、CASH/CHANGE）不要放进 lines。
+2. 日期：马来西亚是「日/月/年」。25/11/2026、25/Nov/2026 02:34:00、24/11/26（两位年份＝20xx）都要转成 YYYY-MM-DD；时间部分丢掉；找不到日期就留空，不要用今天。
+3. 数量×单价应该≈金额。三个数里读到两个，第三个可以算出来就算出来（例如手写单只写了数量 9.4 和金额 263.20，没写单价：unitPrice 填 null 即可，网页会自己用金额÷数量算）；如果三个都读到但对不上，照实填写，并在 note 写「第N行 数量×单价≠金额」。
+4. 价格栏可能被折行成两行（例如 12.0000 / 0 其实是 12.00000），请合起来读。单位栏写 UNIT 但数量带小数（如 3.40 UNIT）通常其实是公斤数，照写 qty 即可，在 unit 填 kg 并在 note 提一句。
+5. 手写单上空白的格子、被划掉的格子、斜线不是货品。手写字请尽量读，实在认不出的品名照形状写出来并在 note 说明不确定。
+6. match 只有在确定是同一样东西时才填，不确定就 null。品名常中英马来混用，可对照：Sayur Raja=帝王苗、Kangkong=翁菜/空心菜、Daun Bawang=青葱、Daun Ketumber=元茜/香菜、Romain=油麦菜/油麦胆、Daun Keledek=番薯叶/树苗、Tauhu Kotak=盒豆腐、Kacang Bendi=羊角豆、Terung Panjang=长茄子/茄子、Nai Pai=奶白菜、Big Head Carp=松鱼头/大头鱼、Baung=巴冷/Baung 鲶鱼、马友=Threadfin。
 ${supplier ? "这张单预计来自供应商：" + supplier + "\n" : ""}库存品名清单（一行一个）：
 ${items.join("\n") || "（无）"}`;
 
@@ -114,12 +136,17 @@ ${items.join("\n") || "（无）"}`;
   if (!out || !Array.isArray(out.lines)) return reply(req, { error: "unreadable", message: "没能读懂这张单，请拍清楚一点再试" }, 422);
   const num = (v: unknown) => (v === null || v === undefined || v === "" || isNaN(+(v as number))) ? null : +v;
   const itemSet = new Set(items);
+  const lines = out.lines.slice(0, 120).map((l: any) => {
+    const qty = num(l?.qty), unitPrice = num(l?.unitPrice), amount = num(l?.amount);
+    let chk = "";   // 数量×单价和金额对不上（相差超过 RM0.5 且超过 1%）→ 网页标红提醒人核对
+    if (qty != null && unitPrice != null && amount != null && amount > 0) {
+      const diff = Math.abs(qty * unitPrice - amount);
+      if (diff > 0.5 && diff / amount > 0.01) chk = "mismatch";
+    }
+    return { name: clean(l?.name, 120), qty, unit: clean(l?.unit, 12), unitPrice, amount, chk, match: itemSet.has(String(l?.match)) ? String(l.match) : null };
+  }).filter((l: any) => l.name);
   return reply(req, {
-    supplier: clean(out.supplier, 80), date: /^\d{4}-\d{2}-\d{2}$/.test(String(out.date || "")) ? out.date : "",
-    invoiceNo: clean(out.invoiceNo, 40), total: num(out.total), note: clean(out.note, 200),
-    lines: out.lines.slice(0, 120).map((l: any) => ({
-      name: clean(l?.name, 120), qty: num(l?.qty), unit: clean(l?.unit, 12), unitPrice: num(l?.unitPrice), amount: num(l?.amount),
-      match: itemSet.has(String(l?.match)) ? String(l.match) : null,
-    })).filter((l: any) => l.name),
+    supplier: clean(out.supplier, 80), buyer: clean(out.buyer, 80), date: normDate(out.date),
+    invoiceNo: clean(out.invoiceNo, 40), total: num(out.total), note: clean(out.note, 300), lines,
   });
 });

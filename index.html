@@ -1392,7 +1392,7 @@ function statusOf(d){if(d<=14)return{t:"健康",e:"Fresh",c:"p-g"};if(d<=30)retu
 function stTxt(s){return LANG==="zh"?s.t:s.e;}
 
 /* ================= 数据种子 ================= */
-const BUILD="1111mk124";  // 版本标记：页面右上/网格提示可见，用来确认已载入最新版
+const BUILD="1111mk125";  // 版本标记：页面右上/网格提示可见，用来确认已载入最新版
 const SEED_VERSION="bh-master-2026-09-1";  // 版本变更→下次载入自动重置为最新主数据（仅本店云端）
 function seed(outletId){
   const isCK = outletId==="ck";
@@ -5627,10 +5627,10 @@ async function invScanFile(sup,file){
       return openForm(`<h3>${zh?'识别进货单':'Scan invoice'} <span class="x" onclick="closeM()">×</span></h3><div class="al al-r">${oEsc(msg)}</div><button class="btn block brand" onclick="closeM();invScan('${gEsc(sup)}')">${zh?'重新拍照':'Retake'}</button>`);
     }
     const hasDate=!!(j.date&&/^\d{4}-\d{2}-\d{2}$/.test(j.date));
-    _inv={sup,noDate:!hasDate,date:hasDate?j.date:TODAY,invoiceNo:j.invoiceNo||'',total:j.total,note:j.note||'',
+    _inv={sup,noDate:!hasDate,date:hasDate?j.date:TODAY,invoiceNo:j.invoiceNo||'',total:j.total,note:j.note||'',ocrSup:j.supplier||'',buyer:j.buyer||'',
       lines:j.lines.map(l=>{let cid='';if(l.match){const c=cat.find(x=>x.name===l.match);if(c)cid=c.cid;}if(!cid)cid=invGuess(l.name,cat);
         let price=l.unitPrice;if((price==null||price===0)&&l.amount!=null&&l.qty)price=+(l.amount/l.qty).toFixed(2);
-        return {name:l.name,unit:l.unit||'',qty:l.qty,price,amount:l.amount,cid,on:!!cid};})};
+        return {name:l.name,unit:l.unit||'',qty:l.qty,price,amount:l.amount,chk:l.chk||'',cid,on:!!cid};})};
     invReview();
   }catch(e){
     openForm(`<h3>${zh?'识别进货单':'Scan invoice'} <span class="x" onclick="closeM()">×</span></h3><div class="al al-r">${oEsc(String(e.message||e))}</div>`);
@@ -5642,21 +5642,27 @@ function invReview(){
   const rows=v.lines.map((l,i)=>`<div class="odc ${l.on?'':'inv-off'}" id="ivr-${i}">
     <div class="odc-h"><label class="inv-ck"><input type="checkbox" ${l.on?'checked':''} onchange="invSet(${i},'on',this.checked)"><span class="odc-n">${oEsc(l.name)}${l.unit?` <span class="mini">${oEsc(l.unit)}</span>`:''}</span></label></div>
     <div class="fr" style="margin:8px 0 0;"><label>${zh?'对应库存品项':'Matches item'}</label><select onchange="invSet(${i},'cid',this.value)">${opts(l.cid)}</select></div>
+    ${l.chk==='mismatch'?`<div class="mini" style="margin-top:6px;color:#b42318;font-weight:600;">${zh?`数量×单价 和发票金额${l.amount!=null?' RM '+(+l.amount).toFixed(2):''}对不上，请核对`:'Qty × price ≠ invoice amount'}</div>`:''}
     <div class="dv-flag" id="ivf-${i}" style="margin-top:6px;">${l.cid?priceFlagHTML(priceBefore(sup,l.cid,v.date),l.price):''}</div>
     <div class="odc-f"><label>${zh?'数量/重量':'Qty'}<input class="odnum" inputmode="decimal" value="${l.qty==null?'':l.qty}" oninput="invSet(${i},'qty',this.value)"></label>
       <label>${zh?'单价 RM':'Price'}<input class="odnum" inputmode="decimal" value="${l.price==null?'':l.price}" oninput="invSet(${i},'price',this.value)"></label>
       <div class="odc-a"><span>${zh?'金额':'Amt'}</span><b id="ivamt-${i}">${money((+l.qty||0)*(+l.price||0))}</b></div></div></div>`).join('')||`<div class="empty">${zh?'没读到货品行':'No lines'}</div>`;
   openForm(`<h3>${zh?'核对识别结果':'Review scan'} <span class="x" onclick="closeM()">×</span></h3>
     <div class="hint">${zh?'这是 AI 读出来的，可能有错——请对照发票核对数量和单价。勾选的品项按「写入」才会记进进货单；没对上的可手动选品项或取消勾选。':'AI result — please verify before saving.'}${v.note?`<br><b>${zh?'提示：':'Note: '}</b>${oEsc(v.note)}`:''}</div>
+    ${(v.ocrSup||v.buyer)?`<div class="mini" style="margin:0 0 8px;line-height:1.7;">${v.ocrSup?`${zh?'发票供应商：':'Supplier: '}<b>${oEsc(v.ocrSup)}</b>`:''}${v.ocrSup&&v.buyer?' · ':''}${v.buyer?`${zh?'抬头/买方：':'Bill to: '}<b>${oEsc(v.buyer)}</b>`:''}<br>${zh?`你选的是：<b>${oEsc(sup)}</b>，当前分店：<b>${oEsc(outletObj().name||'')}</b>。如果不是同一家，请退出重选。`:''}</div>`:''}
     <div class="fg2"><div class="fr"><label>${zh?'进货日期':'Date'}</label><input type="date" value="${v.date}" onchange="_inv.date=this.value;_inv.noDate=false;const n=document.getElementById('iv-nd');if(n)n.remove();"></div>
       <div class="fr"><label>Invoice No.</label><input value="${oEsc(v.invoiceNo)}" oninput="_inv.invoiceNo=this.value"></div></div>
     ${v.noDate?`<div class="mini" id="iv-nd" style="margin:-4px 0 8px;color:var(--gold-dk,#a16207);">${zh?'发票上没有日期，已默认用今天；不对请改上面的进货日期。':'No date on invoice — defaulted to today.'}</div>`:''}<div class="odl" style="max-height:48vh;">${rows}</div>
     <div class="odtot" style="position:static;margin-bottom:4px;"><span>${zh?'将写入':'Will save'} <b id="iv-n">0</b> ${zh?'项':'items'}</span><span>${zh?'金额':'Amt'} <b id="iv-t">RM 0.00</b>${v.total!=null?` <span class="mini" style="color:#ddd;">${zh?'发票合计':'invoice'} ${money(v.total)}</span>`:''}</span></div>
+    ${invTotalWarn()}
     <button class="btn block brand" style="margin-top:10px;" onclick="invApply()">${zh?'写入进货单':'Save to purchases'}</button>`);
   invTotals();
 }
 function invSet(i,f,val){const l=_inv.lines[i];if(f==='on')l.on=!!val;else if(f==='cid'){l.cid=val;l.on=!!val;const ck=document.querySelector('#ivr-'+i+' input[type=checkbox]');if(ck)ck.checked=l.on;}else l[f]=val===''?null:+val;
   const a=document.getElementById('ivamt-'+i);if(a)a.textContent=money((+l.qty||0)*(+l.price||0));const fl=document.getElementById('ivf-'+i);if(fl)fl.innerHTML=l.cid?priceFlagHTML(priceBefore(_inv.sup,l.cid,_inv.date),l.price):'';const row=document.getElementById('ivr-'+i);if(row)row.classList.toggle('inv-off',!l.on);invTotals();}
+function invTotalWarn(){const v=_inv,zh=LANG==="zh";if(v.total==null)return '';const sum=v.lines.reduce((s,l)=>s+(l.amount!=null?+l.amount:(+l.qty||0)*(+l.price||0)),0);const diff=Math.abs(sum-v.total);
+  if(diff<=Math.max(0.5,v.total*0.01))return `<div class="mini" style="margin-bottom:4px;color:var(--ok,#067647);">${zh?`识别的各行金额加起来 ${money(sum)}，和发票合计 ${money(v.total)} 对得上`:'Lines match invoice total'}</div>`;
+  return `<div class="mini" style="margin-bottom:4px;color:#b42318;font-weight:600;">${zh?`识别的各行金额加起来 ${money(sum)}，发票合计是 ${money(v.total)}，差 ${money(diff)}——可能漏读了某一行或读错数字，请对照发票`:'Lines do not add up to invoice total'}</div>`;}
 function invTotals(){const on=_inv.lines.filter(l=>l.on&&l.cid&&(+l.qty||0)>0);const n=document.getElementById('iv-n'),t=document.getElementById('iv-t');if(n)n.textContent=on.length;if(t)t.textContent=money(on.reduce((s,l)=>s+(+l.qty||0)*(+l.price||0),0));}
 async function invApply(){
   const zh=LANG==="zh",v=_inv,sup=v.sup;const on=v.lines.filter(l=>l.on&&l.cid&&(+l.qty||0)>0);
