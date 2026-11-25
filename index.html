@@ -1341,7 +1341,7 @@ const ROLES={
     can:["dash","inv","transfer","stock","ap"],
     allBranch:false, hrScope:"self", salaryView:"self", approveLeave:false}, // 生产工单/成品入库/配送调拨；可核对/更改应付账款(不能删除)
   staff:{name:"员工 Staff",en:"Staff",
-    can:["attend","leave"],
+    can:["hr","attend","leave"],
     allBranch:false, hrScope:"self", salaryView:"self", approveLeave:false}, // 只有人事自助：打卡、请假、查看自己薪资/Payslip
   ckmgr:{name:"中央经理 Central Manager",en:"Central Manager",
     can:["dash","inv","proc","ck","stock","waste","opex","report","ap","hr","attend","schedule","leave"],
@@ -1402,19 +1402,24 @@ function t(k){return (T[LANG][k]||k);}
 let UILANG='zh';
 try{const v=localStorage.getItem('erpLang');if(['zh','en','vi','my'].includes(v))UILANG=v;}catch(e){}
 LANG=(UILANG==='en')?'en':'zh';
-const TR={map:{},re:null,rules:[]};
+const TR={map:{},re:null,rules:[],tpl:[]};
 const ZHRE=/[一-鿿]/;
 function trBuild(){
   if(UILANG!=='vi'&&UILANG!=='my')return;
   const ix=UILANG==='vi'?1:2,map={},phr=[];
-  (window.I18N_ROWS||[]).forEach(r=>{const v=r[ix];if(!v)return;map[r[0]]=v;if(r[0].length>=3)phr.push(r[0]);});
+  const tpl=[];
+  (window.I18N_ROWS||[]).forEach(r=>{const v=r[ix];if(!v)return;if(r[0].indexOf('{}')>=0){tpl.push([r[0],v]);return;}map[r[0]]=v;if(r[0].length>=3)phr.push(r[0]);});
+  // 带「{}」的词条＝模板：{} 可以是数字/金额/日期等任意内容，整句匹配
+  tpl.sort((a,b)=>b[0].replace(/\{\}/g,'').length-a[0].replace(/\{\}/g,'').length);
+  TR.tpl=tpl.map(([k,v])=>[new RegExp('^'+k.split('{}').map(x=>x.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')).join('(.+?)')+'$'),v]);
   phr.sort((a,b)=>b.length-a.length);
   TR.map=map;TR.re=phr.length?new RegExp(phr.map(x=>x.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')).join('|'),'g'):null;
   const wd=(window.I18N_WD||{})[UILANG]||[];const wi={日:0,一:1,二:2,三:3,四:4,五:5,六:6};
   TR.rules=[
-    [/(\d{4})年(\d{1,2})月/g,(m,y,mo)=>UILANG==='vi'?`Tháng ${mo}/${y}`:`${y} ခုနှစ် ${mo} လ`],
+    [/(\d{4})年(\d{1,2})月/g,(m,y,mo,off)=>UILANG==='vi'?`${off===0?'T':'t'}háng ${mo}/${y}`:`${y} ခုနှစ် ${mo} လ`],
     [/(\d{1,2})月(\d{1,2})日/g,(m,mo,dd)=>UILANG==='vi'?`${dd}/${mo}`:`${mo} လ ${dd} ရက်`],
-    [/周([日一二三四五六])/g,(m,c)=>wd[wi[c]]||m]
+    [/周([日一二三四五六])/g,(m,c)=>wd[wi[c]]||m],
+    [/(\d+)\s*天/g,(m,n)=>UILANG==='vi'?`${n} ngày`:`${n} ရက်`]
   ];
 }
 function trText(s){
@@ -1422,9 +1427,16 @@ function trText(s){
   if(!s||!ZHRE.test(s))return s;
   const k=s.trim();
   if(TR.map[k]!==undefined)return s.replace(k,TR.map[k]);
+  if(k.slice(0,2)==='• ')return s.replace(k,'• '+trText(k.slice(2))); // 说明里的圆点句
+  for(const [re,v] of TR.tpl){const m=k.match(re);if(m){let i=0;return s.replace(k,v.replace(/\{\}/g,(mm,off)=>{let t=trText(m[++i]);if(UILANG==='vi'&&off>0&&ZHRE.test(m[i])&&/^[A-ZÀ-Ỹ][a-zà-ỹ]/.test(t))t=t[0].toLowerCase()+t.slice(1);return t;}));}}
   let out=s;
   TR.rules.forEach(([re,fn])=>{out=out.replace(re,fn);});
   if(TR.re)out=out.replace(TR.re,m=>TR.map[m]);
+  // 还剩中文：如果原文是「中文+英文名」这种数据名（英文字母比汉字多、没有中文标点），就只留英文部分
+  if(ZHRE.test(out)&&!/[，。；：「」！？•]/.test(k)){
+    const cn=(k.match(/[一-鿿]/g)||[]).length,la=(k.match(/[A-Za-z]/g)||[]).length;
+    if(la>=3&&la>=cn){out=out.replace(/[一-鿿]+/g,'').replace(/[(（]\s*[)）]/g,'').replace(/\s{2,}/g,' ').trim();}
+  }
   return out;
 }
 function trNode(root){
@@ -1434,7 +1446,7 @@ function trNode(root){
   if(root.nodeType!==1&&root.nodeType!==11)return;
   const tw=document.createTreeWalker(root,NodeFilter.SHOW_TEXT,{acceptNode:n=>{const p=n.parentNode&&n.parentNode.nodeName;return (p==='SCRIPT'||p==='STYLE'||p==='TEXTAREA')?NodeFilter.FILTER_REJECT:(ZHRE.test(n.nodeValue)?NodeFilter.FILTER_ACCEPT:NodeFilter.FILTER_SKIP);}});
   const arr=[];while(tw.nextNode())arr.push(tw.currentNode);arr.forEach(fixText);
-  if(root.querySelectorAll){root.querySelectorAll('[placeholder],[title],[aria-label]').forEach(e=>{['placeholder','title','aria-label'].forEach(a=>{const v=e.getAttribute(a);if(v&&ZHRE.test(v)){const nv=trText(v);if(nv!==v)e.setAttribute(a,nv);}});});}
+  if(root.querySelectorAll){[root,...root.querySelectorAll('[placeholder],[title],[aria-label]')].forEach(e=>{if(!e.getAttribute)return;['placeholder','title','aria-label'].forEach(a=>{const v=e.getAttribute(a);if(v&&ZHRE.test(v)){const nv=trText(v);if(nv!==v)e.setAttribute(a,nv);}});});}
 }
 function setUILang(k){try{localStorage.setItem('erpLang',k);}catch(e){}location.reload();}
 function openLangPicker(){
@@ -1464,7 +1476,7 @@ function statusOf(d){if(d<=14)return{t:"健康",e:"Fresh",c:"p-g"};if(d<=30)retu
 function stTxt(s){return LANG==="zh"?s.t:s.e;}
 
 /* ================= 数据种子 ================= */
-const BUILD="1111mk146";  // 版本标记：页面右上/网格提示可见，用来确认已载入最新版
+const BUILD="1111mk147";  // 版本标记：页面右上/网格提示可见，用来确认已载入最新版
 const SEED_VERSION="bh-master-2026-09-1";  // 版本变更→下次载入自动重置为最新主数据（仅本店云端）
 function seed(outletId){
   const isCK = outletId==="ck";
@@ -2183,7 +2195,7 @@ function renderTop(){
   }else{ // 演示模式 或 管理员（可预览其它岗位）
     roleSel.disabled=false;
     const _ov=curUser?titleOf(curUser.email,curUser.role):null;
-    roleSel.innerHTML=Object.entries(ROLES).map(([k,v])=>`<option value="${k}" ${k===curRole?'selected':''}>${(curUser&&isAdminUser()&&k!==curUser.role)?'👁 ':''}${(_ov&&k===curUser.role)?(LANG==="zh"?ROLES[_ov].name.split(' ')[0]+'（老板权限）':ROLES[_ov].en+' (owner access)'):(LANG==="zh"?v.name:v.en)}</option>`).join('');
+    roleSel.innerHTML=Object.entries(ROLES).map(([k,v])=>`<option value="${k}" ${k===curRole?'selected':''}>${(curUser&&isAdminUser()&&k!==curUser.role)?'👁 ':''}${(_ov&&k===curUser.role)?(LANG==="zh"?ROLES[_ov].name:ROLES[_ov].en):(LANG==="zh"?v.name:v.en)}</option>`).join('');
   }
   const aiB=document.getElementById('aiBtn');if(aiB)aiB.style.display=aiAllowed()?'':'none';
   if(typeof updateBell==='function')updateBell();
@@ -4040,7 +4052,7 @@ function pgHR(){
       <div class="inv-qty" style="min-width:120px;"><div class="mini">${zh?'年假':'Leave'} <b>${used}</b>/${tot}</div><div class="bar-lv" style="width:110px;"><i style="width:${pct}%"></i></div>
         ${w?`<div class="inv-act"><button class="ib" onclick="openM('emp',${e.id})">✏️</button><button class="ib" onclick="delEmp(${e.id})">🗑️</button></div>`:''}</div></div>`;}).join('')||`<div class="empty">${zh?"暂无员工":"No staff"}</div>`;
   return `<div class="fb"><h2 class="h" style="margin:0;">${zh?"员工档案":"Staff Profiles"}</h2>${w?`<div style="display:flex;gap:8px;align-items:center;"><button class="btn brand sm" onclick="openM('emp')">+ ${zh?"员工":"Staff"}</button>${actm([{l:zh?'管理职位列表':'Manage positions',on:"openListMgr('positions')"},{l:zh?'管理国籍列表':'Manage nationalities',on:"openListMgr('nats')"}])}</div>`:''}</div>
-  <div class="grid g3 sup-sum"><div class="kpi"><div class="k">${zh?"员工人数":"Headcount"}</div><div class="v sm">${staff.length}</div></div><div class="kpi"><div class="k">${zh?"本月新入职":"New this month"}</div><div class="v sm">${newN}</div></div><div class="kpi"><div class="k">${zh?"职位数":"Positions"}</div><div class="v sm">${roles.length}</div></div></div>
+  ${selfOnly?'':`<div class="grid g3 sup-sum"><div class="kpi"><div class="k">${zh?"员工人数":"Headcount"}</div><div class="v sm">${staff.length}</div></div><div class="kpi"><div class="k">${zh?"本月新入职":"New this month"}</div><div class="v sm">${newN}</div></div><div class="kpi"><div class="k">${zh?"职位数":"Positions"}</div><div class="v sm">${roles.length}</div></div></div>`}
   <div class="hint">${selfOnly?(zh?"你的角色只能查看自己的档案。":"You can view your own profile only."):(w?(zh?"点 ✏️ 编辑资料。":"Tap ✏️ to edit."):(zh?"只能查看，不能修改；如需更改/新增/删除员工，请联系人事。":"View only."))}</div>
   ${staff.length>1?`<div class="dv-tools"><input class="dv-search" type="search" placeholder="${zh?'搜索姓名/编号/职位…':'Search…'}" oninput="dvFilter(this.value)" autocomplete="off">
     <div class="seg"><button class="${hrSort==='name'?'active':''}" onclick="hrSortSet('name')">${zh?'姓名':'Name'}</button><button class="${hrSort==='joined'?'active':''}" onclick="hrSortSet('joined')">${zh?'入职':'Joined'}</button><button class="${hrSort==='leave'?'active':''}" onclick="hrSortSet('leave')">${zh?'年假用量':'Leave'}</button></div></div>
@@ -4072,7 +4084,7 @@ function pgAttend(){
   const lateCnt=att.filter(a=>(a.date||'').slice(0,7)===m).reduce((q,a)=>q+attLate(a).length,0);
   const byDate={};att.filter(a=>(a.date||'').slice(0,7)===m).forEach(a=>{(byDate[a.date]=byDate[a.date]||[]).push(a);});
   const body=Object.keys(byDate).sort().reverse().map(dt=>{const dd=new Date(dt+'T00:00:00');
-    return `<div class="grn-day"><span>${zh?`${dd.getMonth()+1}月${dd.getDate()}日 · 周${wd[dd.getDay()]}`:dt}${dt===TODAY?` <span class="pill p-g">${zh?'今天':'Today'}</span>`:''}</span><b>${byDate[dt].length} ${zh?'人':''}</b></div>`+byDate[dt].map(a=>{const e=empById(a.empId);
+    return `<div class="grn-day"><span>${zh?`${dd.getMonth()+1}月${dd.getDate()}日 · 周${wd[dd.getDay()]}`:dt}${dt===TODAY?` <span class="pill p-g">${zh?'今天':'Today'}</span>`:''}</span><b>${hrScope()==="self"?'':byDate[dt].length+' '+(zh?'人':'')}</b></div>`+byDate[dt].map(a=>{const e=empById(a.empId);
       return `<div class="dv-row inv-card ${a.out?'':'has'}" data-name="${oEsc(((e&&e.name)||'')+' '+(a.empId||'')).toLowerCase()}"><div style="min-width:0;"><div class="dv-name">${e?oEsc(e.name):oEsc(a.empId)}</div><div class="mini">${attRowText(a,zh)}${attLateHTML(a,zh)}</div></div>
         <div class="inv-qty"><div class="inv-q">${a.hours?(+a.hours).toFixed(1):'—'} <small>${zh?'小时':'h'}</small></div>${a.out?'':(a.brk&&!a.back?`<span class="pill p-a">${zh?'休息中':'Break'}</span>`:`<span class="pill p-g">${zh?'在岗':'On'}</span>`)}</div></div>`;}).join('');}).join('');
   return `<div class="fb"><h2 class="h" style="margin:0;">${zh?"打卡考勤":"Attendance"} <span class="tag">${nm(o)}</span></h2></div>
@@ -4086,8 +4098,8 @@ function pgAttend(){
     ${canSetGeo()?`<div class="mini" style="margin-top:10px;padding-top:10px;border-top:1px dashed var(--line);">${zh?"打卡位置：":"Location: "}${d().geo&&d().geo.lat?(zh?`已设定（精度 ±${d().geo.acc} 米 · ${oEsc(d().geo.by||'')} ${oEsc(d().geo.ts||'')}）`:'set'):(zh?"还没设定":"not set")}</div>
       <div style="display:flex;gap:8px;justify-content:center;flex-wrap:wrap;margin-top:8px;"><button class="btn ghost sm" onclick="setGeoHere()">${zh?"设定本店打卡位置（请站在店里）":"Set outlet location"}</button><button class="btn ghost sm" onclick="setGeoRadius()">${zh?"改打卡范围（米）":"Change radius (m)"}</button></div>`:''}
   </div>
-  <div class="grid g3 sup-sum"><div class="kpi"><div class="k">${zh?"今日出勤":"Today"}</div><div class="v sm">${todayAll.length}</div></div><div class="kpi"><div class="k">${zh?"在岗":"On duty"}</div><div class="v sm ${onDuty?'pos':''}">${onDuty}</div></div><div class="kpi"><div class="k">${zh?"本月时数":"Month hrs"}</div><div class="v sm">${monthHrs.toFixed(1)}</div></div></div>
-  ${lateCnt?`<div class="mini" style="margin:6px 2px;color:var(--red);">${zh?`本月迟到 ${lateCnt} 次（超过标准时间 ${ATT_LATE_MIN} 分钟才算）`:`${lateCnt} late this month`}</div>`:''}
+  ${hrScope()==="self"?`<div class="grid g3 sup-sum"><div class="kpi"><div class="k">${zh?"本月出勤天数":"Days this month"}</div><div class="v sm">${new Set(att.filter(a=>(a.date||'').slice(0,7)===m).map(a=>a.date)).size}</div></div><div class="kpi"><div class="k">${zh?"本月时数":"Month hrs"}</div><div class="v sm">${monthHrs.toFixed(1)}</div></div><div class="kpi"><div class="k">${zh?"本月迟到":"Late"}</div><div class="v sm ${lateCnt?'neg':''}">${lateCnt}</div></div></div>`:`<div class="grid g3 sup-sum"><div class="kpi"><div class="k">${zh?"今日出勤":"Today"}</div><div class="v sm">${todayAll.length}</div></div><div class="kpi"><div class="k">${zh?"在岗":"On duty"}</div><div class="v sm ${onDuty?'pos':''}">${onDuty}</div></div><div class="kpi"><div class="k">${zh?"本月时数":"Month hrs"}</div><div class="v sm">${monthHrs.toFixed(1)}</div></div></div>`}
+  ${lateCnt&&hrScope()!=="self"?`<div class="mini" style="margin:6px 2px;color:var(--red);">${zh?`本月迟到 ${lateCnt} 次（超过标准时间 ${ATT_LATE_MIN} 分钟才算）`:`${lateCnt} late this month`}</div>`:''}
   ${att.length>3?`<div class="dv-tools"><input class="dv-search" type="search" placeholder="${zh?'搜索员工…':'Search staff…'}" oninput="dvFilter(this.value)" autocomplete="off"></div>`:''}
   <div id="dvList">${body||`<div class="empty">${zh?"本月暂无考勤记录":"No records this month"}</div>`}</div>`;
 }
@@ -5020,7 +5032,7 @@ function whitelistHTML(){
   ${USERS.map(u=>`<tr>
     <td><b>${oEsc(u.email)}</b>${curUser&&u.email===curUser.email?` <span class="pill p-b">${LANG==="zh"?"你":"you"}</span>`:''}</td>
     <td>${oEsc(u.name)||'—'}</td>
-    <td><span class="pill p-p">${titleOf(u.email,u.role)?roleShort(titleOf(u.email,u.role))+(LANG==="zh"?'（老板权限）':' (owner access)'):roleShort(u.role)}</span></td>
+    <td><span class="pill p-p">${titleOf(u.email,u.role)?roleShort(titleOf(u.email,u.role)):roleShort(u.role)}</span></td>
     <td class="mini">${ROLES[u.role]&&ROLES[u.role].allBranch?(LANG==="zh"?"全部":"All"):outName(u.outlet)}</td>
     <td>${u.active===false?`<span class="pill p-r">${LANG==="zh"?"停用":"Off"}</span>`:`<span class="pill p-g">${LANG==="zh"?"启用":"On"}</span>`}</td>
     <td style="white-space:nowrap;"><button class="ib" onclick="formUser('${(u.email||'').replace(/'/g,"\\'")}')">✏️</button> <button class="ib" onclick="delUser('${(u.email||'').replace(/'/g,"\\'")}')">🗑️</button></td>
