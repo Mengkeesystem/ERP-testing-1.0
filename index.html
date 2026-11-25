@@ -1026,6 +1026,7 @@ html.ui2[data-theme="cn"] .m>button.btn.block.brand{box-shadow:0 -14px 12px 4px 
 <!-- Supabase 云端 SDK（未配置 key 时不影响运行，自动回退本地存储）-->
 <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
 <link rel="preconnect" href="https://kmcdokwiyetlmsrdlgqw.supabase.co" crossorigin>
+<script src="i18n.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body>
@@ -1038,7 +1039,7 @@ html.ui2[data-theme="cn"] .m>button.btn.block.brand{box-shadow:0 -14px 12px 4px 
     <button class="lang" id="xferBellBtn" onclick="openXferInbox()" title="跨店调拨申请 Transfer requests" style="display:none;position:relative;">🔁<span id="xferBellCount" style="display:none;position:absolute;top:-4px;right:-4px;min-width:16px;height:16px;line-height:16px;padding:0 3px;border-radius:9px;background:#d92d20;color:#fff;font-size:10px;font-weight:700;text-align:center;">0</span></button>
     <button class="lang" id="bellBtn" onclick="openOrdersPanel()" title="收到的订单 Orders" style="display:none;position:relative;">🔔<span id="bellCount" style="display:none;position:absolute;top:-4px;right:-4px;min-width:16px;height:16px;line-height:16px;padding:0 3px;border-radius:9px;background:#d92d20;color:#fff;font-size:10px;font-weight:800;text-align:center;">0</span></button>
     <button class="lang" id="updBellBtn" onclick="openUpdatePanel()" title="版本更新通知 Version updates" style="position:relative;"><img src="icon-update.png" alt="update" style="width:16px;height:16px;vertical-align:-3px;"><span id="updBellCount" style="display:none;position:absolute;top:-4px;right:-4px;min-width:16px;height:16px;line-height:16px;padding:0 3px;border-radius:9px;background:#0891B2;color:#fff;font-size:10px;font-weight:800;text-align:center;">1</span></button>
-    <button class="lang" onclick="toggleLang()" id="langBtn">EN</button>
+    <button class="lang" onclick="openLangPicker()" id="langBtn">EN</button>
     <button class="lang" onclick="confirmLogout()" id="logoutBtn" title="登出 Log Out">🔓</button>
     <select class="sel" id="roleSel" onchange="switchRole()"></select>
     <select class="sel" id="outletSel" onchange="switchOutlet()"></select>
@@ -1392,6 +1393,64 @@ const T={
     appTitle:"Meng Kee Eatery"}
 };
 function t(k){return (T[LANG][k]||k);}
+/* ---------- 多语言：中文 / English / 越南文 / 缅甸文 ----------
+   内部一律以中文(LANG='zh')或英文(LANG='en')为基准；选越南文/缅甸文时 LANG 仍是 'zh'，
+   由 i18n.js 的词典把页面上的中文替换成对应语言（词典没有的句子保持中文）。每台设备各自记住。 */
+let UILANG='zh';
+try{const v=localStorage.getItem('erpLang');if(['zh','en','vi','my'].includes(v))UILANG=v;}catch(e){}
+LANG=(UILANG==='en')?'en':'zh';
+const TR={map:{},re:null,rules:[]};
+const ZHRE=/[一-鿿]/;
+function trBuild(){
+  if(UILANG!=='vi'&&UILANG!=='my')return;
+  const ix=UILANG==='vi'?1:2,map={},phr=[];
+  (window.I18N_ROWS||[]).forEach(r=>{const v=r[ix];if(!v)return;map[r[0]]=v;if(r[0].length>=3)phr.push(r[0]);});
+  phr.sort((a,b)=>b.length-a.length);
+  TR.map=map;TR.re=phr.length?new RegExp(phr.map(x=>x.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')).join('|'),'g'):null;
+  const wd=(window.I18N_WD||{})[UILANG]||[];const wi={日:0,一:1,二:2,三:3,四:4,五:5,六:6};
+  TR.rules=[
+    [/(\d{4})年(\d{1,2})月/g,(m,y,mo)=>UILANG==='vi'?`Tháng ${mo}/${y}`:`${y} ခုနှစ် ${mo} လ`],
+    [/(\d{1,2})月(\d{1,2})日/g,(m,mo,dd)=>UILANG==='vi'?`${dd}/${mo}`:`${mo} လ ${dd} ရက်`],
+    [/周([日一二三四五六])/g,(m,c)=>wd[wi[c]]||m]
+  ];
+}
+function trText(s){
+  if(UILANG!=='vi'&&UILANG!=='my')return s;
+  if(!s||!ZHRE.test(s))return s;
+  const k=s.trim();
+  if(TR.map[k]!==undefined)return s.replace(k,TR.map[k]);
+  let out=s;
+  TR.rules.forEach(([re,fn])=>{out=out.replace(re,fn);});
+  if(TR.re)out=out.replace(TR.re,m=>TR.map[m]);
+  return out;
+}
+function trNode(root){
+  if(UILANG!=='vi'&&UILANG!=='my')return;if(!root)return;
+  const fixText=n=>{const v=trText(n.nodeValue);if(v!==n.nodeValue){const p=n.parentNode;if(p&&p.nodeName==='OPTION'&&!p.hasAttribute('value'))p.setAttribute('value',n.nodeValue);n.nodeValue=v;}};   // <option> 的值保持中文原文，存进数据的不是翻译
+  if(root.nodeType===3){fixText(root);return;}
+  if(root.nodeType!==1&&root.nodeType!==11)return;
+  const tw=document.createTreeWalker(root,NodeFilter.SHOW_TEXT,{acceptNode:n=>{const p=n.parentNode&&n.parentNode.nodeName;return (p==='SCRIPT'||p==='STYLE'||p==='TEXTAREA')?NodeFilter.FILTER_REJECT:(ZHRE.test(n.nodeValue)?NodeFilter.FILTER_ACCEPT:NodeFilter.FILTER_SKIP);}});
+  const arr=[];while(tw.nextNode())arr.push(tw.currentNode);arr.forEach(fixText);
+  if(root.querySelectorAll){root.querySelectorAll('[placeholder],[title],[aria-label]').forEach(e=>{['placeholder','title','aria-label'].forEach(a=>{const v=e.getAttribute(a);if(v&&ZHRE.test(v)){const nv=trText(v);if(nv!==v)e.setAttribute(a,nv);}});});}
+}
+function setUILang(k){try{localStorage.setItem('erpLang',k);}catch(e){}location.reload();}
+function openLangPicker(){
+  const L=[['zh','中文'],['en','English'],['vi','Tiếng Việt'],['my','မြန်မာဘာသာ']];
+  openForm(`<h3>Language <span class="x" onclick="closeM()">×</span></h3><div style="display:grid;gap:10px;">${L.map(([k,n])=>`<button class="btn ${UILANG===k?'brand':'ghost'} block" onclick="setUILang('${k}')">${n}</button>`).join('')}</div>`);
+}
+(function(){
+  if(UILANG!=='vi'&&UILANG!=='my')return;
+  trBuild();document.documentElement.lang=UILANG==='vi'?'vi':'my';
+  const _al=window.alert.bind(window),_co=window.confirm.bind(window),_pr=window.prompt.bind(window);
+  window.alert=m=>_al(trText(String(m)));window.confirm=m=>_co(trText(String(m)));window.prompt=(m,dv)=>_pr(trText(String(m)),dv);
+  let q=new Set(),tm=0;
+  const start=()=>{
+    trNode(document.body);
+    new MutationObserver(ms=>{ms.forEach(m=>{if(m.type==='characterData')q.add(m.target);else m.addedNodes.forEach(n=>q.add(n));});
+      if(!tm)tm=requestAnimationFrame(()=>{tm=0;const a=[...q];q.clear();a.forEach(n=>{try{trNode(n);}catch(e){}});});}).observe(document.body,{childList:true,subtree:true,characterData:true});
+  };
+  if(document.body)start();else document.addEventListener('DOMContentLoaded',start);
+})();
 function nm(o){return LANG==="zh"?o.name:o.en;}
 
 /* ---------- money & date helpers ---------- */
@@ -1402,7 +1461,7 @@ function statusOf(d){if(d<=14)return{t:"健康",e:"Fresh",c:"p-g"};if(d<=30)retu
 function stTxt(s){return LANG==="zh"?s.t:s.e;}
 
 /* ================= 数据种子 ================= */
-const BUILD="1111mk142";  // 版本标记：页面右上/网格提示可见，用来确认已载入最新版
+const BUILD="1111mk143";  // 版本标记：页面右上/网格提示可见，用来确认已载入最新版
 const SEED_VERSION="bh-master-2026-09-1";  // 版本变更→下次载入自动重置为最新主数据（仅本店云端）
 function seed(outletId){
   const isCK = outletId==="ck";
@@ -2114,7 +2173,7 @@ function firstAllowedPage(){const order=['dash','attend','leave','hr','schedule'
 function canW(p){if(isAgg())return false;if((p==='payroll'||p==='payrun')&&ROLES[curRole].salaryLock)return false;return can(p);} // 汇总视图只读；店面经理薪资只读(锁死)
 function renderTop(){
   document.getElementById('appTitle').textContent=t('appTitle');
-  document.getElementById('langBtn').textContent=LANG==="zh"?"EN":"中";
+  document.getElementById('langBtn').textContent={zh:'中',en:'EN',vi:'VI',my:'မြ'}[UILANG]||'EN';
   const roleSel=document.getElementById('roleSel');
   if(curUser && !isAdminUser()){ // 真实登录的普通用户：岗位由白名单锁定，不可自选
     roleSel.innerHTML=`<option>${LANG==="zh"?ROLES[curRole].name:ROLES[curRole].en}</option>`;roleSel.disabled=true;
@@ -3985,7 +4044,7 @@ function pgHR(){
   <div id="dvList" class="inv-grid">${cards}</div>`;
 }
 
-/* 打卡考勤（GPS 3km 范围内才能打卡）*/
+/* 打卡考勤（以本店打卡位置为中心，默认 5 米内才能打卡）*/
 function haversine(la1,lo1,la2,lo2){const R=6371;const dLa=(la2-la1)*Math.PI/180,dLo=(lo2-lo1)*Math.PI/180;const a=Math.sin(dLa/2)**2+Math.cos(la1*Math.PI/180)*Math.cos(la2*Math.PI/180)*Math.sin(dLo/2)**2;return R*2*Math.atan2(Math.sqrt(a),Math.sqrt(1-a));}
 let attQuery='';
 function pgAttend(){
@@ -4006,31 +4065,77 @@ function pgAttend(){
     <div class="mini" style="margin-bottom:6px;">${zh?"门市位置":"Outlet"}: ${nm(o)}</div>
     <div id="gpsStatus" style="font-size:14px;margin-bottom:12px;color:var(--ink2);">${nowIn?(zh?`你已于 ${today.in} 上班，下班时再点一次`:`Clocked in at ${today.in}`):(today?(zh?`今天已打卡：${today.in} – ${today.out}`:'Done today'):(zh?'点下方按钮定位并打卡':'Tap to locate & clock in'))}</div>
     <button class="btn brand block" style="padding:14px;font-size:16px;" onclick="doClockIn()">${nowIn?(zh?'定位下班打卡':'Clock out'):(zh?'定位上班打卡':'Clock in')}</button>
-    <div class="mini" style="margin-top:8px;">${zh?"需在门市 3 公里范围内（GPS 验证）":"Within 3km of the outlet (GPS)"}</div>
+    <div class="mini" style="margin-top:8px;">${zh?"需在打卡位置 "+geoRadius()+" 米内（GPS 验证）":"Within "+geoRadius()+" m of the outlet (GPS)"}</div>
+    ${canSetGeo()?`<div class="mini" style="margin-top:10px;padding-top:10px;border-top:1px dashed var(--line);">${zh?"打卡位置：":"Location: "}${d().geo&&d().geo.lat?(zh?`已设定（精度 ±${d().geo.acc} 米 · ${oEsc(d().geo.by||'')} ${oEsc(d().geo.ts||'')}）`:'set'):(zh?"还没设定":"not set")}</div>
+      <div style="display:flex;gap:8px;justify-content:center;flex-wrap:wrap;margin-top:8px;"><button class="btn ghost sm" onclick="setGeoHere()">${zh?"设定本店打卡位置（请站在店里）":"Set outlet location"}</button><button class="btn ghost sm" onclick="setGeoRadius()">${zh?"改打卡范围（米）":"Change radius (m)"}</button></div>`:''}
   </div>
   <div class="grid g3 sup-sum"><div class="kpi"><div class="k">${zh?"今日出勤":"Today"}</div><div class="v sm">${todayAll.length}</div></div><div class="kpi"><div class="k">${zh?"在岗":"On duty"}</div><div class="v sm ${onDuty?'pos':''}">${onDuty}</div></div><div class="kpi"><div class="k">${zh?"本月时数":"Month hrs"}</div><div class="v sm">${monthHrs.toFixed(1)}</div></div></div>
   ${att.length>3?`<div class="dv-tools"><input class="dv-search" type="search" placeholder="${zh?'搜索员工…':'Search staff…'}" oninput="dvFilter(this.value)" autocomplete="off"></div>`:''}
   <div id="dvList">${body||`<div class="empty">${zh?"本月暂无考勤记录":"No records this month"}</div>`}</div>`;
 }
-function doClockIn(){
-  const st=document.getElementById('gpsStatus');
-  const o=outletObj();
-  if(!currentEmpId()){st.innerHTML="⚠️ "+(LANG==="zh"?"你的账号尚未绑定员工档案，无法打卡。请联系管理员在「员工档案」里填入你的登入邮箱。":"Account not linked to an employee record. Ask an admin to set your login email in Employee Profile.");return;}
-  if(!navigator.geolocation){st.innerHTML="⚠️ "+(LANG==="zh"?"此设备不支持定位":"No geolocation");return;}
-  st.innerHTML=(LANG==="zh"?"定位中…":"Locating…");
-  navigator.geolocation.getCurrentPosition(async pos=>{
-    const dist=haversine(pos.coords.latitude,pos.coords.longitude,o.lat,o.lng);
-    if(dist<=3){
-      const now=new Date();const hhmm=now.toTimeString().slice(0,5);
-      if(!d().attendance)d().attendance=[];
-      const today=d().attendance.find(a=>a.empId===currentEmpId()&&a.date===TODAY);
-      if(today&&!today.out){today.out=hhmm;today.hours=+( (parseInt(hhmm)-parseInt(today.in)) ).toFixed(1);st.innerHTML="✅ "+(LANG==="zh"?"下班打卡成功":"Clock-out OK")+` (${dist.toFixed(2)}km)`;}
-      else{d().attendance.unshift({empId:currentEmpId(),date:TODAY,in:hhmm,out:"",hours:0});st.innerHTML="✅ "+(LANG==="zh"?"上班打卡成功":"Clock-in OK")+` (${dist.toFixed(2)}km)`;}
-      auditLog("GPS打卡",nm(o)+" "+dist.toFixed(2)+"km","","");await save();setTimeout(render,900);
-    }else{
-      st.innerHTML="❌ "+(LANG==="zh"?`距门市 ${dist.toFixed(1)}km，超出 3km 范围，无法打卡`:`${dist.toFixed(1)}km away, outside 3km`);
-    }
-  },err=>{st.innerHTML="⚠️ "+(LANG==="zh"?"无法取得定位（请允许定位权限）":"Location denied");});
+// 打卡范围：以「本店打卡位置」(d().geo，由店长/店面经理/运营经理在店里按一下设定) 为中心，默认 5 米（可改）
+function geoRadius(){const r=+(d().geoRadius);return r>=2&&r<=200?r:5;}
+function canSetGeo(){const R=['owner','hrmgr','area','outletmgr','manager'];return R.includes(curRole)&&(!curUser||R.includes(curUser.role))&&!isAgg();}
+// 取「最准的一次」定位：最多等 maxMs 毫秒，精度达到 goodAcc(米) 就提前收工
+function getBestPosition(maxMs,goodAcc,onProg){
+  return new Promise((res,rej)=>{
+    let best=null,done=false,id=null;
+    const fin=()=>{if(done)return;done=true;try{navigator.geolocation.clearWatch(id);}catch(e){}best?res(best):rej(new Error('nopos'));};
+    id=navigator.geolocation.watchPosition(p=>{if(!best||p.coords.accuracy<best.coords.accuracy)best=p;try{onProg&&onProg(best);}catch(e){}if(best.coords.accuracy<=goodAcc)fin();},
+      e=>{if(!best&&!done){done=true;try{navigator.geolocation.clearWatch(id);}catch(x){}rej(e);}},{enableHighAccuracy:true,maximumAge:0,timeout:maxMs});
+    setTimeout(fin,maxMs);
+  });
+}
+async function setGeoHere(){
+  if(!canSetGeo())return;const zh=LANG==="zh";
+  if(!navigator.geolocation)return alert(zh?'此设备不支持定位':'No geolocation');
+  if(!confirm(zh?`请确认你现在人在「${nm(outletObj())}」店里，站在大家打卡的位置（例如收银台附近）。\n按确定后会把你现在的位置记成这间店的打卡位置。`:'Stand inside the outlet, then confirm.'))return;
+  const st=document.getElementById('gpsStatus');if(st)st.innerHTML=zh?'定位中…':'Locating…';
+  try{
+    const p=await getBestPosition(15000,5,q=>{if(st)st.innerHTML=(zh?'定位中… 精度 ±':'Locating… ±')+Math.round(q.coords.accuracy)+(zh?' 米':' m');});
+    const acc=Math.round(p.coords.accuracy);
+    if(acc>20){alert(zh?`定位只有 ±${acc} 米的精度，太差了。请走到空旷处或靠窗，再按一次。`:`Accuracy ±${acc} m is too poor. Try near a window / outdoors.`);if(st)st.innerHTML='';return;}
+    d().geo={lat:p.coords.latitude,lng:p.coords.longitude,acc,by:(curUser?curUser.name:ROLES[curRole].name),ts:TODAY+' '+new Date().toTimeString().slice(0,5)};
+    try{auditLog('设定打卡位置',nm(outletObj())+' 精度±'+acc+'米');}catch(e){}
+    await save();alert(zh?`已设定本店打卡位置（精度 ±${acc} 米）。`:'Location saved.');render();
+  }catch(e){alert(zh?'无法取得定位（请允许定位权限）':'Location denied');if(st)st.innerHTML='';}
+}
+async function setGeoRadius(){
+  if(!canSetGeo())return;const zh=LANG==="zh";
+  const v=prompt(zh?`打卡范围（米，2–200），现在是 ${geoRadius()}：`:'Radius (m)',String(geoRadius()));if(v==null)return;
+  const n=Math.round(+v);if(!(n>=2&&n<=200))return alert(zh?'请填 2 到 200 之间的数字':'Enter 2–200');
+  const old=geoRadius();d().geoRadius=n;try{auditLog('改打卡范围',old+'米 → '+n+'米');}catch(e){}await save();render();
+}
+function toMin(hhmm){const a=String(hhmm||'0:0').split(':');return (+a[0]||0)*60+(+a[1]||0);}
+async function doClockIn(){
+  const st=document.getElementById('gpsStatus');const zh=LANG==="zh";const o=outletObj();
+  if(!currentEmpId()){st.innerHTML="⚠️ "+(zh?"你的账号尚未绑定员工档案，无法打卡。请联系管理员在「员工档案」里填入你的登入邮箱。":"Account not linked to an employee record. Ask an admin to set your login email in Employee Profile.");return;}
+  if(!navigator.geolocation){st.innerHTML="⚠️ "+(zh?"此设备不支持定位":"No geolocation");return;}
+  const g=d().geo;
+  if(!g||!(g.lat&&g.lng)){st.innerHTML="⚠️ "+(zh?"本店还没设定打卡位置。请店长或店面经理先到店里，在「打卡考勤」页最下面按「设定本店打卡位置」。":"The outlet clock-in location is not set yet.");return;}
+  st.innerHTML=(zh?"定位中…":"Locating…");
+  let pos;
+  try{pos=await getBestPosition(12000,4,q=>{st.innerHTML=(zh?"定位中… 精度 ±":"Locating… ±")+Math.round(q.coords.accuracy)+(zh?" 米":" m");});}
+  catch(e){st.innerHTML="⚠️ "+(zh?"无法取得定位（请允许定位权限）":"Location denied");return;}
+  const acc=Math.round(pos.coords.accuracy),R=geoRadius();
+  const dist=haversine(pos.coords.latitude,pos.coords.longitude,g.lat,g.lng)*1000;
+  const who=(curUser&&curUser.name)||currentEmpId();
+  if(acc>20){
+    st.innerHTML="❌ "+(zh?`定位不够准（±${acc} 米）。请走到空旷处或靠窗，再试一次。`:`Location not accurate (±${acc} m). Try again near a window.`);
+    try{auditLog('GPS打卡失败(定位不准)',who+' '+nm(o)+' 精度±'+acc+'米 距离'+dist.toFixed(1)+'米');await save();}catch(e){}
+    return;
+  }
+  if(dist<=R){
+    const hhmm=new Date().toTimeString().slice(0,5);
+    if(!d().attendance)d().attendance=[];
+    const today=d().attendance.find(a=>a.empId===currentEmpId()&&a.date===TODAY);
+    if(today&&!today.out){today.out=hhmm;today.hours=+(Math.max(0,toMin(hhmm)-toMin(today.in))/60).toFixed(1);today.outDist=+dist.toFixed(1);today.outAcc=acc;st.innerHTML="✅ "+(zh?"下班打卡成功":"Clock-out OK")+` (${dist.toFixed(1)}m)`;}
+    else{d().attendance.unshift({empId:currentEmpId(),date:TODAY,in:hhmm,out:"",hours:0,inDist:+dist.toFixed(1),inAcc:acc});st.innerHTML="✅ "+(zh?"上班打卡成功":"Clock-in OK")+` (${dist.toFixed(1)}m)`;}
+    auditLog("GPS打卡",nm(o)+" 距离"+dist.toFixed(1)+"米 精度±"+acc+"米","","");await save();setTimeout(render,900);
+  }else{
+    st.innerHTML="❌ "+(zh?`你距离打卡位置约 ${Math.round(dist)} 米，要在 ${R} 米内才能打卡（定位精度 ±${acc} 米）`:`${Math.round(dist)} m away; must be within ${R} m (±${acc} m)`);
+    try{auditLog('GPS打卡失败(太远)',who+' '+nm(o)+' 距离'+dist.toFixed(1)+'米 精度±'+acc+'米 范围'+R+'米');await save();}catch(e){}
+  }
 }
 
 /* 排班 */
@@ -4068,7 +4173,7 @@ function pgLeave(){
   const fl=all.filter(l=>leaveFilter==='all'||(leaveFilter==='pend'&&l.status!=="已批准"&&l.status!=="已拒绝")||(leaveFilter==='ok'&&l.status==="已批准")||(leaveFilter==='no'&&l.status==="已拒绝"));
   const cards=fl.map(l=>{const e=empById(l.empId);const st=l.status==="已批准"?{c:'p-g',t:zh?'已批准':'Approved'}:l.status==="已拒绝"?{c:'p-r',t:zh?'已拒绝':'Rejected'}:{c:'p-a',t:zh?'待批准':'Pending'};const pending=st.c==='p-a';
     return `<div class="dv-row inv-card ${pending?'':''}" style="${pending?'border-left:5px solid var(--amber);':l.status==="已批准"?'border-left:5px solid var(--green);':'border-left:5px solid var(--red);'}" data-name="${oEsc(((e&&e.name)||'')+' '+(l.type||'')).toLowerCase()}">
-      <div style="min-width:0;"><div class="dv-name">${e?oEsc(e.name):oEsc(l.empId)}</div><div class="mini">${oEsc(l.type)} · ${(l.from||'').slice(5)} ~ ${(l.to||'').slice(5)}</div><div style="margin-top:4px;"><span class="pill ${st.c}">${st.t}</span></div></div>
+      <div style="min-width:0;"><div class="dv-name">${e?oEsc(e.name):oEsc(l.empId)}</div><div class="mini">${oEsc(l.type)} · ${(l.from||'').slice(5)} ~ ${(l.to||'').slice(5)}</div><div style="margin-top:4px;"><span class="pill ${st.c}">${st.t}</span></div>${l.status==="已拒绝"?`<div class="mini" style="margin-top:4px;color:#b42318;">${zh?"拒绝原因：":"Reason: "}${oEsc(l.rejectReason||(zh?"（旧记录，没写原因）":"(no reason)"))}${l.decidedBy?` · ${oEsc(l.decidedBy)}`:""}</div>`:""}</div>
       <div class="inv-qty"><div class="inv-q">${l.days} <small>${zh?'天':'d'}</small></div>${canApprove&&pending?`<div class="inv-act"><button class="btn brand sm" onclick="approveLeave(${l.id},true)">${zh?'批准':'Approve'}</button><button class="btn ghost sm" onclick="approveLeave(${l.id},false)">${zh?'拒绝':'Reject'}</button></div>`:''}</div></div>`;}).join('')||`<div class="empty">${zh?'没有符合的请假记录':'None'}</div>`;
   return `<div class="fb"><h2 class="h" style="margin:0;">${zh?"请假管理":"Leave"}</h2><button class="btn brand sm" onclick="openM('leave')">+ ${zh?"申请请假":"Apply"}</button></div>
   <div class="grid g3 sup-sum"><div class="kpi"><div class="k">${zh?"待批准":"Pending"}</div><div class="v sm ${pend?'neg':'pos'}">${pend}</div></div><div class="kpi"><div class="k">${zh?"今年已批天数":"Days this year"}</div><div class="v sm">${days}</div></div><div class="kpi"><div class="k">${zh?"全部申请":"All"}</div><div class="v sm">${all.length}</div></div></div>
@@ -4076,7 +4181,17 @@ function pgLeave(){
   <details class="hintd"><summary>${zh?'说明':'Notes'}</summary><div>${canApprove?(zh?"你可以批准／拒绝本店请假申请。":"You can approve/reject."):(zh?"提交请假申请，等待上级批准。":"Submit and await approval.")}</div></details>
   <div class="inv-grid">${cards}</div>`;
 }
-async function approveLeave(id,ok){const l=d().leaves.find(x=>x.id===id);if(!l)return;l.status=ok?"已批准":"已拒绝";auditLog("请假审批",l.type+" "+(ok?"批准":"拒绝"),"待批准",l.status);await save();render();}
+async function approveLeave(id,ok){
+  const l=d().leaves.find(x=>x.id===id);if(!l)return;const zh=LANG==="zh";
+  let why='';
+  if(!ok){   // 拒绝一定要写原因（HR 要看）
+    why=(prompt(zh?'请写「拒绝原因」（HR 会看到）：':'Reason for rejecting (HR will see it):')||'').trim();
+    if(why.length<2){alert(zh?'拒绝一定要写原因（至少 2 个字），没写就不会拒绝。':'A reason (at least 2 characters) is required to reject.');return;}
+  }
+  l.status=ok?"已批准":"已拒绝";l.decidedBy=curUser?curUser.name:(ROLES[curRole]&&ROLES[curRole].name)||'';l.decidedAt=TODAY+' '+new Date().toTimeString().slice(0,5);
+  if(ok)delete l.rejectReason;else l.rejectReason=why;
+  auditLog("请假审批",l.type+" "+(ok?"批准":"拒绝，原因："+why),"待批准",l.status);await save();render();
+}
 
 /* 中央厨房（独立页）*/
 let ORDER_SEED=window.ORDER_SEED||{A:[],B:[],C:[],uniform:[],uniformImg:""};
