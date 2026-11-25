@@ -93,11 +93,23 @@ Deno.serve(async (req) => {
   const mediaType = ["image/jpeg", "image/png", "image/webp"].includes(body?.mediaType) ? body.mediaType : "image/jpeg";
   if (!image || image.length > MAX_IMG_CHARS || !/^[A-Za-z0-9+/=]+$/.test(image)) return reply(req, { error: "bad_image", message: "图片无效或太大" }, 400);
   const supplier = clean(body?.supplier, 80);
-  const items: string[] = Array.isArray(body?.items) ? body.items.slice(0, 400).map((s: unknown) => clean(s, 90)).filter(Boolean) : [];
+  let items: string[] = Array.isArray(body?.items) ? body.items.slice(0, 400).map((s: unknown) => clean(s, 90)).filter(Boolean) : [];
+  // 新版：网页把「所有供应商 + 各自的品项」一起送来，由模型判断这张单是哪家供应商的（supplierMatch），再对应该供应商的品项
+  const sups: { name: string; items: string[] }[] = Array.isArray(body?.suppliers)
+    ? body.suppliers.slice(0, 40).map((v: any) => ({ name: clean(v?.name, 90), items: Array.isArray(v?.items) ? v.items.slice(0, 200).map((s: unknown) => clean(s, 90)).filter(Boolean) : [] })).filter((v: any) => v.name)
+    : [];
+  let catalogText = "";
+  if (sups.length) {
+    const parts: string[] = [];
+    let total = 0;
+    for (const v of sups) { const t = `【供应商：${v.name}】\n${v.items.join("\n")}`; if (total + t.length > 45000) break; parts.push(t); total += t.length; }
+    catalogText = parts.join("\n\n");
+    items = sups.flatMap((v) => v.items);
+  }
 
   const prompt = `你是马来西亚中餐小食店的进货录入助手。图片是供应商的发票/送货单/收据（可能是手写、可能有马来文/英文/中文混写，可能是手拿着拍的、有折痕、有手指遮住边角）。
 请读出每一行货品，只输出 JSON，不要任何其他文字：
-{"supplier":"发票抬头的供应商名（卖方）或空","buyer":"买方/客户名（发票上写的「卖给谁」，例如 MK KELANA SDN BHD (PJ MK)、手写的 明记 PJ）或空","date":"YYYY-MM-DD 或空","invoiceNo":"单号或空","lines":[{"name":"发票上的品名原文（中英文都写上）","qty":数字,"unit":"单位如 kg/pkt/ctn/box 或空","unitPrice":数字或null,"amount":数字或null,"match":"最像的库存品名（必须从下面清单里原样复制）或 null"}],"total":数字或null,"note":"看不清/可疑之处，没有就空"}
+{"supplier":"发票抬头的供应商名（卖方）或空","supplierMatch":"下面「供应商清单」里最像这张单的供应商名（原样复制）或 null","buyer":"买方/客户名（发票上写的「卖给谁」，例如 MK KELANA SDN BHD (PJ MK)、手写的 明记 PJ）或空","date":"YYYY-MM-DD 或空","invoiceNo":"单号或空","lines":[{"name":"发票上的品名原文（中英文都写上）","qty":数字,"unit":"单位如 kg/pkt/ctn/box 或空","unitPrice":数字或null,"amount":数字或null,"match":"最像的库存品名（必须从下面清单里原样复制）或 null"}],"total":数字或null,"note":"看不清/可疑之处，没有就空"}
 规则：
 1. 数字不要带 RM 或逗号；看不清的数字用 null，不要猜；不是货品的行（合计、税、折扣、运费、找零、CASH/CHANGE）不要放进 lines。
 2. 日期：马来西亚是「日/月/年」。25/11/2026、25/Nov/2026 02:34:00、24/11/26（两位年份＝20xx）都要转成 YYYY-MM-DD；时间部分丢掉；找不到日期就留空，不要用今天。
@@ -105,8 +117,8 @@ Deno.serve(async (req) => {
 4. 价格栏可能被折行成两行（例如 12.0000 / 0 其实是 12.00000），请合起来读。单位栏写 UNIT 但数量带小数（如 3.40 UNIT）通常其实是公斤数，照写 qty 即可，在 unit 填 kg 并在 note 提一句。
 5. 手写单上空白的格子、被划掉的格子、斜线不是货品。手写字请尽量读，实在认不出的品名照形状写出来并在 note 说明不确定。
 6. match 只有在确定是同一样东西时才填，不确定就 null。品名常中英马来混用，可对照：Sayur Raja=帝王苗、Kangkong=翁菜/空心菜、Daun Bawang=青葱、Daun Ketumber=元茜/香菜、Romain=油麦菜/油麦胆、Daun Keledek=番薯叶/树苗、Tauhu Kotak=盒豆腐、Kacang Bendi=羊角豆、Terung Panjang=长茄子/茄子、Nai Pai=奶白菜、Big Head Carp=松鱼头/大头鱼、Baung=巴冷/Baung 鲶鱼、马友=Threadfin。
-${supplier ? "这张单预计来自供应商：" + supplier + "\n" : ""}库存品名清单（一行一个）：
-${items.join("\n") || "（无）"}`;
+7. supplierMatch：先看发票抬头/印章/Logo 判断卖方，再对照下面的供应商清单（名字前面的括号是中文简称，例如 (菜)、(松)、(马友啦啦苏东)）；手写单没有抬头时，看货品属于哪一家（例如手写「马友」就是卖鱼的那家）。拿不准就填 null，不要乱猜。每行的 match 必须从你选中的那家供应商的品项里复制。
+${supplier && !sups.length ? "这张单预计来自供应商：" + supplier + "\n" : ""}${sups.length ? "供应商清单和各自的库存品名（一行一个）：\n" + catalogText : "库存品名清单（一行一个）：\n" + (items.join("\n") || "（无）")}`;
 
   let r: Response;
   try {
@@ -146,7 +158,7 @@ ${items.join("\n") || "（无）"}`;
     return { name: clean(l?.name, 120), qty, unit: clean(l?.unit, 12), unitPrice, amount, chk, match: itemSet.has(String(l?.match)) ? String(l.match) : null };
   }).filter((l: any) => l.name);
   return reply(req, {
-    supplier: clean(out.supplier, 80), buyer: clean(out.buyer, 80), date: normDate(out.date),
+    supplier: clean(out.supplier, 80), supplierMatch: sups.some((v) => v.name === String(out.supplierMatch)) ? String(out.supplierMatch) : null, buyer: clean(out.buyer, 80), date: normDate(out.date),
     invoiceNo: clean(out.invoiceNo, 40), total: num(out.total), note: clean(out.note, 300), lines,
   });
 });

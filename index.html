@@ -1392,7 +1392,7 @@ function statusOf(d){if(d<=14)return{t:"健康",e:"Fresh",c:"p-g"};if(d<=30)retu
 function stTxt(s){return LANG==="zh"?s.t:s.e;}
 
 /* ================= 数据种子 ================= */
-const BUILD="1111mk125";  // 版本标记：页面右上/网格提示可见，用来确认已载入最新版
+const BUILD="1111mk126";  // 版本标记：页面右上/网格提示可见，用来确认已载入最新版
 const SEED_VERSION="bh-master-2026-09-1";  // 版本变更→下次载入自动重置为最新主数据（仅本店云端）
 function seed(outletId){
   const isCK = outletId==="ck";
@@ -5601,61 +5601,110 @@ let _inv=null;
 function invNorm(t){return String(t||'').toLowerCase().replace(/[^a-z0-9一-鿿]+/g,'');}
 function invBigrams(t){const n=invNorm(t),o=new Set();for(let i=0;i<n.length-1;i++)o.add(n.slice(i,i+2));if(n.length===1)o.add(n);return o;}
 function invGuess(name,cat){const a=invBigrams(name);if(!a.size)return '';let best='',bs=0;for(const c of cat){const b=invBigrams(c.name);if(!b.size)continue;let x=0;a.forEach(g=>{if(b.has(g))x++;});const sc=x/Math.min(a.size,b.size)*0.6+x/(a.size+b.size-x)*0.4;if(sc>bs){bs=sc;best=c.cid;}}return bs>=0.55?best:'';}
-function invScan(sup){
-  if(!AUTH()||!INV_OCR_URL)return alert(LANG==="zh"?"拍照识别需要登录云端账号后才能用":"Sign in to use invoice scan");
-  const inp=document.createElement('input');inp.type='file';inp.accept='image/*';inp.setAttribute('capture','environment');
-  inp.onchange=()=>{const f=inp.files&&inp.files[0];if(f)invScanFile(sup,f);};inp.click();
+// —— 入口：底部中间按钮 / 进货单页「拍照识别」。弹出「拍照 / 从相册选」，识别出是哪家供应商后自动跳进去 ——
+function invScan(hintSup){
+  const zh=LANG==="zh";
+  if(!AUTH()||!INV_OCR_URL)return alert(zh?"拍照识别需要登录云端账号后才能用":"Sign in to use invoice scan");
+  window._invHint=hintSup||'';
+  openForm(`<h3>${zh?'识别进货单':'Scan invoice'} <span class="x" onclick="closeM()">×</span></h3>
+    <div class="mini" style="margin-bottom:12px;">${zh?'系统会自己认出是哪一家供应商，识别完先让你核对，确认后才写进去。同一张照片不能重复导入。':'The system detects the supplier, you review, then it is saved.'}</div>
+    <div style="display:grid;gap:10px;">
+      <button class="btn brand block" onclick="invPick(true)">${zh?'拍照':'Take photo'}</button>
+      <button class="btn ghost block" onclick="invPick(false)">${zh?'从相册选':'Choose from album'}</button></div>`);
 }
-async function invShrink(file){
+function invPick(camera){
+  const inp=document.createElement('input');inp.type='file';inp.accept='image/*';if(camera)inp.setAttribute('capture','environment');
+  inp.onchange=()=>{const f=inp.files&&inp.files[0];if(f)invScanFile(window._invHint||'',f);};inp.click();
+}
+// 压缩 + 指纹：SHA-256（同一张图一模一样）+ 8×8 灰度平均哈希（重新存档/压缩过的同一张图也认得出）
+async function invPrep(file){
   const bmp=await createImageBitmap(file,{imageOrientation:'from-image'});
   const max=1800,sc=Math.min(1,max/Math.max(bmp.width,bmp.height));
   const c=document.createElement('canvas');c.width=Math.round(bmp.width*sc);c.height=Math.round(bmp.height*sc);
   c.getContext('2d').drawImage(bmp,0,0,c.width,c.height);
-  return c.toDataURL('image/jpeg',0.85).split(',')[1];
+  const image=c.toDataURL('image/jpeg',0.85).split(',')[1];
+  const s=document.createElement('canvas');s.width=8;s.height=8;const sx=s.getContext('2d');sx.drawImage(bmp,0,0,8,8);
+  const px=sx.getImageData(0,0,8,8).data,g=[];for(let i=0;i<64;i++)g.push(px[i*4]*0.3+px[i*4+1]*0.59+px[i*4+2]*0.11);
+  const avg=g.reduce((a,b)=>a+b,0)/64;let bits='';g.forEach(v=>{bits+=v>avg?'1':'0';});
+  let ah='';for(let i=0;i<64;i+=4)ah+=parseInt(bits.slice(i,i+4),2).toString(16);
+  let sha='';try{const buf=await crypto.subtle.digest('SHA-256',new TextEncoder().encode(image));sha=Array.from(new Uint8Array(buf)).map(x=>x.toString(16).padStart(2,'0')).join('');}catch(e){let hh=5381;for(let i=0;i<image.length;i+=7)hh=((hh<<5)+hh+image.charCodeAt(i))|0;sha='x'+(hh>>>0).toString(16)+'-'+image.length;}
+  return {image,sha,ah};
 }
-async function invScanFile(sup,file){
+function invHamming(a,b){if(!a||!b||a.length!==b.length)return 99;let n=0;for(let i=0;i<a.length;i++){let x=parseInt(a[i],16)^parseInt(b[i],16);while(x){n+=x&1;x>>=1;}}return n;}
+function invFindDup(sha,ah){return (d().invScans||[]).find(r=>r.h===sha||(r.ah&&invHamming(r.ah,ah)<=3));}
+function invWho(){return curUser?curUser.name:(ROLES[curRole]&&ROLES[curRole].name)||'';}
+// 按发票上的供应商名/品项，在 ERP 的供应商里找出是哪一家
+function invPickSupplier(j,hint){
+  const names=supplierList().map(v=>v.name);
+  if(j.supplierMatch&&names.includes(j.supplierMatch))return j.supplierMatch;
+  if(j.supplier){const a=invBigrams(j.supplier);let best='',bs=0;names.forEach(n=>{const b=invBigrams(n.replace(/^[\(（][^\)）]*[\)）]/,''));if(!a.size||!b.size)return;let x=0;a.forEach(g=>{if(b.has(g))x++;});const sc=x/Math.min(a.size,b.size);if(sc>bs){bs=sc;best=n;}});if(bs>=0.7)return best;}
+  let best='',bn=0;names.forEach(n=>{const cat=ensureGridCat(n)||[];let k=0;(j.lines||[]).forEach(l=>{if(invGuess(l.name,cat))k++;});if(k>bn){bn=k;best=n;}});
+  if(bn>0&&bn>=Math.ceil((j.lines||[]).length/2))return best;
+  return hint&&names.includes(hint)?hint:'';
+}
+function invMatchLines(lines,sup){
+  const cat=sup?ensureGridCat(sup):[];
+  return lines.map(l=>{let cid='';if(l.mname){const c=cat.find(x=>x.name===l.mname);if(c)cid=c.cid;}if(!cid&&cat.length)cid=invGuess(l.name,cat);return Object.assign(l,{cid,on:!!cid});});
+}
+async function invScanFile(hintSup,file){
   const zh=LANG==="zh";
   openForm(`<h3>${zh?'识别进货单':'Scan invoice'} <span class="x" onclick="closeM()">×</span></h3><div style="text-align:center;padding:26px 0;"><div class="skel" style="height:10px;width:60%;margin:0 auto 12px;"></div><div class="mini">${zh?'正在读取发票，约 5–15 秒…':'Reading invoice…'}</div></div>`);
   try{
-    const image=await invShrink(file);
+    const pp=await invPrep(file);
+    const dup=invFindDup(pp.sha,pp.ah);
+    if(dup&&!window._invForce){
+      try{auditLog('重复发票照片',`${invWho()} 又上传了已导入过的发票照片（原：${dup.by||''} ${dup.ts||''} · ${dup.sup||''} ${dup.date||''}${dup.invoiceNo?' · 单号 '+dup.invoiceNo:''}）`);await save();}catch(e){}
+      window._invPending={hintSup,file};
+      return openForm(`<h3>${zh?'这张照片已经导入过了':'Duplicate photo'} <span class="x" onclick="closeM()">×</span></h3>
+        <div class="al al-r" style="line-height:1.7;">${zh?`<b>照片已重复。</b><br>${oEsc(dup.by||'')} 在 ${oEsc(dup.ts||'')} 已经导入过这张：<br>${oEsc(dup.sup||'')} · ${oEsc(dup.date||'')}${dup.invoiceNo?' · 单号 '+oEsc(dup.invoiceNo):''}${dup.n?' · '+dup.n+' 项':''}<br><span class="mini">这次重复上传已记进「审计日志」。</span>`:'Already imported.'}</div>
+        <button class="btn block ghost" style="margin-top:10px;" onclick="closeM()">${zh?'取消（推荐）':'Cancel'}</button>
+        <button class="btn block ghost" style="margin-top:8px;color:#b42318;" onclick="invForceScan()">${zh?'我确定要再导入一次':'Import anyway'}</button>`);
+    }
+    window._invForce=false;
     let token=SUPABASE_ANON_KEY;try{const {data}=await _sb.auth.getSession();if(data&&data.session&&data.session.access_token)token=data.session.access_token;}catch(e){}
-    const cat=ensureGridCat(sup);
-    const r=await fetch(INV_OCR_URL,{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+token,'apikey':SUPABASE_ANON_KEY},body:JSON.stringify({image,mediaType:'image/jpeg',supplier:sup,items:cat.map(c=>c.name)})});
+    const suppliers=supplierList().map(v=>({name:v.name,items:(ensureGridCat(v.name)||[]).map(c=>c.name).slice(0,200)}));
+    const r=await fetch(INV_OCR_URL,{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+token,'apikey':SUPABASE_ANON_KEY},body:JSON.stringify({image:pp.image,mediaType:'image/jpeg',suppliers})});
     let j={};try{j=await r.json();}catch(e){}
     if(!r.ok||!j.lines){
       const msg=j.message||(r.status===404?(zh?'识别功能还没部署（找管理员）':'Function not deployed'):(zh?'识别失败，请重试':'Scan failed'));
-      return openForm(`<h3>${zh?'识别进货单':'Scan invoice'} <span class="x" onclick="closeM()">×</span></h3><div class="al al-r">${oEsc(msg)}</div><button class="btn block brand" onclick="closeM();invScan('${gEsc(sup)}')">${zh?'重新拍照':'Retake'}</button>`);
+      return openForm(`<h3>${zh?'识别进货单':'Scan invoice'} <span class="x" onclick="closeM()">×</span></h3><div class="al al-r">${oEsc(msg)}</div><button class="btn block brand" onclick="closeM();invScan('${gEsc(hintSup||'')}')">${zh?'重新拍照':'Retake'}</button>`);
     }
     const hasDate=!!(j.date&&/^\d{4}-\d{2}-\d{2}$/.test(j.date));
-    _inv={sup,noDate:!hasDate,date:hasDate?j.date:TODAY,invoiceNo:j.invoiceNo||'',total:j.total,note:j.note||'',ocrSup:j.supplier||'',buyer:j.buyer||'',
-      lines:j.lines.map(l=>{let cid='';if(l.match){const c=cat.find(x=>x.name===l.match);if(c)cid=c.cid;}if(!cid)cid=invGuess(l.name,cat);
-        let price=l.unitPrice;if((price==null||price===0)&&l.amount!=null&&l.qty)price=+(l.amount/l.qty).toFixed(2);
-        return {name:l.name,unit:l.unit||'',qty:l.qty,price,amount:l.amount,chk:l.chk||'',cid,on:!!cid};})};
+    const sup=invPickSupplier(j,hintSup);
+    _inv={sup,supAuto:!!sup,noDate:!hasDate,date:hasDate?j.date:TODAY,invoiceNo:j.invoiceNo||'',total:j.total,note:j.note||'',ocrSup:j.supplier||'',buyer:j.buyer||'',sha:pp.sha,ah:pp.ah,dup:!!dup,
+      lines:invMatchLines(j.lines.map(l=>{let price=l.unitPrice;if((price==null||price===0)&&l.amount!=null&&l.qty)price=+(l.amount/l.qty).toFixed(2);
+        return {name:l.name,unit:l.unit||'',qty:l.qty,price,amount:l.amount,chk:l.chk||'',mname:l.match||''};}),sup)};
     invReview();
   }catch(e){
     openForm(`<h3>${zh?'识别进货单':'Scan invoice'} <span class="x" onclick="closeM()">×</span></h3><div class="al al-r">${oEsc(String(e.message||e))}</div>`);
   }
 }
+function invForceScan(){const p=window._invPending;if(!p)return closeM();window._invForce=true;invScanFile(p.hintSup,p.file);}
+function invSupChange(v){_inv.sup=v;_inv.supAuto=false;invMatchLines(_inv.lines,v);invReview();}
 function invReview(){
-  const zh=LANG==="zh",v=_inv,sup=v.sup,cat=ensureGridCat(sup);
+  const zh=LANG==="zh",v=_inv,sup=v.sup,cat=sup?ensureGridCat(sup):[];
   const opts=sel=>`<option value="">${zh?'— 不导入 —':'— skip —'}</option>`+cat.map(c=>`<option value="${oEsc(c.cid)}" ${c.cid===sel?'selected':''}>${oEsc(c.name)}</option>`).join('');
+  const fish=sup&&FISH_SUPPLIERS.includes(sup);
   const rows=v.lines.map((l,i)=>`<div class="odc ${l.on?'':'inv-off'}" id="ivr-${i}">
     <div class="odc-h"><label class="inv-ck"><input type="checkbox" ${l.on?'checked':''} onchange="invSet(${i},'on',this.checked)"><span class="odc-n">${oEsc(l.name)}${l.unit?` <span class="mini">${oEsc(l.unit)}</span>`:''}</span></label></div>
     <div class="fr" style="margin:8px 0 0;"><label>${zh?'对应库存品项':'Matches item'}</label><select onchange="invSet(${i},'cid',this.value)">${opts(l.cid)}</select></div>
     ${l.chk==='mismatch'?`<div class="mini" style="margin-top:6px;color:#b42318;font-weight:600;">${zh?`数量×单价 和发票金额${l.amount!=null?' RM '+(+l.amount).toFixed(2):''}对不上，请核对`:'Qty × price ≠ invoice amount'}</div>`:''}
     <div class="dv-flag" id="ivf-${i}" style="margin-top:6px;">${l.cid?priceFlagHTML(priceBefore(sup,l.cid,v.date),l.price):''}</div>
-    <div class="odc-f"><label>${zh?'数量/重量':'Qty'}<input class="odnum" inputmode="decimal" value="${l.qty==null?'':l.qty}" oninput="invSet(${i},'qty',this.value)"></label>
+    <div class="odc-f"><label>${fish?(zh?'重量 kg':'Weight'):(zh?'数量':'Qty')}<input class="odnum" inputmode="decimal" value="${l.qty==null?'':l.qty}" oninput="invSet(${i},'qty',this.value)"></label>
       <label>${zh?'单价 RM':'Price'}<input class="odnum" inputmode="decimal" value="${l.price==null?'':l.price}" oninput="invSet(${i},'price',this.value)"></label>
       <div class="odc-a"><span>${zh?'金额':'Amt'}</span><b id="ivamt-${i}">${money((+l.qty||0)*(+l.price||0))}</b></div></div></div>`).join('')||`<div class="empty">${zh?'没读到货品行':'No lines'}</div>`;
+  const supOpts=`<option value="">${zh?'— 请选择供应商 —':'— pick supplier —'}</option>`+supplierList().map(s=>`<option value="${oEsc(s.name)}" ${s.name===sup?'selected':''}>${oEsc(s.name)}</option>`).join('');
   openForm(`<h3>${zh?'核对识别结果':'Review scan'} <span class="x" onclick="closeM()">×</span></h3>
-    <div class="hint">${zh?'这是 AI 读出来的，可能有错——请对照发票核对数量和单价。勾选的品项按「写入」才会记进进货单；没对上的可手动选品项或取消勾选。':'AI result — please verify before saving.'}${v.note?`<br><b>${zh?'提示：':'Note: '}</b>${oEsc(v.note)}`:''}</div>
-    ${(v.ocrSup||v.buyer)?`<div class="mini" style="margin:0 0 8px;line-height:1.7;">${v.ocrSup?`${zh?'发票供应商：':'Supplier: '}<b>${oEsc(v.ocrSup)}</b>`:''}${v.ocrSup&&v.buyer?' · ':''}${v.buyer?`${zh?'抬头/买方：':'Bill to: '}<b>${oEsc(v.buyer)}</b>`:''}<br>${zh?`你选的是：<b>${oEsc(sup)}</b>，当前分店：<b>${oEsc(outletObj().name||'')}</b>。如果不是同一家，请退出重选。`:''}</div>`:''}
+    <div class="hint">${zh?'请核对：<b>供应商、日期、单号、数量/重量/单位、价钱</b>。确认无误按「确认写入」，会直接记进该供应商的进货单。':'Check everything, then confirm.'}${v.note?`<br><b>${zh?'提示：':'Note: '}</b>${oEsc(v.note)}`:''}</div>
+    ${v.dup?`<div class="al al-r" style="margin-bottom:8px;">${zh?'这张照片之前导入过，已记入审计日志。':'Duplicate photo (logged).'}</div>`:''}
+    <div class="fr"><label>${zh?'供应商':'Supplier'}${v.supAuto?` <span class="pill p-g">${zh?'系统已认出':'detected'}</span>`:''}</label><select id="iv-sup" onchange="invSupChange(this.value)">${supOpts}</select></div>
+    ${(v.ocrSup||v.buyer)?`<div class="mini" style="margin:0 0 8px;line-height:1.7;">${v.ocrSup?`${zh?'发票上的供应商：':'On invoice: '}<b>${oEsc(v.ocrSup)}</b>`:''}${v.ocrSup&&v.buyer?' · ':''}${v.buyer?`${zh?'抬头/买方：':'Bill to: '}<b>${oEsc(v.buyer)}</b>`:''}<br>${zh?`当前分店：<b>${oEsc(outletObj().name||'')}</b>。抬头不是这间店的话，请先退出换店。`:''}</div>`:''}
     <div class="fg2"><div class="fr"><label>${zh?'进货日期':'Date'}</label><input type="date" value="${v.date}" onchange="_inv.date=this.value;_inv.noDate=false;const n=document.getElementById('iv-nd');if(n)n.remove();"></div>
       <div class="fr"><label>Invoice No.</label><input value="${oEsc(v.invoiceNo)}" oninput="_inv.invoiceNo=this.value"></div></div>
     ${v.noDate?`<div class="mini" id="iv-nd" style="margin:-4px 0 8px;color:var(--gold-dk,#a16207);">${zh?'发票上没有日期，已默认用今天；不对请改上面的进货日期。':'No date on invoice — defaulted to today.'}</div>`:''}<div class="odl" style="max-height:48vh;">${rows}</div>
     <div class="odtot" style="position:static;margin-bottom:4px;"><span>${zh?'将写入':'Will save'} <b id="iv-n">0</b> ${zh?'项':'items'}</span><span>${zh?'金额':'Amt'} <b id="iv-t">RM 0.00</b>${v.total!=null?` <span class="mini" style="color:#ddd;">${zh?'发票合计':'invoice'} ${money(v.total)}</span>`:''}</span></div>
     ${invTotalWarn()}
-    <button class="btn block brand" style="margin-top:10px;" onclick="invApply()">${zh?'写入进货单':'Save to purchases'}</button>`);
+    <button class="btn block brand" style="margin-top:10px;" onclick="invApply()">${zh?'确认写入':'Confirm & save'}</button>`);
   invTotals();
 }
 function invSet(i,f,val){const l=_inv.lines[i];if(f==='on')l.on=!!val;else if(f==='cid'){l.cid=val;l.on=!!val;const ck=document.querySelector('#ivr-'+i+' input[type=checkbox]');if(ck)ck.checked=l.on;}else l[f]=val===''?null:+val;
@@ -5665,20 +5714,30 @@ function invTotalWarn(){const v=_inv,zh=LANG==="zh";if(v.total==null)return '';c
   return `<div class="mini" style="margin-bottom:4px;color:#b42318;font-weight:600;">${zh?`识别的各行金额加起来 ${money(sum)}，发票合计是 ${money(v.total)}，差 ${money(diff)}——可能漏读了某一行或读错数字，请对照发票`:'Lines do not add up to invoice total'}</div>`;}
 function invTotals(){const on=_inv.lines.filter(l=>l.on&&l.cid&&(+l.qty||0)>0);const n=document.getElementById('iv-n'),t=document.getElementById('iv-t');if(n)n.textContent=on.length;if(t)t.textContent=money(on.reduce((s,l)=>s+(+l.qty||0)*(+l.price||0),0));}
 async function invApply(){
-  const zh=LANG==="zh",v=_inv,sup=v.sup;const on=v.lines.filter(l=>l.on&&l.cid&&(+l.qty||0)>0);
+  const zh=LANG==="zh",v=_inv,sup=v.sup;
+  if(!sup)return alert(zh?'请先选供应商':'Pick a supplier');
+  const on=v.lines.filter(l=>l.on&&l.cid&&(+l.qty||0)>0);
   if(!on.length)return alert(zh?'没有可写入的品项（要勾选、选好品项、数量大于 0）':'Nothing to save');
   if(!/^\d{4}-\d{2}-\d{2}$/.test(v.date))return alert(zh?'请选进货日期':'Pick a date');
-  const dup=on.filter(l=>gridRec('purchase',sup,l.cid,v.date)).length;
-  if(dup&&!confirm(zh?`其中 ${dup} 项在 ${v.date} 已经有进货记录，写入会覆盖它们的数量和单价。继续？`:`${dup} items already have records on ${v.date}; overwrite?`))return;
+  const sameNo=v.invoiceNo&&(d().invScans||[]).find(r=>r.sup===sup&&r.invoiceNo&&r.invoiceNo===v.invoiceNo);
+  if(sameNo){try{auditLog('重复发票单号',`${invWho()} 要导入 ${sup} 单号 ${v.invoiceNo}，但这个单号已在 ${sameNo.date||''} 导入过（${sameNo.by||''} ${sameNo.ts||''}）`);}catch(e){}
+    if(!confirm(zh?`单号 ${v.invoiceNo} 已经在 ${sameNo.date||''} 导入过（${sameNo.by||''}）。\n可能是同一张发票重复导入，仍要写入吗？`:'This invoice number was imported before. Continue?'))return save();}
+  const dupRec=on.filter(l=>gridRec('purchase',sup,l.cid,v.date)).length;
+  if(dupRec&&!confirm(zh?`其中 ${dupRec} 项在 ${v.date} 已经有进货记录，写入会覆盖它们的数量和单价。继续？`:`${dupRec} items already have records on ${v.date}; overwrite?`))return;
   const fish=FISH_SUPPLIERS.includes(sup);
   if(v.invoiceNo)await setGridInv('purchase',sup,v.date,v.invoiceNo);
   for(const l of on){
     if(fish)await setGridCell('purchase',sup,l.cid,v.date,'weight',+l.qty);else await setGridCell('purchase',sup,l.cid,v.date,'qty',+l.qty);
     await setGridCell('purchase',sup,l.cid,v.date,'price',+l.price||0);
   }
-  try{auditLog&&auditLog('拍照识别进货',sup+' '+v.date+' '+on.length+'项');}catch(e){}
-  dvDay=v.date;try{ledgerMonth=v.date.slice(0,7);}catch(e){}closeM();render();
-  alert(zh?`已写入 ${on.length} 项到 ${v.date} 的进货单`:`Saved ${on.length} items`);
+  d().invScans=d().invScans||[];
+  d().invScans.unshift({h:v.sha||'',ah:v.ah||'',ts:TODAY+' '+new Date().toTimeString().slice(0,5),by:invWho(),sup,date:v.date,invoiceNo:v.invoiceNo||'',n:on.length,total:+on.reduce((s,l)=>s+(+l.qty||0)*(+l.price||0),0).toFixed(2)});
+  if(d().invScans.length>400)d().invScans.length=400;
+  try{auditLog('拍照识别进货',sup+' '+v.date+' '+on.length+'项'+(v.invoiceNo?' 单号'+v.invoiceNo:'')+(v.dup?'（重复照片，已强制导入）':''));}catch(e){}
+  await save();
+  dvDay=v.date;try{ledgerMonth=v.date.slice(0,7);}catch(e){}
+  closeM();selSupplier=sup;nav('purchase');   // 直接跳进这家供应商的进货页
+  alert(zh?`已写入 ${on.length} 项到「${sup}」${v.date} 的进货单`:`Saved ${on.length} items`);
 }
 
 /* ============ 进货价格变动提醒（mk99，参照 SUPY「Received Items / Price Updated」）============
@@ -5768,7 +5827,7 @@ function pgLedger(mod){
         <div class="kpi sup-sum-3"><div class="k">${zh?'供应商':'Suppliers'}</div><div class="v sm">${rows.length}</div><div class="mini">${zh?'点下面一家开始录':'tap one to start'}</div></div></div>
       <input class="sup-search" type="search" placeholder="${zh?'搜索供应商…':'Search suppliers…'}" value="${oEsc(supQuery||'')}" oninput="supFilter(this.value)" autocomplete="off">
       <div class="hint" style="margin-top:8px;">${zh?"点一家 → 选月份 → 直接在表格填数量，今天录过的会排在最前面。":"Tap a supplier → pick a month → type quantities. Suppliers entered today come first."}</div>
-      ${writable?`<div class="dv-tools"><button class="btn brand sm" onclick="addSupplier()">+ ${zh?"新增供应商":"Add Supplier"}</button>${actm([{l:supManage?(zh?'完成管理':'Done managing'):(zh?'管理供应商（改名/删除）':'Manage suppliers'),on:'supManage=!supManage;render()'},{l:zh?'批量导入':'Bulk import',on:"bulkAddForm('supplier')"},sups.length&&{l:zh?'清空全部':'Clear all',on:'clearSuppliers()',danger:true}])}</div>`:''}
+      ${writable?`<div class="dv-tools">${mod==='purchase'&&AUTH()?`<button class="btn brand sm" onclick="invScan('')">${zh?'拍照识别':'Scan invoice'}</button>`:''}<button class="btn ghost sm" onclick="addSupplier()">+ ${zh?"新增供应商":"Add Supplier"}</button>${actm([{l:supManage?(zh?'完成管理':'Done managing'):(zh?'管理供应商（改名/删除）':'Manage suppliers'),on:'supManage=!supManage;render()'},{l:zh?'批量导入':'Bulk import',on:"bulkAddForm('supplier')"},sups.length&&{l:zh?'清空全部':'Clear all',on:'clearSuppliers()',danger:true}])}</div>`:''}
       <div id="supList">${cards}</div>`;
   }
   // —— 单一供应商：按月整表录入（网格）——
@@ -6675,8 +6734,8 @@ function ui2Tabs(){
   let ci=-1;
   if(hasDash){ci=Math.floor((defs.length+1)/2);
     // 进了「进货单」某家供应商里面：中间按钮变成「拍照识别」，退出来变回总览
-    const scanMode=curPage==='purchase'&&selSupplier&&AUTH()&&typeof subCanW==='function'&&subCanW('purchase');
-    defs.splice(ci,0,scanMode?{icon:'camera',label:zh?'拍照识别':'Scan',go:"invScan('"+gEsc(selSupplier)+"')",on:true,ctr:true}:{icon:'chart',label:zh?'总览':'Home',go:"nav('dash')",on:curPage==='dash',ctr:true});}
+    const scanMode=curPage==='purchase'&&AUTH()&&typeof subCanW==='function'&&subCanW('purchase');
+    defs.splice(ci,0,scanMode?{icon:'camera',label:zh?'拍照识别':'Scan',go:"invScan('"+gEsc(selSupplier||'')+"')",on:true,ctr:true}:{icon:'chart',label:zh?'总览':'Home',go:"nav('dash')",on:curPage==='dash',ctr:true});}
   tb.classList.toggle('hill',ci>=0);
   if(ci>=0)tb.style.setProperty('--hx',((ci+.5)/defs.length*100).toFixed(2)+'%');
   let pend=0;try{pend=xferPendingForMe().length;}catch(e){}
