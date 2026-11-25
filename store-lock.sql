@@ -11,7 +11,7 @@
 -- 规则（erp_store 里每个 key）：
 --   erpv2:b1 … b11、erpv2:ck  分店/中央厨房整包
 --       老板 owner / 人事经理 hrmgr：全部
---       区域副经理 area：b1~b11 全部（不含 ck）
+--       运营经理 area：b1~b11 全部（不含 ck）
 --       店面经理/店长/厨师长/员工：只有自己那间店
 --       中央经理/中央员工：只有 ck
 --   erpv2:payroll:*  薪资记录：owner/hrmgr 读写；店面经理只读本店的 erpv2:payroll:<店>；其他人读不到也写不进
@@ -68,7 +68,7 @@ $$;
 
 -- ===== 跨店调拨申请的把关（触发器）=====
 -- 规则：① 新申请只能由「发起店」建立，而且一定是待批准(pending)；
---       ② 只有「被申请店」(或老板/人事经理/区域副经理)能把 pending 改成 approved / rejected；
+--       ② 只有「被申请店」(或老板/人事经理/运营经理)能把 pending 改成 approved / rejected；
 --       ③ 已批准/已拒绝的申请不能再被改动；发起店只能撤回 pending、移除 rejected。
 create or replace function public.erp_req_guard()
 returns trigger

@@ -986,6 +986,7 @@ html.ui2[data-theme="cn"] .m>button.btn.block.brand{box-shadow:0 -14px 12px 4px 
 /* ---- 进货「按日」视图（SUPY 风格）---- */
 .mtabs{flex-wrap:nowrap!important;overflow-x:auto;max-width:100%;scrollbar-width:none;}.mtabs::-webkit-scrollbar{display:none;}.mtabs button{flex:none;white-space:nowrap;}
 .mtabs.nox .ib{display:none;}
+.mtabs button{-webkit-touch-callout:none;-webkit-user-select:none;user-select:none;}
 .dv-bar{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin:6px 0 10px;}
 .dv-bar .seg{margin:0;}
 .dv-strip{display:flex;gap:8px;overflow-x:auto;padding:4px 2px 10px;margin:0 -2px;scroll-snap-type:x proximity;-webkit-overflow-scrolling:auto;}
@@ -1317,7 +1318,7 @@ const ROLES={
   hrmgr:{name:"人事经理 HR Manager",en:"HR Manager",
     can:["dash","sales","inv","proc","transfer","ck","stock","waste","ent","bom","ap","opex","report","hr","attend","schedule","leave","settings"],
     allBranch:true, hrScope:"all", salaryView:"full", approveLeave:true, canEditPerms:true}, // 权限与老板相同；唯一能实际处理『薪资发放』的角色(不锁死)；后台手动分配，不走邀请码注册
-  area:{name:"区域副经理 Area A.M.",en:"Area Assistant Manager",
+  area:{name:"运营经理 Ops Manager",en:"Operations Manager",
     can:["dash","sales","inv","proc","transfer","stock","waste","ent","bom","ap","opex","report","hr","attend","schedule","leave","settings"],
     allBranch:true, hrScope:"all", salaryView:"total", salaryLock:true, approveLeave:true, canEditPerms:true}, // 全分店(不含中央厨房)；人力财务只看总数(不看个人薪水)；薪资发放锁死只读，实际发放只交给人事经理(hrmgr)独占处理
   outletmgr:{name:"店面经理 Outlet P.I.C",en:"Outlet P.I.C",
@@ -1339,7 +1340,7 @@ const ROLES={
     can:["dash","inv","ck","transfer","stock","hr","attend","schedule","leave"],
     allBranch:false, hrScope:"self", salaryView:"self", approveLeave:false, ckOnly:true}, // 中央厨房专属：权限同厨师长 + 自己的档案/考勤/请假/薪资(只看自己)；不能看薪资发放Payroll
 };
-// 可编辑权限的角色（老板/人事经理、区域副经理）
+// 可编辑权限的角色（老板/人事经理、运营经理）
 function canEditPerms(){return ROLES[curRole] && ROLES[curRole].canEditPerms===true;}
 // 真实登录时，判断「真实身份」是否为管理员（决定能否预览其它岗位）
 function isAdminUser(){return curUser?!!(ROLES[curUser.role]&&ROLES[curUser.role].canEditPerms):canEditPerms();}
@@ -1392,7 +1393,7 @@ function statusOf(d){if(d<=14)return{t:"健康",e:"Fresh",c:"p-g"};if(d<=30)retu
 function stTxt(s){return LANG==="zh"?s.t:s.e;}
 
 /* ================= 数据种子 ================= */
-const BUILD="1111mk126";  // 版本标记：页面右上/网格提示可见，用来确认已载入最新版
+const BUILD="1111mk127";  // 版本标记：页面右上/网格提示可见，用来确认已载入最新版
 const SEED_VERSION="bh-master-2026-09-1";  // 版本变更→下次载入自动重置为最新主数据（仅本店云端）
 function seed(outletId){
   const isCK = outletId==="ck";
@@ -1571,9 +1572,9 @@ function ensureCatalogSeed(data,oid){
 }
 /* ===== 薪资数据拆分存放（BUILD 1102mk68）=====
    底薪/津贴/加班/EPF/SOCSO/EIS/人头税/银行资料（PAY_FIELDS）+ 薪资发放记录（PAY_TOP）不再放在分店整包 erpv2:<店> 里，
-   改存 erpv2:payroll:<店>。数据库 RLS（store-lock.sql）只让 老板/人事经理 读写，店面经理只读本店，其余角色（含区域副经理）读不到。
+   改存 erpv2:payroll:<店>。数据库 RLS（store-lock.sql）只让 老板/人事经理 读写，店面经理只读本店，其余角色（含运营经理）读不到。
    内存里仍合并回 staff[]/payrollRuns，所以薪资页面的算法不用动；存档时（save）再拆开。
-   区域副经理只看总数 → 分店整包里放一份只有总数的 labourSum（由有权限的人存档时算出）。 */
+   运营经理只看总数 → 分店整包里放一份只有总数的 labourSum（由有权限的人存档时算出）。 */
 const PAY_FIELDS=['basic','allowance','ot','epf','socso','eis','levy','bankName','bankAcc'];
 const PAY_TOP=['payrollRuns','payrollCfg','payrunMonths'];
 const PAY_LOADED=new Set();  // 这间店的薪资数据已成功载入内存
@@ -1637,7 +1638,7 @@ async function attachPayroll(oid){
 }
 /* ===== 分店隔离（BUILD 1102mk69）=====
    数据库（store-lock.sql）按角色限制能碰哪些 key：本店角色只能读写自己那间的 erpv2:<店>，中央角色只能碰 erpv2:ck，
-   区域副经理 = 全部分店（不含中央厨房），老板/人事经理 = 全部。网页这边照同样的规则只载入自己能碰的分店，
+   运营经理 = 全部分店（不含中央厨房），老板/人事经理 = 全部。网页这边照同样的规则只载入自己能碰的分店，
    读不到的绝不会被当成「空数据」去重新初始化。
    两处原本会跨店改别人整包的地方改成：
    ① 订货表(orderList)从中央厨房整包拆到共用 key erpv2:ckorder（所有人可读写）；
@@ -1679,7 +1680,7 @@ async function saveCkOrder(){
    发起店送出申请 → 被申请店收到通知 → 被申请店「批准」后，双方店的调拨记录里才会出现、库存同时增减；
    没处理 = 待批准(Pending)；拒绝 = 被拒绝（附原因）。物品：调出方扣库存、调入方加库存；人力借调只记录，不移动员工档案。
    每张申请是 erp_store 里的一条记录：erpv2:req:<发起店>:<被申请店>:<编号>。双方都能读，数据库触发器
-   erp_req_guard 保证：新申请只能是 pending、只有被申请店（或老板/人事经理/区域副经理）能批准/拒绝、批准后不能再改。 */
+   erp_req_guard 保证：新申请只能是 pending、只有被申请店（或老板/人事经理/运营经理）能批准/拒绝、批准后不能再改。 */
 const XFER_APPROVE_ROLES=['owner','hrmgr','area','outletmgr','manager','headchef','ckmgr'];
 const XFER_ROLES=XFER_APPROVE_ROLES.concat(['ckstaff']);
 let XREQ=[], _xreqPollT=null, _xreqSig='', _xferInboxOpen=false, _xferSyncing=false;
@@ -2106,7 +2107,7 @@ function renderTop(){
   if(typeof updateBell==='function')updateBell();
   const ck=OUTLETS.find(o=>o.ck);const branches=OUTLETS.filter(o=>!o.ck);
   const outletSel=document.getElementById('outletSel');
-  const allBranchRole=ROLES[curRole].allBranch;      // 严格：仅 老板/区域副经理 有「全部分店(总和)」
+  const allBranchRole=ROLES[curRole].allBranch;      // 严格：仅 老板/运营经理 有「全部分店(总和)」
   const canAll=allBranchRole;                         // 全部分店(总和) 只给 allBranch 角色——预览身份也不给
   const canBrowse=allBranchRole||isAdminUser();       // 管理员预览可浏览各分店(但不含总和/中央厨房)
   const canCk=can('ck');                              // 中央厨房：仅 老板 + 中央经理/中央员工——预览身份也遵循
@@ -2307,7 +2308,7 @@ function itemVarianceRows(m){
 /* ============ AI 助手（mk109，参照 SUPY 的 Ask Bruce）============
    点右上角「AI」→ 问问题（例：上个月食材成本为什么变了？哪些东西涨价最多？今天先做什么？）。
    网页把「这间店目前的数据摘要」（只含汇总数字；不含员工资料/邮箱/薪资）+ 问题送给 Edge Function ask-ai，由 Claude 只根据摘要回答。
-   老板/副经理还会带上「各分店对比」。摘要在 aiContext() 里组出来，限制长度。 */
+   老板/运营经理还会带上「各分店对比」。摘要在 aiContext() 里组出来，限制长度。 */
 const AI_ROLES=['owner','hrmgr','area','outletmgr','manager','ckmgr'];  // 明记小助手：经理（含店长、中央经理）以上才能用
 function aiAllowed(){return AI_ROLES.indexOf(curRole)>=0&&(!curUser||AI_ROLES.indexOf(curUser.role)>=0);}
 const AI_FN_URL=SUPABASE_URL?(SUPABASE_URL+"/functions/v1/ask-ai"):"";
@@ -2516,7 +2517,7 @@ function healthChecks(){
   // 7 订单
   {const all=(typeof ORDERS!=='undefined'?ORDERS:[]).filter(o=>o&&(!o.outlet||o.outlet===curOutlet));const po=all.filter(o=>o.status==='pending'||!o.status),rc=all.filter(o=>['shipped','partial'].includes(o.status));
    const needC=po.length&&canConfirmOrder(),needR=rc.length&&can('proc');
-   add({k:'orders',st:(needC||needR)?'warn':'ok',t:zh?'订货单':'Orders',go:"openOrdersPanel()",page:'proc',lines:[zh?`待确认 ${po.length} 张${canConfirmOrder()?'':'（由副经理以上确认）'}`:`Pending ${po.length}`,zh?`已发货/部分收货，等收货 ${rc.length} 张`:`To receive ${rc.length}`],todo:needC?(zh?`${po.length} 张订货单待确认`:'Orders to confirm'):needR?(zh?`${rc.length} 张订货单等你收货`:'Orders to receive'):''});}
+   add({k:'orders',st:(needC||needR)?'warn':'ok',t:zh?'订货单':'Orders',go:"openOrdersPanel()",page:'proc',lines:[zh?`待确认 ${po.length} 张${canConfirmOrder()?'':'（由运营经理以上确认）'}`:`Pending ${po.length}`,zh?`已发货/部分收货，等收货 ${rc.length} 张`:`To receive ${rc.length}`],todo:needC?(zh?`${po.length} 张订货单待确认`:'Orders to confirm'):needR?(zh?`${rc.length} 张订货单等你收货`:'Orders to receive'):''});}
   // 8 调拨
   {const me=xferPendingForMe(),mine=XREQ.filter(r=>r.status==='pending'&&r.reqBy===curOutlet);
    add({k:'xfer',st:me.length?'warn':'ok',t:zh?'跨店调拨':'Transfers',go:"goProcSub('transfer')",page:'transfer',lines:[zh?`等我批准 ${me.length} 张`:`To approve ${me.length}`,zh?`我发出、对方还没批 ${mine.length} 张`:`Sent ${mine.length}`],todo:me.length?(zh?`${me.length} 张调拨申请等你批准`:'Transfer requests'):''});}
@@ -2829,7 +2830,7 @@ function pgProc(){
   // 六大作业各自独立界面（中枢导航卡）
   const cards=[];
   if(can('proc')){
-    cards.push(["ordersheet","🛒",LANG==="zh"?"订货单":"Order Sheet",LANG==="zh"?"按供应商下单 · 通知老板/副经理":"By supplier · notify boss",var_amber()]);
+    cards.push(["ordersheet","🛒",LANG==="zh"?"订货单":"Order Sheet",LANG==="zh"?"按供应商下单 · 通知老板/运营经理":"By supplier · notify boss",var_amber()]);
     {const vis=ordVisible(),op=vis.filter(o=>['pending','confirmed','shipped','partial'].includes(o.status)).length;cards.push(["ordtrack","📦",LANG==="zh"?"订单进度":"Order status",LANG==="zh"?(op?op+" 张进行中 · 确认/发货/收货":"确认 · 发货 · 收货"):"Track orders",op?var_blue():var_teal()]);}
     cards.push(["purchase","📥",LANG==="zh"?"进货单":"Goods-In",LANG==="zh"?"按供应商 · 每年月日进货记录":"By supplier · dated records",var_green()]);
     {const pn=priceChanges().filter(c=>c.st==='new').length;cards.push(["pricechg","📈",LANG==="zh"?"价格变动":"Price Changes",LANG==="zh"?(pn?pn+" 项待核对 · 进货涨跌提醒":"进货价格涨跌提醒"):"Purchase price alerts",pn?var_red():var_teal()]);}
@@ -3063,7 +3064,7 @@ function backOi(){if(oiMonth)oiMonth=null;else oiSel=null;render();window.scroll
 function oiInvoices(){return (typeof ORDERS!=='undefined'?ORDERS:[]).filter(o=>o&&ordConfirmedLike(o)&&o.invoiceNo&&o.outlet===curOutlet);}
 function oiMonthOf(o){return new Date(o.confirmedAt||o.ts).toLocaleDateString('en-CA').slice(0,7);}
 function oiCanDel(){return ['owner','area','hrmgr'].includes(curRole)&&!isAgg();}
-async function delInvoice(id){if(!oiCanDel()){alert(LANG==="zh"?"只有区域副经理及以上可删除 Invoice。":"Only Area Manager & above can delete.");return;}if(!confirm(LANG==="zh"?"删除此 Invoice？此操作无法复原。":"Delete this invoice?"))return;await loadOrders();ORDERS=ORDERS.filter(o=>o.id!==id);await saveOrders();try{if(typeof auditLog==='function')auditLog(LANG==="zh"?"删除Invoice":"Delete invoice",id,"","");}catch(e){}render();}
+async function delInvoice(id){if(!oiCanDel()){alert(LANG==="zh"?"只有运营经理及以上可删除 Invoice。":"Only Operations Manager & above can delete.");return;}if(!confirm(LANG==="zh"?"删除此 Invoice？此操作无法复原。":"Delete this invoice?"))return;await loadOrders();ORDERS=ORDERS.filter(o=>o.id!==id);await saveOrders();try{if(typeof auditLog==='function')auditLog(LANG==="zh"?"删除Invoice":"Delete invoice",id,"","");}catch(e){}render();}
 let oiQuery='';
 function oiBackAll(){oiSel=null;oiMonth=null;render();window.scrollTo(0,0);}
 function pgOrderInv(){
@@ -3083,7 +3084,7 @@ function pgOrderInv(){
       <div class="inv-qty"><div class="inv-q">${money(r.tot)}</div><div class="mini">${zh?'累计':'total'} ›</div></div></div>`).join('')||`<div class="empty">${zh?"暂无 Invoice。请先在『采购进销 → 订货单』下单并确认生成 Invoice。":"No invoices yet."}</div>`;
     return `<div class="fb"><h2 class="h" style="margin:0;">${zh?"订单发票":"Order Invoices"}</h2></div>
       <div class="grid g3 sup-sum"><div class="kpi"><div class="k">${zh?"Invoice 总数":"Invoices"}</div><div class="v sm">${all.length}</div></div><div class="kpi"><div class="k">${zh?"本月金额":"This month"}</div><div class="v sm">${money(sum(monthAll))}</div></div><div class="kpi"><div class="k">${zh?"供应商":"Suppliers"}</div><div class="v sm">${sups.length}</div></div></div>
-      <details class="hintd"><summary>${zh?'说明':'Notes'}</summary><div>${zh?"订货单确认后生成的 Invoice 都在这里。点供应商 → 选月份 → 查看/打印。区域副经理及以上可删除。":"Invoices from confirmed order sheets."}</div></details>
+      <details class="hintd"><summary>${zh?'说明':'Notes'}</summary><div>${zh?"订货单确认后生成的 Invoice 都在这里。点供应商 → 选月份 → 查看/打印。运营经理及以上可删除。":"Invoices from confirmed order sheets."}</div></details>
       ${all.length?`<div class="dv-tools"><input class="dv-search" type="search" placeholder="${zh?'搜索供应商…':'Search suppliers…'}" value="${oEsc(oiQuery)}" oninput="oiQuery=this.value;dvFilter(this.value)" autocomplete="off"></div>`:''}
       <div id="dvList">${cards}</div>`;
   }
@@ -3677,14 +3678,14 @@ function pgPayroll(){
       </div>
     </div>`;
   }
-  // total：区域副经理，只看总数
+  // total：运营经理，只看总数
   if(scope==="total"){
-    // 区域副经理读不到个人薪资：总数来自各分店整包里的 labourSum（老板/人事经理存档时算好）
+    // 运营经理读不到个人薪资：总数来自各分店整包里的 labourSum（老板/人事经理存档时算好）
     const sums=(isAgg()?branchIds():[curOutlet]).map(id=>(DB[id]||{}).labourSum).filter(Boolean);
     const sm=k=>sums.reduce((s,x)=>s+(+x[k]||0),0);
     const totGross=sm('gross'),totEpfEr=sm('epfEr'),totLevy=sm('levy');
     return `<h2 class="h" style="margin-top:2px;">👥 ${LANG==="zh"?"人事薪资 Payroll":"Payroll"} <span class="tag">v${BUILD}</span></h2>
-    <div class="al al-a"><div class="t">🔒 ${LANG==="zh"?"权限限制":"Restricted"}</div>${LANG==="zh"?"你的角色（区域副经理）只能查看薪资总额，无法查看每位员工的个人薪水明细。":"Totals only, no individual salaries."}</div>
+    <div class="al al-a"><div class="t">🔒 ${LANG==="zh"?"权限限制":"Restricted"}</div>${LANG==="zh"?"你的角色（运营经理）只能查看薪资总额，无法查看每位员工的个人薪水明细。":"Totals only, no individual salaries."}</div>
     <div class="grid g2">
       <div class="kpi"><div class="k">${LANG==="zh"?"员工人数":"Headcount"}</div><div class="v">${headcount}</div></div>
       <div class="kpi"><div class="k">${LANG==="zh"?"薪资总额(应发)":"Gross Total"}</div><div class="v sm">${money(totGross)}</div></div>
@@ -3842,7 +3843,7 @@ function visibleStaff(){
 function empById(id){return (d().staff||[]).find(e=>e.id===id);}
 
 /* 员工档案 */
-function hrEditable(){return canW('hr')&&hrScope()==="all";} // 员工档案的备注/更改/增加/删减 只交给 区域副经理/人事经理/老板(hrScope=all)；店面经理/店长/厨师长/中央/员工 只能查看，不能操作
+function hrEditable(){return canW('hr')&&hrScope()==="all";} // 员工档案的备注/更改/增加/删减 只交给 运营经理/人事经理/老板(hrScope=all)；店面经理/店长/厨师长/中央/员工 只能查看，不能操作
 let hrSort='name',hrRole='all',hrQuery='';
 function hrSortSet(v){hrSort=v;render();}function hrRoleSet(v){hrRole=v;render();}
 function pgHR(){
@@ -3969,7 +3970,7 @@ const BH_ICON='icon-192.png';
 let ckTab='prod';
 function setCkTab(t){ckTab=t;render();window.scrollTo(0,0);}
 function oEsc(s){return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
-/* 权限：区域副经理及以上可改 DESCRIPTION / 增删品项；店长及以下(厨师长)只能改数量 QTY */
+/* 权限：运营经理及以上可改 DESCRIPTION / 增删品项；店长及以下(厨师长)只能改数量 QTY */
 function ckCanOrderDesc(){return ['owner','area','hrmgr'].includes(curRole)&&!isAgg();}
 function ckCanOrderQty(){return ['owner','area','hrmgr','manager','headchef'].includes(curRole)&&!isAgg();}
 function ckCanOrderAccess(){return can('ck')||ckCanOrderQty();}
@@ -4076,7 +4077,7 @@ function orderListHTML(){
     return `<div class="dv-row os-row ${filled?'has':''}" data-name="uniform size ${oEsc(String(u.size||'').toLowerCase())}"><div class="os-desc"><b>Size : ${oEsc(u.size)}</b>${u.pre?` <span class="pill p-a">${zh?"预订":"Pre-order"}</span>`:''}</div><div class="dv-in gcw"><label>${zh?'数量 QTY':'QTY'}<input inputmode="decimal" value="${oEsc(u.q)}" ${wQty?'':'disabled'} oninput="ckQtyIn(this,'u','',${i})"></label></div></div>`;}).join(''):'';
   return `<div class="grid g2 sup-sum"><div class="kpi"><div class="k">${zh?"品项":"Items"}</div><div class="v sm">${c.t}</div></div><div class="kpi"><div class="k">${zh?"已填数量":"Filled"}</div><div class="v sm pos"><span id="os-n">${c.n}</span></div></div></div>
     <div class="dv-tools"><input class="dv-search" type="search" placeholder="${zh?'搜索品项…':'Search items…'}" oninput="dvFilter(this.value)" autocomplete="off"><div class="seg"><button class="${ckOnlyFilled?'':'active'}" onclick="ckOnlyFilledSet(false)">${zh?'全部':'All'}</button><button class="${ckOnlyFilled?'active':''}" onclick="ckOnlyFilledSet(true)">${zh?'只看已填':'Filled'}</button></div></div>
-    <details class="hintd"><summary>${zh?'说明':'Notes'}</summary><div>${wDesc?(zh?"照订货表填「数量 QTY」；品名与数量都能改，也能「+ 品项」或 🗑️ 删除。填好按「下单」提交。":"Fill QTY; rows editable."):(zh?"填「数量 QTY」后按「下单」提交（会通知老板与区域副经理）。品名与描述由区域副经理及以上维护。":"Fill QTY then place order.")}</div></details>
+    <details class="hintd"><summary>${zh?'说明':'Notes'}</summary><div>${wDesc?(zh?"照订货表填「数量 QTY」；品名与数量都能改，也能「+ 品项」或 🗑️ 删除。填好按「下单」提交。":"Fill QTY; rows editable."):(zh?"填「数量 QTY」后按「下单」提交（会通知老板与运营经理）。品名与描述由运营经理及以上维护。":"Fill QTY then place order.")}</div></details>
     <div id="dvList">${sec('A')}${sec('B')}${sec('C')}${uniHTML}</div>
     <div class="dv-foot"><span>${zh?'已填':'Filled'} <b id="os-n2">${c.n}</b> / ${c.t}</span>${submitBtn}</div>`;
 }
@@ -4188,12 +4189,12 @@ async function submitOrder(){
   const total=lines.length+uni.length;
   if(!total){alert(LANG==="zh"?"请先填数量再下单。":"Enter quantities first.");return;}
   if(!confirm((LANG==="zh"?`确定下单？共 ${total} 项。`:`Place order? ${total} items.`)))return;
-  if(!confirm((LANG==="zh"?"再次确认：提交后会通知老板与区域副经理。确定提交？":"Confirm again: owner & area manager will be notified. Submit?")))return;
+  if(!confirm((LANG==="zh"?"再次确认：提交后会通知老板与运营经理。确定提交？":"Confirm again: owner & area manager will be notified. Submit?")))return;
   const by=curUser?{name:curUser.name,email:curUser.email,role:curRole}:{name:ROLES[curRole].name,email:'',role:curRole};
   const order={id:Date.now()+'-'+Math.random().toString(36).slice(2,6),ts:Date.now(),by,outlet:curOutlet,outletName:nm(outletObj()),lines,uniform:uni,status:'pending'};
   await loadOrders(); ORDERS.push(order); await saveOrders(); sendOrderPush(order);
   try{if(typeof auditLog==='function')auditLog(LANG==="zh"?"订货提交":"Order",by.name+" · "+total+(LANG==="zh"?"项":" items"),"","");}catch(e){}
-  alert(LANG==="zh"?("✅ 已下单！共 "+total+" 项，已通知老板与区域副经理。"):("✅ Order placed! "+total+" items. Owner & Area Manager notified."));
+  alert(LANG==="zh"?("✅ 已下单！共 "+total+" 项，已通知老板与运营经理。"):("✅ Order placed! "+total+" items. Owner & Operations Manager notified."));
 }
 function orderLineHTML(order){
   const rows=(order.lines||[]).map(l=>`<tr><td>${oEsc((l.d||'').replace(/\n/g,' / '))}</td><td style="text-align:center;font-weight:700;">${oEsc(l.q)}</td></tr>`).join('');
@@ -4202,7 +4203,7 @@ function orderLineHTML(order){
 }
 
 /* ============ 订货单状态流程（mk104，参照 SUPY Orders：Submitted/Approved/Shipped/Partially Received/Closed/Rejected/Cancelled）============
-   待确认 pending → 已确认 confirmed（副经理以上确认，生成 Invoice）→ 已发货 shipped（副经理以上/中央厨房标记）→ 已收货 received（下单的分店收货；
+   待确认 pending → 已确认 confirmed（运营经理以上确认，生成 Invoice）→ 已发货 shipped（运营经理以上/中央厨房标记）→ 已收货 received（下单的分店收货；
    少收＝部分收货 partial，可再收，或「关闭（不补了）」）。另有 已拒绝 rejected（带原因）、已取消 cancelled。每一步记进 o.history（谁、几时、备注）。
    确认之后的状态（含已收货）都算「已确认的订单」：应付账款、订单发票照旧看得到。收货只记「收了多少」，不会动库存（库存走「进货单」，免得算两次）。 */
 const ORD_ST={pending:['p-a','待确认','Pending'],confirmed:['p-g','已确认','Confirmed'],shipped:['p-b','已发货','Shipped'],partial:['p-a','部分收货','Partially received'],received:['p-g','已收货','Received'],rejected:['p-r','已拒绝','Rejected'],cancelled:['','已取消','Cancelled']};
@@ -4231,7 +4232,7 @@ async function ordSetStatus(id,st,note,msg){
   if(msg)try{alert(msg);}catch(e){}
   openOrderDetail(id);
 }
-async function ordShip(id){if(!ordCanShip())return alert(LANG==="zh"?'只有副经理以上或中央厨房可标记发货':'No permission');if(!confirm(LANG==="zh"?'标记为「已发货」？':'Mark shipped?'))return;await ordSetStatus(id,'shipped','');}
+async function ordShip(id){if(!ordCanShip())return alert(LANG==="zh"?'只有运营经理以上或中央厨房可标记发货':'No permission');if(!confirm(LANG==="zh"?'标记为「已发货」？':'Mark shipped?'))return;await ordSetStatus(id,'shipped','');}
 async function ordReject(id){if(!ordIsApprover())return;const r=prompt(LANG==="zh"?'拒绝这张订货单的原因：':'Reason to reject:');if(r==null)return;await ordSetStatus(id,'rejected',r.trim()||'未写原因');}
 async function ordCancel(id){const o=orderById(id);if(!o||!ordCanCancel(o))return;if(!confirm(LANG==="zh"?'取消这张订货单？':'Cancel this order?'))return;await ordSetStatus(id,'cancelled','');}
 async function ordReopen(id){if(!ordIsApprover())return;if(!confirm(LANG==="zh"?'把这张订单退回「待确认」？':'Reopen as pending?'))return;await ordSetStatus(id,'pending','退回待确认');}
@@ -4284,7 +4285,7 @@ function openOrdersPanel(){
   const notifBtn=('Notification'in window)?`<button class="btn gold sm" onclick="reqNotify()">🔔 ${LANG==="zh"?"开启/登记本机接收通知":"Enable / register this device"}</button> <span class="mini" id="notifStatus">${permTxt}</span>`:'';
   openForm(`<h3>${LANG==="zh"?(ordIsApprover()?"收到的订单":"订单进度"):"Orders"} <span class="x" onclick="closeM()">×</span></h3>
     <div style="margin-bottom:8px;">${notifBtn}</div>
-    <div class="hint" style="margin-top:0;">${LANG==="zh"?"点一张订单进去：副经理以上可「确认/拒绝」，确认后标记「已发货」；下单的分店在货到后点「收货」。":"Tap an order to edit & confirm."}</div>
+    <div class="hint" style="margin-top:0;">${LANG==="zh"?"点一张订单进去：运营经理以上可「确认/拒绝」，确认后标记「已发货」；下单的分店在货到后点「收货」。":"Tap an order to edit & confirm."}</div>
     ${chips}<div style="max-height:58vh;overflow:auto;">${body}</div>`);
 }
 function orderById(id){return ORDERS.find(o=>o.id===id);}
@@ -4334,7 +4335,7 @@ function openOrderDetail(id){
   const mb=document.getElementById('mbox');if(mb)mb.classList.add('m-wide');
 }
 async function deleteOrder(id){if(!confirm(LANG==="zh"?"删除此订单记录？":"Delete this order?"))return;await orderEditFlush();ORDERS=ORDERS.filter(o=>o.id!==id);await saveOrders();openOrdersPanel();}
-/* 确认订单(仅区域副经理及以上) → 生成 Invoice 编号 */
+/* 确认订单(仅运营经理及以上) → 生成 Invoice 编号 */
 function canConfirmOrder(){return ['owner','area','hrmgr'].includes(curRole);}
 function nextInvoiceNo(){
   const day=new Date().toLocaleDateString('en-CA').replace(/-/g,'');
@@ -4342,7 +4343,7 @@ function nextInvoiceNo(){
   return 'INV-'+day+'-'+String(n).padStart(3,'0');
 }
 async function confirmOrder(id){
-  if(!canConfirmOrder()){alert(LANG==="zh"?"只有区域副经理及以上可确认。":"Only Area Manager & above.");return;}
+  if(!canConfirmOrder()){alert(LANG==="zh"?"只有运营经理及以上可确认。":"Only Operations Manager & above.");return;}
   if(!confirm(LANG==="zh"?"确定此订单？确认后可创建 Invoice。":"Confirm this order?"))return;
   await orderEditFlush();const o=orderById(id);if(!o){openOrdersPanel();return;}
   o.status='confirmed';if(!o.invoiceNo)o.invoiceNo=nextInvoiceNo();ordHist(o,'confirmed',o.invoiceNo);
@@ -4414,12 +4415,12 @@ async function submitSheetOrder(sup){
   const lines=a.filter(it=>String(it.q||'').trim()!=='').map(it=>({d:it.d,q:it.q}));
   if(!lines.length){alert(LANG==="zh"?"请先填数量再下单。":"Enter quantities first.");return;}
   if(!confirm((LANG==="zh"?("确定向 "+sup+" 下单？共 "+lines.length+" 项。"):("Order to "+sup+"? "+lines.length+" items."))))return;
-  if(!confirm((LANG==="zh"?"再次确认：提交后会通知老板与区域副经理。确定提交？":"Confirm again: owner & area manager notified. Submit?")))return;
+  if(!confirm((LANG==="zh"?"再次确认：提交后会通知老板与运营经理。确定提交？":"Confirm again: owner & area manager notified. Submit?")))return;
   const by=curUser?{name:curUser.name,email:curUser.email,role:curRole}:{name:ROLES[curRole].name,email:'',role:curRole};
   const order={id:Date.now()+'-'+Math.random().toString(36).slice(2,6),ts:Date.now(),by,outlet:curOutlet,outletName:nm(outletObj()),supplier:sup,lines,uniform:[],status:'pending'};
   await loadOrders();ORDERS.push(order);await saveOrders();sendOrderPush(order);
   try{if(typeof auditLog==='function')auditLog(LANG==="zh"?"订货提交":"Order",sup+" · "+by.name+" · "+lines.length+(LANG==="zh"?"项":" items"),"","");}catch(e){}
-  alert(LANG==="zh"?("✅ 已向 "+sup+" 下单！共 "+lines.length+" 项，已通知老板与区域副经理。"):("✅ Order to "+sup+" placed."));
+  alert(LANG==="zh"?("✅ 已向 "+sup+" 下单！共 "+lines.length+" 项，已通知老板与运营经理。"):("✅ Order to "+sup+" placed."));
 }
 function osQtyIn(inp,sup,i){setOsQty(sup,i,inp.value);const row=inp.closest('.os-row');if(row)row.classList.toggle('has',(+inp.value||0)>0||String(inp.value).trim()!=='');
   const n=document.querySelectorAll('.os-row.has').length;['os-n','os-n2'].forEach(id=>{const e=document.getElementById(id);if(e)e.textContent=n;});}
@@ -4435,7 +4436,7 @@ function osTable(sup){
   const submitBtn=wQty?`<button class="btn brand sm" onclick="submitSheetOrder('${gEsc(sup)}')">${zh?"下单":"Place order"}</button>`:'';
   return `<div class="grid g2 sup-sum"><div class="kpi"><div class="k">${zh?"品项":"Items"}</div><div class="v sm">${a.length}</div></div><div class="kpi"><div class="k">${zh?"已填数量":"Filled"}</div><div class="v sm pos"><span id="os-n">${filled}</span></div></div></div>
     <div class="dv-tools"><input class="dv-search" type="search" placeholder="${zh?'搜索品项…':'Search items…'}" oninput="dvFilter(this.value)" autocomplete="off">${wDesc?`<button class="btn ghost sm" onclick="addOsItem('${gEsc(sup)}')">+ ${zh?'品项':'Item'}</button>`:''}</div>
-    <details class="hintd"><summary>${zh?'说明':'Notes'}</summary><div>${zh?"填「数量」后按「下单」提交（会通知老板与区域副经理）。":"Fill QTY then place order."}${wDesc?(zh?" 品名可直接点开修改，可「+ 品项」或 🗑️ 删除。":""):''}</div></details>
+    <details class="hintd"><summary>${zh?'说明':'Notes'}</summary><div>${zh?"填「数量」后按「下单」提交（会通知老板与运营经理）。":"Fill QTY then place order."}${wDesc?(zh?" 品名可直接点开修改，可「+ 品项」或 🗑️ 删除。":""):''}</div></details>
     <div id="dvList">${rows}</div>
     <div class="dv-foot"><span>${zh?'已填':'Filled'} <b id="os-n2">${filled}</b> / ${a.length}</span>${submitBtn}</div>`;
 }
@@ -4453,7 +4454,7 @@ function pgOrderSheet(){
     return `<div class="fb"><h2 class="h" style="margin:0;">${zh?"订货单":"Order Sheet"}</h2><div style="display:flex;gap:8px;align-items:center;"><button class="btn ghost sm" onclick="openOrdersPanel()">${zh?"订单进度":"Status"}</button>${wSup?`<button class="btn brand sm" onclick="addSupplier()">+ ${zh?"供应商":"Supplier"}</button>${actm([{l:supManage?(zh?'完成管理':'Done managing'):(zh?'管理供应商（改名/删除）':'Manage suppliers'),on:'supManage=!supManage;render()'}])}`:''}${back}</div></div>
       <div class="grid g2 sup-sum"><div class="kpi"><div class="k">${zh?"供应商":"Suppliers"}</div><div class="v sm">${sups.length}</div></div><div class="kpi"><div class="k">${zh?"流程":"Flow"}</div><div class="v sm" style="font-size:13px;">${zh?"选供应商 → 填数量 → 下单":"Pick → qty → order"}</div></div></div>
       <div class="dv-tools"><input class="dv-search" type="search" placeholder="${zh?'搜索供应商…':'Search suppliers…'}" value="${oEsc(supQuery||'')}" oninput="supQuery=this.value;dvFilter(this.value)" autocomplete="off"></div>
-      <details class="hintd"><summary>${zh?'说明':'Notes'}</summary><div>${zh?"下单会通知老板与区域副经理。中央厨房 (TCY OKR) 是含图片的版本。":"Orders notify owner & area manager."}</div></details>
+      <details class="hintd"><summary>${zh?'说明':'Notes'}</summary><div>${zh?"下单会通知老板与运营经理。中央厨房 (TCY OKR) 是含图片的版本。":"Orders notify owner & area manager."}</div></details>
       <div id="dvList">${cards}</div>`;
   }
   const supHead=`<div class="fb"><h2 class="h" style="margin:0;">${selSupplier}</h2><button class="btn ghost sm" onclick="backSupplier()">← ${zh?"供应商列表":"Suppliers"}</button></div>`;
@@ -4635,7 +4636,7 @@ function pgStock(){
   :`<div class="card" style="padding:26px 18px;text-align:center;"><div style="font-weight:700;font-size:16px;margin-bottom:6px;">${zh?'还没有盘点记录':'No counts yet'}</div>${canW('stock')?`<button class="btn brand" onclick="openM('stocktake')">+ ${zh?'开始盘点':'Start a count'}</button>`:''}</div>`}`;
 }
 
-/* ---- 权限编辑器（仅 老板/人事经理、区域副经理 可用）---- */
+/* ---- 权限编辑器（仅 老板/人事经理、运营经理 可用）---- */
 const PERM_MODULES=[
   ["dash","利润大盘","Dashboard"],["sales","销售POS","Sales"],["proc","采购/退货补货","Purchase/Returns"],["transfer","跨店调拨","Transfer"],
   ["waste","报废损耗","Wastage"],["ent","招待赠送","Offers"],["ck","中央厨房","Central Kitchen"],["inv","库存","Inventory"],
@@ -4688,7 +4689,7 @@ function permEditorHTML(){
       </div>
     </div>`).join('')}`;
 }
-/* ---- 员工操作监察：跨分店审计（仅 老板/区域副经理）---- */
+/* ---- 员工操作监察：跨分店审计（仅 老板/运营经理）---- */
 let auditBranch='all', auditRole='all';
 function setAuditBranch(v){auditBranch=v;render();}
 function setAuditRole(v){auditRole=v;render();}
@@ -4726,7 +4727,7 @@ function auditMonitorHTML(){
   const branchOpts=`<option value="all">${LANG==="zh"?"全部分店":"All branches"}</option>`+OUTLETS.map(o=>`<option value="${o.id}" ${auditBranch===o.id?'selected':''}>${nm(o)}</option>`).join('');
   const roleOpts=`<option value="all">${LANG==="zh"?"全部岗位":"All roles"}</option>`+['manager','headchef','staff'].map(r=>`<option value="${r}" ${auditRole===r?'selected':''}>${roleName[r]}</option>`).join('');
   const body=`<div style="margin-bottom:8px;"><button class="btn ghost sm" onclick="refreshAudit()">🔄 ${LANG==="zh"?"刷新":"Refresh"}</button></div>
-  <div class="hint">${LANG==="zh"?"老板 / 区域副经理专用：查看各分店 店长、厨师长、员工 的新增 · 修改 · 删除操作。可按分店与岗位筛选。":"Owner / Area only: what Managers, Head Chefs & Staff added, edited or deleted, across all branches."}</div>
+  <div class="hint">${LANG==="zh"?"老板 / 运营经理专用：查看各分店 店长、厨师长、员工 的新增 · 修改 · 删除操作。可按分店与岗位筛选。":"Owner / Area only: what Managers, Head Chefs & Staff added, edited or deleted, across all branches."}</div>
   <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px;">
     <select style="${selStyle}" onchange="setAuditBranch(this.value)">${branchOpts}</select>
     <select style="${selStyle}" onchange="setAuditRole(this.value)">${roleOpts}</select>
@@ -4736,7 +4737,7 @@ function auditMonitorHTML(){
   </tbody></table></div>`;
   return settingsPanel(`🔍 ${LANG==="zh"?"员工操作监察（跨分店审计）":"Staff Activity Monitor"} <span class="mini" style="font-weight:400;">· ${rows.length}</span>`, body);
 }
-/* ---- 白名单 / 用户管理（仅 老板/区域副经理，需云端）---- */
+/* ---- 白名单 / 用户管理（仅 老板/运营经理，需云端）---- */
 function roleShort(rk){return LANG==="zh"?(ROLES[rk]?ROLES[rk].name.split(' ')[0].split('/')[0]:rk):(ROLES[rk]?ROLES[rk].en:rk);}
 function whitelistHTML(){
   if(!canEditPerms())return '';
@@ -4793,7 +4794,7 @@ function pgSettings(){
   const roleBody=`<div class="card" style="padding:12px;margin-bottom:12px;">
     <div class="fr"><label>${LANG==="zh"?"当前角色权限 (RBAC)":"Role Permissions"}</label>
     <div class="mini">${Object.entries(ROLES).map(([k,v])=>`<div style="padding:4px 0;">${k===curRole?'▶ ':''}<b>${LANG==="zh"?v.name:v.en}</b>：${v.can.length} ${LANG==="zh"?"个模块":"modules"}</div>`).join('')}</div></div>
-    <div class="mini">${LANG==="zh"?"切换角色请用右上角选单。老板/人事经理：全权含个人薪资。区域副经理：全权但薪资只看总数、不看个人。店长：本店采购/盘点/损耗/OpEx+报表。厨师长：生产/成品入库/配送调拨。员工：打卡/请假/查看自己薪资。":"Switch role top-right."}</div>
+    <div class="mini">${LANG==="zh"?"切换角色请用右上角选单。老板/人事经理：全权含个人薪资。运营经理：全权但薪资只看总数、不看个人。店长：本店采购/盘点/损耗/OpEx+报表。厨师长：生产/成品入库/配送调拨。员工：打卡/请假/查看自己薪资。":"Switch role top-right."}</div>
   </div>`;
   const verBody=`${settingsPanel('📦 '+(LANG==="zh"?"版本更新":"App Version"),`
     <div class="mini">${LANG==="zh"?"当前版本":"Current version"}：<b>v${BUILD}</b></div>
@@ -5111,7 +5112,7 @@ async function saveEmp(){
   if(!hrEditable())return;
   const gV=id=>{const el=document.getElementById(id);return el?el.value:'';};
   const n=gV('em_name').trim();if(!n)return alert(LANG==="zh"?"请输入姓名":"Name required");
-  const canPay=canSeeSalary(); // 老板/人事经理才碰得到薪资字段；区域副经理只改基本资料
+  const canPay=canSeeSalary(); // 老板/人事经理才碰得到薪资字段；运营经理只改基本资料
   const basic=canPay?(+gV('em_basic')||0):0;
   const nationality=gV('em_nat')||'马来西亚';const local=isLocalNat(nationality);
   const marital=gV('em_marital')||'single';
@@ -5326,7 +5327,44 @@ function ensureGridCat(sup){d().gridCat=d().gridCat||{};const meta=(typeof SUPPL
   return cat;}
 function gridCatRow(sup,cid){return ensureGridCat(sup).find(c=>c.cid===cid);}
 /* 月份列表（可自行增删；默认 2026-06 至当月，加上已有数据的月份） */
-function ensureGridMonths(){if(!Array.isArray(d().gridMonths))d().gridMonths=monthsFrom('2026-06');return d().gridMonths;}
+// 每月 1 号马来西亚时间 09:00 起，自动把新月份加进进货单/退货/月末盘点的月份列表（只加一次；之后被运营经理删掉就不会再自动补回来）
+function myNow(){return new Date(Date.now()+8*3600*1000);}
+function autoGridMonth(){
+  const n=myNow(),y=n.getUTCFullYear(),m=n.getUTCMonth()+1,day=n.getUTCDate(),hr=n.getUTCHours();
+  if(day===1&&hr<9)return false;                      // 1 号 9 点之前还不创建
+  const key=y+'-'+String(m).padStart(2,'0');const x=d();if(!Array.isArray(x.gridMonths))x.gridMonths=monthsFrom('2026-06');
+  if(x.gridMonthAuto===key)return false;
+  x.gridMonthAuto=key;if(!x.gridMonths.includes(key)){x.gridMonths.push(key);}return true;
+}
+function ensureGridMonths(){if(!Array.isArray(d().gridMonths))d().gridMonths=monthsFrom('2026-06');if(autoGridMonth())setTimeout(()=>{try{save();}catch(e){}},0);return d().gridMonths;}
+setInterval(()=>{try{if(typeof AUTH==='function'&&curUser&&['purchase','grn','monthend'].includes(curPage)&&autoGridMonth()){save();if(!isBusyEditing())render();}}catch(e){}},60000);
+// 长按月份（0.5 秒）：运营经理以上可编辑 / 删除
+function canMonthEdit(){return ['owner','hrmgr','area'].includes(curRole)&&(!curUser||['owner','hrmgr','area'].includes(curUser.role));}
+let _mlpT=null,_mlpFired=false;
+function mLP(e,m,mod){_mlpFired=false;clearTimeout(_mlpT);if(!canMonthEdit())return;_mlpT=setTimeout(()=>{_mlpFired=true;try{navigator.vibrate&&navigator.vibrate(25);}catch(x){}openMonthMenu(m,mod);},500);}
+function mLPc(){clearTimeout(_mlpT);}
+function mTap(m){if(_mlpFired){_mlpFired=false;return;}setLedgerMonth(m);}
+function monthHasData(m,mod){return (d()[ledgerCfg(mod).arr]||[]).some(r=>r.supplier===selSupplier&&(r.date||'').slice(0,7)===m);}
+function openMonthMenu(m,mod){
+  const zh=LANG==="zh",has=monthHasData(m,mod);
+  openForm(`<h3>${monthLabel(m)} <span class="x" onclick="closeM()">×</span></h3>
+    ${has?`<div class="mini" style="margin-bottom:10px;color:#b42318;">${zh?'这个月份已经有记录，不能改名或删除。要删请先把这个月的记录清掉。':'This month has records; clear them first.'}</div>`:''}
+    <div style="display:grid;gap:10px;">
+      <button class="btn ghost block" ${has?'disabled':''} onclick="monthEdit('${m}')">${zh?'编辑月份（改成别的月份）':'Edit month'}</button>
+      <button class="btn block" style="color:#b42318;border:1px solid #f0b4ae;background:transparent;" ${has?'disabled':''} onclick="monthDelete('${m}')">${zh?'删除月份':'Delete month'}</button></div>`);
+}
+async function monthEdit(m){
+  const zh=LANG==="zh";const v=(prompt(zh?`把 ${monthLabel(m)} 改成（格式 YYYY-MM）：`:'New month (YYYY-MM):',m)||'').trim();
+  if(!v||v===m)return;if(!/^\d{4}-(0[1-9]|1[0-2])$/.test(v))return alert(zh?'格式不对，要像 2026-12':'Bad format');
+  const gm=ensureGridMonths();if(gm.includes(v))return alert(zh?'这个月份已经存在':'Already exists');
+  const i=gm.indexOf(m);if(i>=0)gm[i]=v;else gm.push(v);gm.sort();
+  try{auditLog('编辑月份',m+' → '+v);}catch(e){}await save();closeM();if(ledgerMonth===m)ledgerMonth=v;render();
+}
+async function monthDelete(m){
+  const zh=LANG==="zh";if(!confirm(zh?`确定删除 ${monthLabel(m)} 这个月份？（只是拿掉这个月份标签，没有记录会被删）`:'Delete this month?'))return;
+  const gm=ensureGridMonths();const i=gm.indexOf(m);if(i>=0)gm.splice(i,1);
+  try{auditLog('删除月份',m);}catch(e){}await save();closeM();if(ledgerMonth===m)ledgerMonth='all';render();
+}
 async function addGridMonth(){const m=(prompt(LANG==="zh"?"添加月份 (YYYY-MM)：":"Add month (YYYY-MM):",TODAY.slice(0,7))||'').trim();if(!/^\d{4}-\d{2}$/.test(m))return;const gm=ensureGridMonths();if(!gm.includes(m))gm.push(m);await save();render();}
 async function delGridMonth(m){const gm=ensureGridMonths();const i=gm.indexOf(m);if(i>=0)gm.splice(i,1);await save();render();}
 async function setGridSpec(mod,sup,cid,val){const c=gridCatRow(sup,cid);if(c)c.spec=val;(d()[ledgerCfg(mod).arr]||[]).forEach(r=>{if(r.supplier===sup&&r.cid===cid)r.spec=val;});gridSave(mod,sup);}
@@ -5836,7 +5874,7 @@ function pgLedger(mod){
   const months=[...new Set([...ensureGridMonths(),...dataMonths])].sort().reverse();
   const curM=(ledgerMonth!=='all'&&months.includes(ledgerMonth))?ledgerMonth:(months.includes(TODAY.slice(0,7))?TODAY.slice(0,7):months[0]);
   const supHead=`<div class="fb"><h2 class="h" style="margin:0;">${cfg.icon} ${selSupplier}</h2><button class="btn ghost sm" onclick="backSupplier()">← ${LANG==="zh"?"供应商列表":"Suppliers"}</button></div>`;
-  const tabs=`<div class="seg mtabs" style="flex-wrap:wrap;margin-bottom:8px;">${months.map(m=>`<button class="${m===curM?'active':''}" onclick="setLedgerMonth('${m}')">${monthLabel(m)}${writable&&!dataMonths.includes(m)?` <span class="ib" title="${LANG==="zh"?'从列表移除(空月)':'remove'}" onclick="event.stopPropagation();delGridMonth('${m}')">×</span>`:''}</button>`).join('')}${writable?`<button onclick="addGridMonth()">+ ${LANG==="zh"?"月份":"Month"}</button>`:''}</div>`;
+  const tabs=`<div class="seg mtabs" style="flex-wrap:wrap;margin-bottom:8px;">${months.map(m=>`<button class="${m===curM?'active':''}" onclick="mTap('${m}')" onpointerdown="mLP(event,'${m}','${mod}')" onpointerup="mLPc()" onpointerleave="mLPc()" onpointercancel="mLPc()" oncontextmenu="return false">${monthLabel(m)}</button>`).join('')}${writable?`<button onclick="addGridMonth()">+ ${LANG==="zh"?"月份":"Month"}</button>`:''}</div>`;
   const hint=`<div class="hint">${LANG==="zh"?"选月份 → 直接在表格里填『数量』(输入即时算金额、即时更新总计)。品项>10个用『行=品项 列=日期』，≤10个用『行=日期 列=品项』。可『+品项』『+日期』或用 × / 🗑️ 删除，随时改。":"Pick a month, type quantities in the grid."} <span class="mini" style="opacity:.6;">build ${BUILD}</span></div>`;
   if(mod==='monthend'&&curLedgerView()==='day')return `${supHead}${tabs.replace('seg mtabs','seg mtabs nox')}${monthEndViewHTML(selSupplier,curM)}`;
   if(mod==='purchase'&&curLedgerView()==='day')return `${supHead}${tabs.replace('seg mtabs','seg mtabs nox')}${dayViewHTML(selSupplier,curM)}<div id="gridSummary">${gridSummaryHTML(mod,selSupplier,curM)}</div>`;
@@ -7173,7 +7211,7 @@ async function afterAuth(user){
 }
 async function authLogout(idleReason){if(typeof dismissIdleWarn==='function')dismissIdleWarn();try{if(AUTH())await _sb.auth.signOut();}catch(e){}curUser=null;clearSession();showAuthLogin(idleReason?`<b>${LANG==="zh"?"⏱️ 长时间未操作，已自动登出，请重新登录。":"Logged out due to inactivity. Please sign in again."}</b>`:undefined);}
 /* ================= 闲置自动登出(仅限 店长/厨师长/员工/中央经理/中央员工) =================
-   老板/区域副经理/人事经理/店面经理常常需要长时间开着看大盘、不方便被强制踢出，
+   老板/运营经理/人事经理/店面经理常常需要长时间开着看大盘、不方便被强制踢出，
    所以不受影响；店长/厨师长/员工/中央经理/中央员工 这五个比较基层、共用设备
    机会较高的角色，闲置满29分钟会先跳出「闲置超时提醒」卡片、倒数60秒，
    这60秒内只要有任何操作(按继续、或单纯滑动/打字)提示就会取消、正常
@@ -7346,7 +7384,7 @@ function openUpdatePanel(){
 /* 强制更新：屏幕正中间弹一个盖住全屏的提示，只有一个"确认更新"按钮，
    没有关闭/点旁边取消的办法，逼着一定要更新到最新版才能继续用系统
    (避免有人一直用旧版本操作，数据结构/功能跟别人对不上)。
-   所有账号(不分职位)都会收到这个提醒+专属提示音；区域副经理以下账号
+   所有账号(不分职位)都会收到这个提醒+专属提示音；运营经理以下账号
    本来就看不到订单铃铛(bellBtn)，只会看到这个版本更新铃铛。 */
 /* 正在填表单/正在打字的时候，绝对不能突然跳出强制更新窗把画面锁住——
    还没按『保存』的资料只存在画面上，还没写进系统，一被切页/刷新就没了。

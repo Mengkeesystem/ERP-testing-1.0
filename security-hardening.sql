@@ -102,7 +102,7 @@ drop policy if exists "erp_users insert self via invite or admin" on public.erp_
 drop policy if exists "erp_users update admin only" on public.erp_users;
 drop policy if exists "erp_users delete admin only" on public.erp_users;
 
--- 读：自己一定能读到自己那一行(登录要用)；老板/区域副经理能读全部(管理面板要用)。
+-- 读：自己一定能读到自己那一行(登录要用)；老板/运营经理能读全部(管理面板要用)。
 create policy "erp_users select self or admin"
   on public.erp_users for select
   to authenticated
@@ -114,7 +114,7 @@ create policy "erp_users select self or admin"
 --      自己把自己加进白名单；职位跟邀请码对不上就插不进去。
 --   c) NO_CODE_EMAIL 这个救援管理员邮箱，不用邀请码也能自己变老板
 --      (要跟 index.html 里的 NO_CODE_EMAIL 保持一致，改的话两边都要改)。
---   d) 老板/区域副经理可以任意新增(手动在管理面板加人)。
+--   d) 老板/运营经理可以任意新增(手动在管理面板加人)。
 -- 判断「白名单表是不是真的完全空的」，专门给下面的老板引导用。
 -- 一定要用 security definer 绕开 RLS 去查——否则从一个还没在白名单里
 -- 的新用户角度看，RLS 本身就会把别人的资料全部隐藏掉，导致他看到的
@@ -144,7 +144,7 @@ create policy "erp_users insert self via invite or admin"
     )
   );
 
--- 改/删：只有老板/区域副经理能改别人的职位、分店、启用状态。
+-- 改/删：只有老板/运营经理能改别人的职位、分店、启用状态。
 create policy "erp_users update admin only"
   on public.erp_users for update
   to authenticated
@@ -208,7 +208,7 @@ $$;
 
 -- ===== 跨店调拨申请的把关（触发器）=====
 -- 规则：① 新申请只能由「发起店」建立，而且一定是待批准(pending)；
---       ② 只有「被申请店」(或老板/人事经理/区域副经理)能把 pending 改成 approved / rejected；
+--       ② 只有「被申请店」(或老板/人事经理/运营经理)能把 pending 改成 approved / rejected；
 --       ③ 已批准/已拒绝的申请不能再被改动；发起店只能撤回 pending、移除 rejected。
 create or replace function public.erp_req_guard()
 returns trigger

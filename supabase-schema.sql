@@ -34,7 +34,7 @@ alter table public.erp_users enable row level security;
 
 -- ⚠️ 下面这两条只是「能跑起来」的最低配置，真正要用于正式营运前，
 -- 务必接着跑一次同目录下的 security-hardening.sql ——那份才是把权限
--- 收紧到「只有白名单里的人能读写、只有老板/区域副经理能管人」的正式版本。
+-- 收紧到「只有白名单里的人能读写、只有老板/运营经理能管人」的正式版本。
 -- 这里先给宽松版本是方便你第一次建表、第一次注册老板账号时不被卡住。
 drop policy if exists "erp_users authed read" on public.erp_users;
 drop policy if exists "erp_users authed write" on public.erp_users;
