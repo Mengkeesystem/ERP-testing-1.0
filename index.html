@@ -1402,7 +1402,7 @@ function statusOf(d){if(d<=14)return{t:"健康",e:"Fresh",c:"p-g"};if(d<=30)retu
 function stTxt(s){return LANG==="zh"?s.t:s.e;}
 
 /* ================= 数据种子 ================= */
-const BUILD="1111mk140";  // 版本标记：页面右上/网格提示可见，用来确认已载入最新版
+const BUILD="1111mk141";  // 版本标记：页面右上/网格提示可见，用来确认已载入最新版
 const SEED_VERSION="bh-master-2026-09-1";  // 版本变更→下次载入自动重置为最新主数据（仅本店云端）
 function seed(outletId){
   const isCK = outletId==="ck";
@@ -2153,8 +2153,8 @@ function renderTop(){
 }
 // 侧边栏菜单分组（ERP 结构，方便日后扩充）
 const MENU=[
-  ["营运 Operations",[["notif","📣","notif"],["dash","💰","dash"],["health","⚠","health"],["sales","🧾","sales"],["proc","🔄","proc"],["orderinv","🧾","orderinv"],["ck","🏭","ck"]]],
-  ["库存 Inventory",[["inv","📦","inv"],["stockled","📒","stockled"],["bom","🍲","bom"],["stock","🔎","stock"],["monthend","📋","monthend"],["opexm","💵","opexm"]]],
+  ["营运 Operations",[["dash","💰","dash"],["health","⚠","health"],["sales","🧾","sales"],["proc","🔄","proc"],["orderinv","🧾","orderinv"],["ck","🏭","ck"]]],
+  ["库存 Inventory",[["inv","📦","inv"],["bom","🍲","bom"],["monthend","📋","monthend"],["opexm","💵","opexm"]]],
   ["财务 Finance",[["ap","💳","ap"],["opex","💵","opex"],["budget","🎯","budget"],["monthly","📅","monthly"],["variance","🧮","variance"],["rank","🏆","rank"],["report","📈","report"]]],
   ["人事 HR",[["hr","👤","hr"],["attend","🕐","attend"],["schedule","📅","schedule"],["leave","🌴","leave"]]],
   ["系统 System",[["settings","⚙️","settings"]]],
@@ -2166,7 +2166,7 @@ function renderSidebar(){
     const visible=items.filter(([p])=>pageAllowed(p));
     if(!visible.length)return '';
     return `<div class="grp">${grp}</div>`+visible.map(([p,ic])=>
-      `<button class="${p===curPage?'active':''}" onclick="${p==='monthend'?"goProcSub('monthend')":`nav('${p}')`}"><span class="si">${ic}</span>${mlabel(p)}</button>`).join('');
+      `<button class="${(p===curPage||(p==='monthend'&&curPage==='stock'))?'active':''}" onclick="${p==='monthend'?"goProcSub('monthend')":`nav('${p}')`}"><span class="si">${ic}</span>${mlabel(p)}</button>`).join('');
   }).join('');
   document.getElementById('sidebar').innerHTML=html;
 }
@@ -2244,7 +2244,7 @@ async function switchOutlet(){
 function switchRole(){curRole=document.getElementById('roleSel').value;if(!pageAllowed(curPage))curPage=firstAllowedPage();render();}
 function toggleLang(){LANG=LANG==="zh"?"en":"zh";render();}
 function goHome(){try{closeM();}catch(e){}try{const sb=document.getElementById('sidebar');if(sb&&sb.classList.contains('open'))toggleSide();}catch(e){}if(typeof sfx==='function')try{sfx('click');}catch(e){}nav(firstAllowedPage());window.scrollTo(0,0);}
-function nav(p){curPage=p;if(!['purchase','grn','monthend'].includes(p))selSupplier=null;if(p!=='inv')invSupplier=null;if(p!=='bom')dcSel=null;if(p!=='ap')apSel=null;if(p!=='orderinv'){oiSel=null;oiMonth=null;}if(p!=='opexm')opexMSel=null;if(p!=='payrun'){payslipMode=null;payslipPick={};}const sb=document.getElementById('sidebar');if(sb)sb.classList.remove('open');const bd=document.getElementById('backdrop');if(bd)bd.classList.remove('show');render();window.scrollTo(0,0);}
+function nav(p){if(p==='notif'){p='health';healthTab='todo';}else if(p==='stockled'){p='inv';invTab='led';invSupplier=null;}else if(p==='inv'&&curPage!=='inv')invTab='list';else if(p==='health'&&curPage!=='health')healthTab='todo';curPage=p;if(!['purchase','grn','monthend'].includes(p))selSupplier=null;if(p!=='inv')invSupplier=null;if(p!=='bom')dcSel=null;if(p!=='ap')apSel=null;if(p!=='orderinv'){oiSel=null;oiMonth=null;}if(p!=='opexm')opexMSel=null;if(p!=='payrun'){payslipMode=null;payslipPick={};}const sb=document.getElementById('sidebar');if(sb)sb.classList.remove('open');const bd=document.getElementById('backdrop');if(bd)bd.classList.remove('show');render();window.scrollTo(0,0);}
 
 
 /* ================= M1 利润大盘 ================= */
@@ -2493,7 +2493,7 @@ function openAi(){
       ${_aiMsgs.length?`<div style="text-align:right;margin-top:6px;"><button class="btn ghost sm" onclick="_aiMsgs=[];_aiExtra='';aiRender()">${zh?'清空对话':'Clear'}</button></div>`:''}</div>`);
   const mb=document.getElementById('mbox');if(mb)mb.classList.add('m-wide');aiRender();aiQuotaLoad();
 }
-const PAGE_HELP={"stockled": {"t": "库存流水", "s": "每样食材的进、出、盘点记录，一条一条列出来，库存对不上时用来查原因。\n绿色＋＝入库（进货单、中央厨房生产、调拨入）；红色－＝出库（报废、退货、调拨出）。\n灰色的「盘点」只是实盘记录，不会改库存。\n点某一行的品名，只看那一样；上面可以切换本月、上月、近 90 天、全部，也可以只看入库或出库。\n招待赠送不动库存，所以不在这里。\n这里是把各处记录合在一起看，系统没有另外一本总账，所以不显示「每一笔之后剩多少」。"},"budget": {"t": "预算对比", "s": "每个开销类别设一个「每月预算」，对比实际花了多少。\n运营经理以上在每一项右边填「预算 RM」，每个月都用同一个数；店长只能看。\n实际数字来自「运营开销」（租金、水电、营销、维修、杂费等）。\n绿色＝没超；黄色＝超过 10% 以内；红色＝超过很多。\n老板、运营经理在最下面可以看到全部分店的预算和实际合计。\n预算没设的项目只显示实际，不会算超支。"},"notif": {"t": "通知中心", "s": "把所有「该做的事」集中在一张清单里，不用一页一页去找。\n老板、运营经理看得到全部分店的待办；店长看自己店的。\n红色＝要处理（已经拖了），黄色＝要留意（快出问题）。\n点「去处理」会直接跳到那一页（会自动切到那间店）。\n点「今天先不管」会先收起来，只记在你这台手机，明天会自己回来。\n右上角的图标显示还有几项没处理。"},"rank": {"t": "各分店排行", "s": "11 间分店放在一起比，最后有「全部分店合计」。\n每张卡：食材成本率（实际）、和目标差多少、净营业额、进货、报废。\n默认按「比目标」排：低于目标最多的排第一，超标最多的排最后。\n也可以改按成本率、营业额、报废率排。\n要有「销量」和「月末盘点」才算得出成本率，缺的店会写「资料不齐」，排在最后。\n只有老板、人事经理、运营经理看得到。"},"dash": {"t": "利润大盘", "s": "看这间店这个月赚不赚钱的总览。\n成本率半圆表：食材成本占营业额的比例。黑色小线是这间店的「目标成本率」（每间店各自设，运营经理以上可在表下面点「修改」）；不超过目标算达标，超过 2% 以内变黄，更高变红。\n食材成本＝月初库存＋本月进货－月末库存，也就是真的用掉多少食材。\n下面是近 6 个月营业额对食材成本，还有各分店营业额的比较。\n这些数字来自「月度核算」「进货单」「月末盘点」，那几处没填，这里就会空，或不准。"}, "health": {"t": "运营健康", "s": "一页看这间店有哪些事该做、哪些快出问题。\n每一块是一项检查：进货、价格变动、盘点、销量导入、成本差异、库存、订货单、调拨、应付、报废、请假。\n绿色＝正常，黄色＝要留意，红色＝要处理。\n最上面「今天该做的事」会列出来，点按钮直接跳去那一页处理。\n天数、百分比是参考线，不是死规定。选「全部分店」时，要先选一间店才看得到。"}, "sales": {"t": "销售数据", "s": "记录每道菜卖了多少份，系统用「配方成本」算出营业额、食材成本和毛利。\n点右上「录入销量」，填每道菜的份数。\n每张卡显示：售价×份数、单份成本、成本率（绿＝好，黄＝偏高，红＝太高）。\n可以搜索菜名，或按营业额、销量、毛利排序。\n新 POS 没有接口，月底也可以在「月度核算」用「导入 POS 销售报表」一次导进来。"}, "inv": {"t": "库存", "s": "看每样食材现在还剩多少、值多少钱，按供应商分组。\n进货会自动加库存，卖出、报废、调拨会自动减。\n库存低于「最低库存」会标「低库存」；负数表示记录有问题，要查。\n「操作 ▾」里可以批量设定最低/标准库存。\n点上面的数字标签，可以只看某一类（低库存、负库存、高于标准…）。"}, "inv:sup": {"t": "库存 · 供应商品项", "s": "这家供应商的所有品项。\n每张卡显示：现有库存、单位成本、库存值，还有状态标签（低于最低、负库存、高于标准）。\n点品项可以改名称、成本，设最低/标准库存。\n库存数字平时由进货单自动更新，一般不用手改。"}, "proc": {"t": "采购进销", "s": "进销存的作业中心，进货、订货、损耗这些工作的入口都在这里。\n订货单：向供应商或中央厨房下单。订单进度：看订单走到哪一步。\n进货单：每天记收了什么货、多少钱。\n退货补货、报废损耗、招待赠送、跨店调拨、运营开销记录，各自一张卡。\n价格变动：进货价涨跌的提醒。点任何一张卡进去，卡片上的数字是这个月的进度。"}, "purchase": {"t": "进货单", "s": "每天记「收了什么货、什么价钱」，是算成本最重要的原始资料。\n点一家供应商 → 选月份 → 选日期 → 在品项旁填「数量」和「单价」（鱼类填「重量」和单价）。\n按中间的相机可以拍发票，系统读出来，你核对过才写入。\n单价比上次涨跌超过 5% 会标红或绿，提醒你看一下。\n收货当天就录，别等到月底。"}, "purchase:sup": {"t": "进货单 · 供应商", "s": "这家供应商的进货记录。\n上面选月份，再选日期，每个品项填「数量」和「单价」；鱼类供应商填「重量」。\n「Invoice No.」填发票单号，以后对账用。\n右上「拍照识别」可以拍发票自动填；「操作 ▾」有新增品项、复制上一次进货、价格变动。\n运营经理以上可以长按月份，编辑或删除空的月份。"}, "grn": {"t": "退货补货", "s": "记录退货（退回给供应商）和补货（供应商补给你）。\n先选供应商 → 月份 → 新增一笔。\n每笔记：日期、品项、数量、金额、原因。\n可以按「退货 / 补货」筛选，按日期分组查看。"}, "waste2": {"t": "报废损耗", "s": "记录报废损耗：坏掉、过期、做错、掉在地上等被丢掉的东西。\n按月分开，每笔记：日期、物品、成本价、数量、原因、备注，总额＝成本价×数量。\n上面可以按原因筛选，看哪种原因损耗最多。\n记下来，「成本差异」才能解释钱去了哪里。"}, "offer": {"t": "招待赠送", "s": "记录招待和赠送：请客人吃、送客人、不收钱的东西。\n按月分开，每笔记：日期、收据号码、类别（ENT 招待 / Offer 赠送）、品项、当事人、金额。\n记下来，「成本差异」才能解释「为什么用了食材却没有收入」。"}, "transfer": {"t": "跨店调拨", "s": "店和店之间调货，或借人。\n要先「送出申请」，对方店批准后，双方的库存和记录才会真的变动。\n对方还没处理显示「待批准」；被拒绝显示「被拒绝」。\n要批准的话，要先切换到「被申请的那间店」才按得到。\n借调人力只是记录，不会移动员工档案。"}, "ordersheet": {"t": "订货单", "s": "向供应商下订货单。\n选一家供应商，在品项上填「数量」，填完按底部「下单」。\n下单会通知老板和运营经理确认。\n下单之后的进度（待确认 → 已确认 → 已发货 → 已收货）在「订单进度」看。\n中央厨房 (TCY OKR) 用的是带图片的订货表。"}, "orderinv": {"t": "订单发票", "s": "订货单被确认后会生成 Invoice，都集中在这里。\n点供应商 → 选月份 → 看 Invoice，可以打开查看或打印。\n只有运营经理以上才能删除 Invoice。\n这些 Invoice 也会带进「应付账款」去对账。"}, "ck": {"t": "中央厨房", "s": "中央厨房的生产成本和订货。\n填「大锅成本」和「分装包数」，系统自动算「单包成本」。\n订货表里填各分店要的数量，按「下单」提交。\n品项有图片，点图片可以放大。"}, "bom": {"t": "配方成本", "s": "设定每道菜的成本（配方成本），看每道菜赚多少。\n可以只填一个成本价，也可以列出用到的食材，让系统自动算。\n成本率颜色：蓝＝偏低，绿＝28–35% 达标，红＝偏高。\n红色的菜优先检查：是不是食材涨价了，或份量放太多。\n配方成本也会用在「成本差异」的理论成本。"}, "stock": {"t": "盘点", "s": "月底或定期盘点：数实际库存，对照账面库存。\n每个品项填「实盘数量」，系统算出账面和实物差多少（隐性损耗）。\n差异大的会标红，优先找原因。\n上面的「盘点排程」可以设定每周或每月要盘点的提醒。\n这里是逐品项盘点；月底算成本用的是「月末盘点」。"}, "monthend": {"t": "月末盘点", "s": "每月底盘点，把剩余库存填进来，用来算本月真正用掉的食材成本。\n选供应商 → 选日期（月底）→ 每个品项填剩余数量；单价自动用本月进货单价的中位数。\n实耗成本＝月初库存＋本月进货－月末库存，月末盘点没填，成本就不准。\n每个月都要做，建议月底最后一天，或下个月 1–2 号做完。"}, "opexm": {"t": "运营开销录入", "s": "逐月录入运营开销（租金、水电、营销、维修、杂费等）。\n点一个月份进去，直接填金额，按底部「保存本月」。\n只影响当月，不会串到别的月。\n带 🔗 的项目是从「运营开销记录」自动算的，不用手填。\n填好的数字会带进「运营开销」和「月度核算」算净利。"}, "opexlog": {"t": "运营开销记录", "s": "逐笔记零散开销的流水账（买小东西、维修、Wi-Fi 等）。\n按月分开，每笔记：类别、日期、Invoice No.、金额、备注。\n营销、维修、Wi-Fi 等类别会自动汇总进「运营开销」。\n它和「运营开销录入」不同：这里是一笔一笔的流水账，那边是整个月的表。"}, "ap": {"t": "应付账款", "s": "应付账款：你欠供应商多少钱、付了没有。\n订货单确认后生成的 Invoice 会出现在这里。\n逐项核对：对照实际收到的货和发票，对的按 ✔，不对按 ✗。\n全部对完按「订单正确」；付款后，把「未付款」改成已付款。\n可以按供应商、月份看，对账用。"}, "opex": {"t": "运营开销", "s": "按月看和填运营开销（租金、水电、营销、维修、杂费等）。\n点一个月份进去，直接填金额。\n填好的数字会自动带进「损益表」和「月度核算」算净利。\n人工成本目前是手动填，系统不会自动从薪资算。"}, "monthly": {"t": "月度核算", "s": "把一个月的营业额、食材成本、开销放在一起，算出净利。\n先选月份，填当月销售；「操作 ▾ → 导入 POS 销售报表」可以一次导入。\n食材成本用实耗法：月初库存＋本月进货－月末盘点。\n看成本率、毛利、净利。杂饭、小菜没做配方的，靠这页兜底。"}, "variance": {"t": "成本差异", "s": "理论上该用多少食材钱，实际用了多少，差在哪。\n理论成本＝每道菜卖了几份×配方成本。\n实际成本＝月初库存＋本月进货－月末库存。\n差异＝实际－理论：正数表示用得比应该多，要查原因；接近 0 表示控制得好。\n3% 以内正常，3–8% 要留意，超过 8% 要处理（只是参考线）。\n资料不齐（没盘点、没配方）时，这页只会告诉你缺什么，不会乱编数字。"}, "report": {"t": "报表", "s": "用图和表看成本占比、盘点差异、损耗、呆滞货。\n概览：营业额和食材成本的趋势。\n成本占比：钱花在哪些食材上。\n盘点差异、损耗：哪里在漏钱。\n呆滞货：放太久没用掉的货，早点处理。"}, "pricechg": {"t": "价格变动", "s": "进货单价和上一次比，涨跌超过设定幅度（默认 5%）就会出现在这里。\n「多付」＝（新价－旧价）×这次数量。\n核对后可以：确认新价（接受涨价）、已追差价（已向供应商要回差额）、忽略。\n右上「操作 ▾」可以改提醒的幅度。"}, "hr": {"t": "员工档案", "s": "每位员工的基本资料。\n可以搜索、按职位筛选、排序。\n卡片上有年假使用进度条。\n只有运营经理以上才能新增、修改、删除。\n「登入邮箱」要填对，员工才能用自己的账号看自己的资料。"}, "attend": {"t": "打卡考勤", "s": "员工上下班打卡。\n大按钮会按状态变成「上班」或「下班」；打卡会检查手机的位置是不是在店里。\n上面显示在岗人数、本月时数；下面按日期看每个人的打卡记录。"}, "schedule": {"t": "排班", "s": "按周安排每位员工的班次。\n可以切换上周、本周、下周。\n手机一天一张卡，电脑一周七列。"}, "leave": {"t": "请假", "s": "员工提交请假，上级批准。\n员工：新增申请，等上级批准。\n店长、经理：在卡片上直接按「批准」或「拒绝」。\n可以按「待批准、已批、已拒」筛选。"}, "settings": {"t": "系统设置", "s": "账号、权限、界面和系统工具。\n账号权限：谁能用系统、是什么职位（运营经理以上才能管）。\n岗位权限编辑：每个职位能进哪些页面。\n界面风格：Default、机械风、中式风，还有音效开关。\n员工操作监察：看谁改了什么。\n版本更新：看当前版本、手动检查更新。"}};
+const PAGE_HELP={"stockled": {"t": "库存流水", "s": "每样食材的进、出、盘点记录，一条一条列出来，库存对不上时用来查原因。\n绿色＋＝入库（进货单、中央厨房生产、调拨入）；红色－＝出库（报废、退货、调拨出）。\n灰色的「盘点」只是实盘记录，不会改库存。\n点某一行的品名，只看那一样；上面可以切换本月、上月、近 90 天、全部，也可以只看入库或出库。\n招待赠送不动库存，所以不在这里。\n这里是把各处记录合在一起看，系统没有另外一本总账，所以不显示「每一笔之后剩多少」。"}, "budget": {"t": "预算对比", "s": "每个开销类别设一个「每月预算」，对比实际花了多少。\n运营经理以上在每一项右边填「预算 RM」，每个月都用同一个数；店长只能看。\n实际数字来自「运营开销」（租金、水电、营销、维修、杂费等）。\n绿色＝没超；黄色＝超过 10% 以内；红色＝超过很多。\n老板、运营经理在最下面可以看到全部分店的预算和实际合计。\n预算没设的项目只显示实际，不会算超支。"}, "notif": {"t": "通知中心", "s": "把所有「该做的事」集中在一张清单里，不用一页一页去找。\n老板、运营经理看得到全部分店的待办；店长看自己店的。\n红色＝要处理（已经拖了），黄色＝要留意（快出问题）。\n点「去处理」会直接跳到那一页（会自动切到那间店）。\n点「今天先不管」会先收起来，只记在你这台手机，明天会自己回来。\n右上角的图标显示还有几项没处理。"}, "rank": {"t": "各分店排行", "s": "11 间分店放在一起比，最后有「全部分店合计」。\n每张卡：食材成本率（实际）、和目标差多少、净营业额、进货、报废。\n默认按「比目标」排：低于目标最多的排第一，超标最多的排最后。\n也可以改按成本率、营业额、报废率排。\n要有「销量」和「月末盘点」才算得出成本率，缺的店会写「资料不齐」，排在最后。\n只有老板、人事经理、运营经理看得到。"}, "dash": {"t": "利润大盘", "s": "看这间店这个月赚不赚钱的总览。\n成本率半圆表：食材成本占营业额的比例。黑色小线是这间店的「目标成本率」（每间店各自设，运营经理以上可在表下面点「修改」）；不超过目标算达标，超过 2% 以内变黄，更高变红。\n食材成本＝月初库存＋本月进货－月末库存，也就是真的用掉多少食材。\n下面是近 6 个月营业额对食材成本，还有各分店营业额的比较。\n这些数字来自「月度核算」「进货单」「月末盘点」，那几处没填，这里就会空，或不准。"}, "health": {"t": "运营健康", "s": "一页看这间店有哪些事该做、哪些快出问题。\n上面有两个标签：「通知中心」是待办清单（老板、运营经理看得到全部分店），「健康检查」是每一项检查的详细状况。\n通知中心：红色＝要处理，黄色＝要留意；按「去处理」直接跳到那一页（会自动切到那间店）；按「今天先不管」先收起来，明天会回来。\n健康检查：进货、价格变动、盘点、销量导入、成本差异、库存、订货单、调拨、应付、报废、请假、开销预算；选「全部分店」时要先选一间店才看得到。\n右上角的红圈数字，就是通知中心还没处理的数量。"}, "sales": {"t": "销售数据", "s": "记录每道菜卖了多少份，系统用「配方成本」算出营业额、食材成本和毛利。\n点右上「录入销量」，填每道菜的份数。\n每张卡显示：售价×份数、单份成本、成本率（绿＝好，黄＝偏高，红＝太高）。\n可以搜索菜名，或按营业额、销量、毛利排序。\n新 POS 没有接口，月底也可以在「月度核算」用「导入 POS 销售报表」一次导进来。"}, "inv": {"t": "库存", "s": "看每样食材现在还剩多少、值多少钱，按供应商分组。\n上面有两个标签：「库存」和「库存流水」。库存流水是每样食材的进、出、盘点记录，库存对不上时用来查原因。\n进货会自动加库存，卖出、报废、调拨会自动减。\n库存低于「最低库存」会标「低库存」；负数表示记录有问题，要查。\n「操作 ▾」里可以批量设定最低/标准库存。"}, "inv:sup": {"t": "库存 · 供应商品项", "s": "这家供应商的所有品项。\n每张卡显示：现有库存、单位成本、库存值，还有状态标签（低于最低、负库存、高于标准）。\n点品项可以改名称、成本，设最低/标准库存。\n库存数字平时由进货单自动更新，一般不用手改。"}, "proc": {"t": "采购进销", "s": "进销存的作业中心，进货、订货、损耗这些工作的入口都在这里。\n订货单：向供应商或中央厨房下单。订单进度：看订单走到哪一步。\n进货单：每天记收了什么货、多少钱。\n退货补货、报废损耗、招待赠送、跨店调拨、运营开销记录，各自一张卡。\n价格变动：进货价涨跌的提醒。点任何一张卡进去，卡片上的数字是这个月的进度。"}, "purchase": {"t": "进货单", "s": "每天记「收了什么货、什么价钱」，是算成本最重要的原始资料。\n点一家供应商 → 选月份 → 选日期 → 在品项旁填「数量」和「单价」（鱼类填「重量」和单价）。\n按中间的相机可以拍发票，系统读出来，你核对过才写入。\n单价比上次涨跌超过 5% 会标红或绿，提醒你看一下。\n收货当天就录，别等到月底。"}, "purchase:sup": {"t": "进货单 · 供应商", "s": "这家供应商的进货记录。\n上面选月份，再选日期，每个品项填「数量」和「单价」；鱼类供应商填「重量」。\n「Invoice No.」填发票单号，以后对账用。\n右上「拍照识别」可以拍发票自动填；「操作 ▾」有新增品项、复制上一次进货、价格变动。\n运营经理以上可以长按月份，编辑或删除空的月份。"}, "grn": {"t": "退货补货", "s": "记录退货（退回给供应商）和补货（供应商补给你）。\n先选供应商 → 月份 → 新增一笔。\n每笔记：日期、品项、数量、金额、原因。\n可以按「退货 / 补货」筛选，按日期分组查看。"}, "waste2": {"t": "报废损耗", "s": "记录报废损耗：坏掉、过期、做错、掉在地上等被丢掉的东西。\n按月分开，每笔记：日期、物品、成本价、数量、原因、备注，总额＝成本价×数量。\n上面可以按原因筛选，看哪种原因损耗最多。\n记下来，「成本差异」才能解释钱去了哪里。"}, "offer": {"t": "招待赠送", "s": "记录招待和赠送：请客人吃、送客人、不收钱的东西。\n按月分开，每笔记：日期、收据号码、类别（ENT 招待 / Offer 赠送）、品项、当事人、金额。\n记下来，「成本差异」才能解释「为什么用了食材却没有收入」。"}, "transfer": {"t": "跨店调拨", "s": "店和店之间调货，或借人。\n要先「送出申请」，对方店批准后，双方的库存和记录才会真的变动。\n对方还没处理显示「待批准」；被拒绝显示「被拒绝」。\n要批准的话，要先切换到「被申请的那间店」才按得到。\n借调人力只是记录，不会移动员工档案。"}, "ordersheet": {"t": "订货单", "s": "向供应商下订货单。\n选一家供应商，在品项上填「数量」，填完按底部「下单」。\n下单会通知老板和运营经理确认。\n下单之后的进度（待确认 → 已确认 → 已发货 → 已收货）在「订单进度」看。\n中央厨房 (TCY OKR) 用的是带图片的订货表。"}, "orderinv": {"t": "订单发票", "s": "订货单被确认后会生成 Invoice，都集中在这里。\n点供应商 → 选月份 → 看 Invoice，可以打开查看或打印。\n只有运营经理以上才能删除 Invoice。\n这些 Invoice 也会带进「应付账款」去对账。"}, "ck": {"t": "中央厨房", "s": "中央厨房的生产成本和订货。\n填「大锅成本」和「分装包数」，系统自动算「单包成本」。\n订货表里填各分店要的数量，按「下单」提交。\n品项有图片，点图片可以放大。"}, "bom": {"t": "配方成本", "s": "设定每道菜的成本（配方成本），看每道菜赚多少。\n可以只填一个成本价，也可以列出用到的食材，让系统自动算。\n成本率颜色：蓝＝偏低，绿＝28–35% 达标，红＝偏高。\n红色的菜优先检查：是不是食材涨价了，或份量放太多。\n配方成本也会用在「成本差异」的理论成本。"}, "stock": {"t": "盘点", "s": "平时抽查盘点（每日或每周）：数实际库存，对照账面库存。\n每个品项填「实盘数量」，系统算出账面和实物差多少（隐性损耗）。\n差异大的会标红，优先找原因。\n页面上面的「盘点排程」可以设定每周或每月要盘点的提醒。\n月底算成本用的是上面切换到「月末盘点」。"}, "monthend": {"t": "月末盘点", "s": "盘点分两种，在页面上面切换：\n「月末盘点」：每月底盘点，把剩余库存填进来，用来算本月真正用掉的食材成本。选供应商 → 选日期（月底）→ 每个品项填剩余数量；单价自动用本月进货单价的中位数。\n「每日 / 每周盘点」：平时抽查，数实际库存对照账面，找出隐性损耗，还可以设每日、每周的盘点提醒。\n实耗成本＝月初库存＋本月进货－月末库存，月末盘点没填，成本就不准。每个月都要做。"}, "opexm": {"t": "运营开销录入", "s": "逐月录入运营开销（租金、水电、营销、维修、杂费等）。\n点一个月份进去，直接填金额，按底部「保存本月」。\n只影响当月，不会串到别的月。\n带 🔗 的项目是从「运营开销记录」自动算的，不用手填。\n填好的数字会带进「运营开销」和「月度核算」算净利。"}, "opexlog": {"t": "运营开销记录", "s": "逐笔记零散开销的流水账（买小东西、维修、Wi-Fi 等）。\n按月分开，每笔记：类别、日期、Invoice No.、金额、备注。\n营销、维修、Wi-Fi 等类别会自动汇总进「运营开销」。\n它和「运营开销录入」不同：这里是一笔一笔的流水账，那边是整个月的表。"}, "ap": {"t": "应付账款", "s": "应付账款：你欠供应商多少钱、付了没有。\n订货单确认后生成的 Invoice 会出现在这里。\n逐项核对：对照实际收到的货和发票，对的按 ✔，不对按 ✗。\n全部对完按「订单正确」；付款后，把「未付款」改成已付款。\n可以按供应商、月份看，对账用。"}, "opex": {"t": "运营开销", "s": "按月看和填运营开销（租金、水电、营销、维修、杂费等）。\n点一个月份进去，直接填金额。\n填好的数字会自动带进「损益表」和「月度核算」算净利。\n人工成本目前是手动填，系统不会自动从薪资算。"}, "monthly": {"t": "月度核算", "s": "把一个月的营业额、食材成本、开销放在一起，算出净利。\n先选月份，填当月销售；「操作 ▾ → 导入 POS 销售报表」可以一次导入。\n食材成本用实耗法：月初库存＋本月进货－月末盘点。\n看成本率、毛利、净利。杂饭、小菜没做配方的，靠这页兜底。"}, "variance": {"t": "成本差异", "s": "理论上该用多少食材钱，实际用了多少，差在哪。\n理论成本＝每道菜卖了几份×配方成本。\n实际成本＝月初库存＋本月进货－月末库存。\n差异＝实际－理论：正数表示用得比应该多，要查原因；接近 0 表示控制得好。\n3% 以内正常，3–8% 要留意，超过 8% 要处理（只是参考线）。\n资料不齐（没盘点、没配方）时，这页只会告诉你缺什么，不会乱编数字。"}, "report": {"t": "报表", "s": "用图和表看成本占比、盘点差异、损耗、呆滞货。\n概览：营业额和食材成本的趋势。\n成本占比：钱花在哪些食材上。\n盘点差异、损耗：哪里在漏钱。\n呆滞货：放太久没用掉的货，早点处理。"}, "pricechg": {"t": "价格变动", "s": "进货单价和上一次比，涨跌超过设定幅度（默认 5%）就会出现在这里。\n「多付」＝（新价－旧价）×这次数量。\n核对后可以：确认新价（接受涨价）、已追差价（已向供应商要回差额）、忽略。\n右上「操作 ▾」可以改提醒的幅度。"}, "hr": {"t": "员工档案", "s": "每位员工的基本资料。\n可以搜索、按职位筛选、排序。\n卡片上有年假使用进度条。\n只有运营经理以上才能新增、修改、删除。\n「登入邮箱」要填对，员工才能用自己的账号看自己的资料。"}, "attend": {"t": "打卡考勤", "s": "员工上下班打卡。\n大按钮会按状态变成「上班」或「下班」；打卡会检查手机的位置是不是在店里。\n上面显示在岗人数、本月时数；下面按日期看每个人的打卡记录。"}, "schedule": {"t": "排班", "s": "按周安排每位员工的班次。\n可以切换上周、本周、下周。\n手机一天一张卡，电脑一周七列。"}, "leave": {"t": "请假", "s": "员工提交请假，上级批准。\n员工：新增申请，等上级批准。\n店长、经理：在卡片上直接按「批准」或「拒绝」。\n可以按「待批准、已批、已拒」筛选。"}, "settings": {"t": "系统设置", "s": "账号、权限、界面和系统工具。\n账号权限：谁能用系统、是什么职位（运营经理以上才能管）。\n岗位权限编辑：每个职位能进哪些页面。\n界面风格：Default、机械风、中式风，还有音效开关。\n员工操作监察：看谁改了什么。\n版本更新：看当前版本、手动检查更新。"}};
 function helpKey(){
   const p=curPage;
   if(p==='purchase'&&selSupplier)return 'purchase:sup';
@@ -2610,7 +2610,14 @@ function healthChecks(){
    add({k:'leave',st:lv&&ok?'warn':'ok',t:zh?'请假':'Leave',go:"nav('leave')",page:'leave',lines:[zh?`待批准 ${lv} 张`:`Pending ${lv}`],todo:lv&&ok?(zh?`${lv} 张请假待批准`:'Leave requests'):''});}
   return out.filter(c=>c.page==='proc'?true:pageAllowed(c.page));
 }
+let healthTab='todo';
+function healthTabSet(t){healthTab=t;render();}
 function pgHealth(){
+  const zh=LANG==="zh",n=notifCount();
+  const tabs=`<div class="seg" style="margin-bottom:10px;"><button class="${healthTab==='todo'?'active':''}" onclick="healthTabSet('todo')">${zh?'通知中心':'Notifications'}${n?` <span class="pill p-r">${n>99?'99+':n}</span>`:''}</button><button class="${healthTab==='checks'?'active':''}" onclick="healthTabSet('checks')">${zh?'健康检查':'Checks'}</button></div>`;
+  return tabs+(healthTab==='todo'?pgNotif(true):pgHealthChecks());
+}
+function pgHealthChecks(){
   const zh=LANG==="zh";
   if(isAgg())return `<div class="fb"><h2 class="h" style="margin:0;">${zh?'运营健康':'Ops health'}</h2></div><div class="card" style="padding:26px 18px;text-align:center;"><div style="font-weight:700;font-size:16px;margin-bottom:6px;">${zh?'请选择分店':'Please select a branch'}</div><div class="mini">${zh?'健康总览是按单间店算的：用右上角的分店选单，选好要看的那间店。':''}</div></div>`;
   const cs=healthChecks();const bad=cs.filter(c=>c.st==='bad'),warn=cs.filter(c=>c.st==='warn'),ok=cs.filter(c=>c.st==='ok');
@@ -2799,7 +2806,15 @@ function invRow(i){
     ${canW('proc')?`<td style="white-space:nowrap;"><button class="ib" onclick="openM('item',${i.id})">✏️</button> <button class="ib" onclick="delItem(${i.id})">🗑️</button></td>`:''}
   </tr>`;
 }
+let invTab='list';
+function invTabSet(t){invTab=t;render();}
 function pgInv(){
+  if(invSupplier&&invTab==='list')return pgInvBody();   // 点进某家供应商里面：不显示上面的标签
+  const zh=LANG==="zh";
+  const tabs=`<div class="seg" style="margin-bottom:10px;"><button class="${invTab==='list'?'active':''}" onclick="invTabSet('list')">${zh?'库存':'Stock'}</button><button class="${invTab==='led'?'active':''}" onclick="invTabSet('led')">${zh?'库存流水':'Ledger'}</button></div>`;
+  return tabs+(invTab==='led'?pgStockLed(true):pgInvBody());
+}
+function pgInvBody(){
   const x=d();const zh=LANG==="zh";
   const addBtns=`<div class="dv-tools" style="margin-top:2px;">${canW('proc')?`<button class="btn brand sm" onclick="openM('item')">+ ${zh?"品项":"Item"}</button>`:''}
       ${actm([{l:zh?"建议订货":"Suggest order",on:"openM('suggest')"},canW('proc')&&{l:zh?"批量设定最低/标准库存":"Set min / par",on:"openInvLevels('"+(invSupplier?invSupplier.replace(/\\/g,"\\\\").replace(/'/g,"\\'"):'')+"')"},canW('proc')&&{l:zh?"批量导入":"Bulk import",on:"bulkAddForm('item')"},canW('proc')&&{l:zh?"用月均价重算成本":"Recalc cost from month avg",on:"recalcCostForm()"},canW('proc')&&{l:zh?"导入供应商全部品项":"Import supplier items",on:"importSupplierItems()"}])}</div>`;
@@ -4694,7 +4709,8 @@ async function schedSave(id){
   try{auditLog('盘点排程',name+' · '+schedFreqText(s),'','');}catch(e){}
   await save();closeM();render();
 }
-function pgStock(){
+function pgStock(){return stockTabs('stock')+pgStockBody();}
+function pgStockBody(){
   const x=d();const zh=LANG==="zh";
   const rows=(x.stocktakes||[]).map(s=>{const it=findItem(s.item);const v=s.theory-s.count;return {name:s.item,theory:s.theory,count:s.count,v,bad:Math.abs(v)>0.4,val:Math.abs(v)*(it?it.cost:0),unit:it?it.unit:''};});
   const nBad=rows.filter(r=>r.bad).length,totVal=rows.reduce((q,r)=>q+(r.bad?r.val:0),0);
@@ -4969,7 +4985,7 @@ function updateMoreBadge(){
 setInterval(()=>{try{updateMoreBadge();}catch(e){}},4000);
 function updateNotifBell(){
   const b=document.getElementById('notifBtn');if(!b)return;
-  const ok=!!curUser&&pageAllowed('notif');b.style.display=ok?'':'none';if(!ok)return;
+  const ok=!!curUser&&pageAllowed('health');b.style.display=ok?'':'none';if(!ok)return;
   const c=document.getElementById('notifCount'),n=notifCount();if(c){c.textContent=n>9?'9+':String(n);c.style.display=n>0?'':'none';}
   try{updateMoreBadge();}catch(e){}
   if(!_notifBusy&&(!_notifCache||Date.now()-_notifAt>180000)){_notifBusy=true;setTimeout(()=>{try{notifCompute();}catch(e){}_notifBusy=false;updateNotifBell();},400);}
@@ -4979,7 +4995,7 @@ async function notifGo(key){
   try{if(it.oid!==curOutlet){const sel=document.getElementById('outletSel');if(sel){sel.value=it.oid;await switchOutlet();}else curOutlet=it.oid;}}catch(e){}
   try{(new Function(it.go))();}catch(e){}
 }
-function pgNotif(){
+function pgNotif(embedded){
   const zh=LANG==="zh";const items=notifCompute();const snz=notifSnoozed();
   const vis=items.filter(i=>!snz[i.key]),hid=items.length-vis.length;
   const nb=vis.filter(i=>i.st==='bad').length,nw=vis.filter(i=>i.st==='warn').length;
@@ -4990,7 +5006,7 @@ function pgNotif(){
     <div style="display:flex;justify-content:space-between;gap:8px;align-items:flex-start;"><div style="min-width:0;"><div style="font-weight:700;">${oEsc(i.t)}</div>${multi?`<div class="mini">${oEsc(i.oname)}</div>`:''}</div><span class="pill ${i.st==='bad'?'p-r':'p-a'}">${i.st==='bad'?(zh?'要处理':'Action'):(zh?'要留意':'Watch')}</span></div>
     <div style="margin-top:6px;line-height:1.5;">${oEsc(i.todo)}</div>
     <div style="display:flex;gap:8px;margin-top:10px;"><button class="btn brand sm" onclick="notifGo('${oEsc(i.key)}')">${zh?'去处理':'Open'}</button><button class="btn ghost sm" onclick="notifSnooze('${oEsc(i.key)}')">${zh?'今天先不管':'Snooze today'}</button></div></div>`).join('');
-  return `<div class="fb"><h2 class="h" style="margin:0;">${zh?'通知中心':'Notifications'}</h2></div>
+  return `${embedded?'':`<div class="fb"><h2 class="h" style="margin:0;">${zh?'通知中心':'Notifications'}</h2></div>`}
     <div class="grid g3 sup-sum"><div class="kpi"><div class="k">${zh?'要处理':'Action'}</div><div class="v sm ${nb?'neg':''}">${nb}</div></div><div class="kpi"><div class="k">${zh?'要留意':'Watch'}</div><div class="v sm">${nw}</div></div><div class="kpi"><div class="k">${zh?'今天先不管':'Snoozed'}</div><div class="v sm">${hid}</div></div></div>
     ${seg}${cards||`<div class="card" style="padding:26px 18px;text-align:center;"><div style="font-weight:700;font-size:16px;margin-bottom:6px;">${zh?'目前没有要处理的事':'All clear'}</div><div class="mini">${zh?'有新的待办会出现在这里，右上角的图标也会显示数字。':'New items will show here.'}</div></div>`}
     ${hid?`<div style="text-align:center;margin-top:6px;"><button class="btn ghost sm" onclick="try{localStorage.removeItem('erpNotifSnooze')}catch(e){};updateNotifBell();render()">${zh?`把「今天先不管」的 ${hid} 项恢复`:'Restore snoozed'}</button></div>`:''}`;
@@ -5147,7 +5163,7 @@ function stockMovements(){
   out.forEach(r=>{r.unit=unitOf(r.item);});
   return out.sort((a,b)=>(b.date||'').localeCompare(a.date||''));
 }
-function pgStockLed(){
+function pgStockLed(embedded){
   const zh=LANG==="zh";
   if(isAgg())return `<div class="fb"><h2 class="h" style="margin:0;">${zh?'库存流水':'Stock ledger'}</h2></div><div class="card" style="padding:26px 18px;text-align:center;"><div style="font-weight:700;font-size:16px;margin-bottom:6px;">${zh?'请先在右上角选一间分店':'Pick one outlet'}</div></div>`;
   const cur=TODAY.slice(0,7),pm=prevMonthOf(cur),d90=new Date(Date.now()+8*3600e3-90*864e5).toISOString().slice(0,10);
@@ -5173,7 +5189,7 @@ function pgStockLed(){
     <div style="min-width:0;"><div style="font-weight:700;cursor:pointer;" onclick="ledSet('i','${(r.item||'').replace(/\\/g,"\\\\").replace(/'/g,"\\'")}')">${oEsc(r.item||'')}</div><div class="mini">${oEsc(r.date||'')} · <span class="pill ${tagCls[r.kind]}">${r.label}</span></div></div>
     <div style="text-align:right;flex:none;"><div style="font-weight:800;color:${r.kind==='count'?'var(--grey)':r.qty>=0?'var(--green)':'var(--red)'};">${r.qty>0?'+':''}${num(r.qty,2)} <span class="mini">${oEsc(r.unit||'')}</span></div>${r.amt?`<div class="mini">${money(r.amt)}</div>`:''}</div></div>
     ${r.note?`<div class="mini" style="margin-top:4px;">${oEsc(r.note)}</div>`:''}</div>`).join('');
-  return `<div class="fb"><h2 class="h" style="margin:0;">${zh?'库存流水':'Stock ledger'}</h2></div>${periods}${itemBar}${kpi}
+  return `${embedded?'':`<div class="fb"><h2 class="h" style="margin:0;">${zh?'库存流水':'Stock ledger'}</h2></div>`}${periods}${itemBar}${kpi}
     <input class="sup-search" type="search" placeholder="${zh?'搜索品项或备注…':'Search…'}" value="${oEsc(ledQuery)}" oninput="ledQuery=this.value;clearTimeout(window._ledT);window._ledT=setTimeout(()=>{render();const e=document.querySelector('.sup-search');if(e){e.focus();e.setSelectionRange(e.value.length,e.value.length);}},350)" autocomplete="off" style="margin:10px 0 8px;">
     ${types}${list||`<div class="empty">${zh?'这段时间没有记录':'No records'}</div>`}
     ${rows.length>300?`<div class="mini" style="text-align:center;">${zh?`只显示最新 300 条，共 ${rows.length} 条；用上面的筛选缩小范围`:''}</div>`:''}`;
@@ -6624,7 +6640,12 @@ function grnCard(r,writable,showDate){
     <div class="inv-qty"><div class="inv-q">${num(r.qty,2)} <small>× ${money(r.unitPrice||r.price)}</small></div><div class="inv-v">${money(r.price)}</div>
       ${writable?`<div class="inv-act"><button class="ib" onclick="formGRN(${gi})">✏️</button><button class="ib" onclick="delGRN(${gi})">🗑️</button></div>`:''}</div></div>`;
 }
-function pgMonthEnd(){return pgLedger('monthend');}
+function stockTabs(cur){
+  const zh=LANG==="zh";
+  return `<div class="seg" style="margin-bottom:6px;"><button class="${cur==='monthend'?'active':''}" onclick="goProcSub('monthend')">${zh?'月末盘点':'Month-end'}</button><button class="${cur==='stock'?'active':''}" onclick="nav('stock')">${zh?'每日 / 每周盘点':'Daily / weekly'}</button></div>
+    <div class="mini" style="margin:0 0 10px;">${cur==='monthend'?(zh?'每月底盘点，算出本月真正用掉的食材成本。':''):(zh?'平时抽查：数实际库存，对照账面，找出隐性损耗；可以设每日或每周的盘点提醒。':'')}</div>`;
+}
+function pgMonthEnd(){const b=pgLedger('monthend');return selSupplier?b:stockTabs('monthend')+b;}
 
 /* ================= 薪资发放 Payroll Run + Payslip（马来西亚法定：EPF/SOCSO/EIS/SL24J/PCB）=================
    EPF 第三附表(band-upper 进位)、SOCSO/EIS 第二附表(费率×薪级中点，取整到5仙)、SL24J 员工承担(封顶RM6000)。
