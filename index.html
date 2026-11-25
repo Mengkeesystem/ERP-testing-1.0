@@ -822,6 +822,7 @@ html.ui2 .dv-row.inv-card,html.ui2 .dv-row.grn-card,html.ui2 .dv-row.ap-card,htm
 }
 
 
+#moreBtn{position:relative;}#moreBtn .mbadge{position:absolute;top:-5px;right:-5px;min-width:17px;height:17px;line-height:17px;padding:0 4px;border-radius:9px;background:#d92d20;color:#fff;font-size:11px;font-weight:800;text-align:center;box-sizing:border-box;box-shadow:0 0 0 2px var(--card,#fff);pointer-events:none;}
 #ptr{position:fixed;left:50%;top:calc(var(--topH,48px) + 4px);width:40px;height:40px;margin-left:0;border-radius:50%;display:flex;align-items:center;justify-content:center;background:var(--card,#fff);color:var(--ink2,#555);box-shadow:0 4px 14px rgba(0,0,0,.2);border:1px solid var(--line,#ddd);z-index:65;opacity:0;pointer-events:none;transform:translate(-50%,-54px);transition:opacity .2s,transform .22s cubic-bezier(.2,.9,.3,1);}
 #ptr svg{overflow:visible}#ptr .ptr-a{transition:transform .2s;transform-origin:12px 10px;}#ptr .ptr-s,#ptr .ptr-c{display:none;}
 #ptr.ptr-go{color:var(--brand,#7C1619);}
@@ -1401,7 +1402,7 @@ function statusOf(d){if(d<=14)return{t:"健康",e:"Fresh",c:"p-g"};if(d<=30)retu
 function stTxt(s){return LANG==="zh"?s.t:s.e;}
 
 /* ================= 数据种子 ================= */
-const BUILD="1111mk136";  // 版本标记：页面右上/网格提示可见，用来确认已载入最新版
+const BUILD="1111mk137";  // 版本标记：页面右上/网格提示可见，用来确认已载入最新版
 const SEED_VERSION="bh-master-2026-09-1";  // 版本变更→下次载入自动重置为最新主数据（仅本店云端）
 function seed(outletId){
   const isCK = outletId==="ck";
@@ -1792,7 +1793,7 @@ function updateXferBell(){
   const b=document.getElementById('xferBellBtn');if(!b)return;
   b.style.display=xferActive()?'':'none';
   const n=xferPendingForMe().length;const c=document.getElementById('xferBellCount');
-  if(c){c.textContent=n>9?'9+':String(n);c.style.display=n>0?'':'none';}
+  if(c){c.textContent=n>9?'9+':String(n);c.style.display=n>0?'':'none';}try{updateMoreBadge();}catch(e){}
   try{if(typeof UI2!=='undefined'&&UI2){ui2Tabs();ui2MoreDot();}}catch(e){} // 新界面：底部导航红点、「⋯」红点跟着更新
 }
 function xferStatusPill(r){
@@ -2254,8 +2255,14 @@ function setDashRange(r){dashRange=r;render();}
    改进货成本→加权单价变→recipeCost变→COGS变→净利变。全链联动。
    未来接 POS：只需让 salesData() 回传 POS 推送的销量。 */
 function salesData(){return d().sales||[];}
-function outletRevenue(id){const b=DB[id];if(!b)return 0;const s=b.sales||[];if(s.length){return s.reduce((sum,row)=>{const r=(b.recipes||[]).find(x=>x.id===row.recipeId);return sum+(r?r.price*row.qty:0);},0);}return 0;}
-function calcRevenue(){ // 含税营业额（由销量×菜价，回退到 posGross）
+function outletRevenue(id){const b=DB[id];if(!b)return 0;
+  const ms=(b.monthlySales||{})[costMonth]||[];   // POS 导入的当月销量（含税）
+  if(ms.length)return ms.reduce((q,s)=>{const dc=(b.dishCosts||[]).find(x=>x.id===s.dishId);return q+(dc?(+dc.price||0)*(+s.qty||0):0);},0);
+  const s=b.sales||[];if(s.length){return s.reduce((sum,row)=>{const r=(b.recipes||[]).find(x=>x.id===row.recipeId);return sum+(r?r.price*row.qty:0);},0);}return 0;}
+// 营业额来源：有「POS 导入的当月销量」就用它（和月度核算同一个数）；没有再用旧的「销售数据」页
+function revenueSrc(){if(monthSales(costMonth).length)return 'pos';if(salesData().length)return 'sales';return 'none';}
+function calcRevenue(){ // 含税营业额
+  if(monthSales(costMonth).length)return monthlyPnL(costMonth).rev;
   const s=salesData();
   if(s.length){return s.reduce((sum,row)=>{const r=(d().recipes||[]).find(x=>x.id===row.recipeId);return sum+(r?r.price*row.qty:0);},0);}
   return 0;
@@ -2720,7 +2727,7 @@ function pgDash(){
     </div>
   </div>
   <div class="grid g4">
-    <div class="kpi"><div class="k">${LANG==="zh"?"净营业额 (剥离SST)":"Net Sales"}</div><div class="v sm pos">${money(f.net)}</div><div class="s mini">${LANG==="zh"?"含税":"Incl."} ${money(f.gross)}</div></div>
+    <div class="kpi"><div class="k">${LANG==="zh"?"净营业额 (剥离SST)":"Net Sales"}</div><div class="v sm pos">${money(f.net)}</div><div class="s mini">${LANG==="zh"?"含税":"Incl."} ${money(f.gross)}</div><div class="mini" style="margin-top:3px;opacity:.8;">${(()=>{const s=revenueSrc();return LANG==="zh"?(s==='pos'?`来自 POS 导入的${monthLabel2(costMonth)}销量`:s==='sales'?'来自「销售数据」页':`还没有${monthLabel2(costMonth)}的销量（月度核算导入 POS 报表后会自动显示）`):'';})()}</div></div>
     <div class="kpi"><div class="k">${LANG==="zh"?"毛利润":"Gross Profit"}</div><div class="v sm">${money(f.grossProfit)}</div><div class="s mini">${LANG==="zh"?"成本率":"Food%"} ${f.foodPct.toFixed(1)}%</div></div>
     <div class="kpi"><div class="k">${LANG==="zh"?"净利润":"Net Profit"}</div><div class="v sm ${f.netProfit>=0?'pos':'neg'}">${money(f.netProfit)}</div><div class="s ${f.netProfit>=0?'pos':'neg'}">${LANG==="zh"?"净利率":"Margin"} ${f.netPct.toFixed(1)}%</div><div class="mini" style="margin-top:4px;">${LANG==="zh"?`毛利 ${money(f.grossProfit)} − 开销 ${money(f.opex)}`:''}</div></div>
     <div class="kpi"><div class="k">${LANG==="zh"?"SST 6% 代收":"SST 6%"}</div><div class="v sm warnc">${money(f.sst)}</div><div class="s mini">${LANG==="zh"?"需另存缴税":"Set aside"}</div></div>
@@ -4170,7 +4177,7 @@ function getNotified(){try{return JSON.parse(localStorage.getItem(ordNotifKey())
 function setNotified(m){try{localStorage.setItem(ordNotifKey(),JSON.stringify(m));}catch(e){}}
 function orderUnreadCount(){if(!['owner','area','hrmgr'].includes(curRole))return 0;const seen=+(localStorage.getItem(ordSeenKey())||0);return ORDERS.filter(o=>o.ts>seen).length;}
 function markOrdersSeen(){const latest=ORDERS.reduce((m,o)=>Math.max(m,o.ts),0);localStorage.setItem(ordSeenKey(),String(latest));updateBell();}
-function updateBell(){const bell=document.getElementById('bellBtn');if(!bell)return;const show=['owner','area','hrmgr'].includes(curRole);bell.style.display=show?'':'none';const n=orderUnreadCount();const bc=document.getElementById('bellCount');if(bc){bc.style.display=n?'':'none';bc.textContent=n>99?'99+':n;}}
+function updateBell(){const bell=document.getElementById('bellBtn');if(!bell)return;const show=['owner','area','hrmgr'].includes(curRole);bell.style.display=show?'':'none';const n=orderUnreadCount();const bc=document.getElementById('bellCount');if(bc){bc.style.display=n?'':'none';bc.textContent=n>99?'99+':n;}try{updateMoreBadge();}catch(e){}}
 /* 新订单提示音：模仿 iPhone 内建「Note」提示音的两声清脆上扬叮铃(E6→G6)，
    WebAudio 原创合成(不是抓 Apple 音频档，那是苹果版权音效)——两声上扬跟版本
    更新的三声上扬「Tri-tone」风格区分开，听声音就知道是新订单还是系统更新。 */
@@ -4957,10 +4964,19 @@ function notifCompute(){
   _notifCache=items;_notifAt=Date.now();return items;
 }
 function notifCount(){if(!_notifCache)return 0;const s=notifSnoozed();return _notifCache.filter(i=>!s[i.key]).length;}
+function updateMoreBadge(){
+  const mb=document.getElementById('moreBtn');if(!mb)return;
+  const read=id=>{const e=document.getElementById(id);if(!e||e.style.display==='none')return 0;const btn=e.closest('button');if(btn&&btn.style.display==='none')return 0;const t=(e.textContent||'').trim(),v=parseInt(t,10);return isNaN(v)?1:(/\+$/.test(t)?v+1:v);};
+  const n=read('notifCount')+read('xferBellCount')+read('bellCount')+read('updBellCount');
+  let b=mb.querySelector('.mbadge');if(!b){b=document.createElement('span');b.className='mbadge';mb.appendChild(b);}
+  b.textContent=n>9?'9+':String(n);b.style.display=n>0?'':'none';
+}
+setInterval(()=>{try{updateMoreBadge();}catch(e){}},4000);
 function updateNotifBell(){
   const b=document.getElementById('notifBtn');if(!b)return;
   const ok=!!curUser&&pageAllowed('notif');b.style.display=ok?'':'none';if(!ok)return;
   const c=document.getElementById('notifCount'),n=notifCount();if(c){c.textContent=n>9?'9+':String(n);c.style.display=n>0?'':'none';}
+  try{updateMoreBadge();}catch(e){}
   if(!_notifBusy&&(!_notifCache||Date.now()-_notifAt>180000)){_notifBusy=true;setTimeout(()=>{try{notifCompute();}catch(e){}_notifBusy=false;updateNotifBell();},400);}
 }
 async function notifGo(key){
@@ -6974,6 +6990,7 @@ function render(){
   window._lastPg=curPage;
   try{helpInject();}catch(e){}
   if(UI2)ui2AfterRender();
+  try{updateMoreBadge();}catch(e){}
 }
 function skelHTML(){return '<div class="skel-wrap"><div class="skel-b" style="height:30px;width:46%"></div><div class="skel-row"><div class="skel-b" style="height:78px"></div><div class="skel-b" style="height:78px"></div><div class="skel-b" style="height:78px"></div><div class="skel-b" style="height:78px"></div></div><div class="skel-b" style="height:190px"></div><div class="skel-b" style="height:120px"></div></div>';}
 
@@ -7688,7 +7705,7 @@ function playUpdateChime(){
     try{if(navigator.vibrate)navigator.vibrate([150,80,150,80,150]);}catch(e){}
   }catch(e){}
 }
-function updBellRefresh(){const bc=document.getElementById('updBellCount');if(bc)bc.style.display=_updPending?'':'none';}
+function updBellRefresh(){const bc=document.getElementById('updBellCount');if(bc)bc.style.display=_updPending?'':'none';try{updateMoreBadge();}catch(e){}}
 /* 铃铛点开：有更新待处理就重新弹出强制更新窗(避免不小心被切走/看不到)；
    没有的话就只是显示目前版本号，给所有账号都能查。 */
 function openUpdatePanel(){
