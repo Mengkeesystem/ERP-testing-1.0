@@ -1394,7 +1394,7 @@ function statusOf(d){if(d<=14)return{t:"健康",e:"Fresh",c:"p-g"};if(d<=30)retu
 function stTxt(s){return LANG==="zh"?s.t:s.e;}
 
 /* ================= 数据种子 ================= */
-const BUILD="1111mk128";  // 版本标记：页面右上/网格提示可见，用来确认已载入最新版
+const BUILD="1111mk129";  // 版本标记：页面右上/网格提示可见，用来确认已载入最新版
 const SEED_VERSION="bh-master-2026-09-1";  // 版本变更→下次载入自动重置为最新主数据（仅本店云端）
 function seed(outletId){
   const isCK = outletId==="ck";
@@ -4195,8 +4195,12 @@ async function enablePushSub(){
     if(!XFER_ROLES.includes(curRole))return{ok:false,reason:'role'};
     if(!('Notification'in window)||Notification.permission!=='granted')return{ok:false,reason:'perm'};
     const reg=_swReg||await navigator.serviceWorker.ready;
+    const want=urlB64ToUint8Array(VAPID_PUBLIC);
     let sub=await reg.pushManager.getSubscription();
-    if(!sub)sub=await reg.pushManager.subscribe({userVisibleOnly:true,applicationServerKey:urlB64ToUint8Array(VAPID_PUBLIC)});
+    // 旧订阅是用「以前那把 VAPID 密钥」登记的：苹果会回 VapidPkHashMismatch、永远推不到。钥匙对不上就退订重新登记
+    if(sub){let same=false;try{const k=sub.options&&sub.options.applicationServerKey;if(k){const a=new Uint8Array(k);same=a.length===want.length&&a.every((v,i)=>v===want[i]);}}catch(e){}
+      if(!same){const oldEp=sub.endpoint;try{await sub.unsubscribe();}catch(e){}try{await _sb.from('erp_push_subs').delete().eq('endpoint',oldEp);}catch(e){}sub=null;}}
+    if(!sub)sub=await reg.pushManager.subscribe({userVisibleOnly:true,applicationServerKey:want});
     const j=sub.toJSON();
     const {error}=await _sb.from('erp_push_subs').upsert({endpoint:j.endpoint,sub:j,email:(curUser&&curUser.email)||'',role:curRole,updated_at:new Date().toISOString()},{onConflict:'endpoint'});
     if(error)return{ok:false,reason:'db',msg:error.message};
