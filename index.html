@@ -1026,7 +1026,7 @@ html.ui2[data-theme="cn"] .m>button.btn.block.brand{box-shadow:0 -14px 12px 4px 
 <!-- Supabase 云端 SDK（未配置 key 时不影响运行，自动回退本地存储）-->
 <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
 <link rel="preconnect" href="https://kmcdokwiyetlmsrdlgqw.supabase.co" crossorigin>
-<script src="i18n.js"></script>
+<script>try{var _l=localStorage.getItem("erpLang");if(_l==="vi"||_l==="my")document.write('<script src="i18n.js"><\/script>');}catch(e){}</script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body>
@@ -1476,7 +1476,7 @@ function statusOf(d){if(d<=14)return{t:"健康",e:"Fresh",c:"p-g"};if(d<=30)retu
 function stTxt(s){return LANG==="zh"?s.t:s.e;}
 
 /* ================= 数据种子 ================= */
-const BUILD="1111mk147";  // 版本标记：页面右上/网格提示可见，用来确认已载入最新版
+const BUILD="1111mk148";  // 版本标记：页面右上/网格提示可见，用来确认已载入最新版
 const SEED_VERSION="bh-master-2026-09-1";  // 版本变更→下次载入自动重置为最新主数据（仅本店云端）
 function seed(outletId){
   const isCK = outletId==="ck";
