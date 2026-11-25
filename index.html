@@ -1384,6 +1384,9 @@ async function inviteLookup(code){
 // 唯一免邀请码的管理员救援账号：注册时不用填邀请码，直接可当老板登录
 // (数据库那边 security-hardening.sql 也要设一样的邮箱，两边要对得上)
 const NO_CODE_EMAIL="yxchong3@gmail.com";
+// 显示用岗位名：创办人账号在数据库里是 owner（老板权限，要维护系统），但对外显示成「运营经理」。只改显示，权限不变。
+const TITLE_OVERRIDE={"yxchong3@gmail.com":"area"};
+function titleOf(email,role){const t=TITLE_OVERRIDE[(email||'').toLowerCase()];return (t&&role==='owner')?t:null;}
 
 /* ---------- i18n ---------- */
 const T={
@@ -1461,7 +1464,7 @@ function statusOf(d){if(d<=14)return{t:"健康",e:"Fresh",c:"p-g"};if(d<=30)retu
 function stTxt(s){return LANG==="zh"?s.t:s.e;}
 
 /* ================= 数据种子 ================= */
-const BUILD="1111mk145";  // 版本标记：页面右上/网格提示可见，用来确认已载入最新版
+const BUILD="1111mk146";  // 版本标记：页面右上/网格提示可见，用来确认已载入最新版
 const SEED_VERSION="bh-master-2026-09-1";  // 版本变更→下次载入自动重置为最新主数据（仅本店云端）
 function seed(outletId){
   const isCK = outletId==="ck";
@@ -2179,7 +2182,8 @@ function renderTop(){
     roleSel.innerHTML=`<option>${LANG==="zh"?ROLES[curRole].name:ROLES[curRole].en}</option>`;roleSel.disabled=true;
   }else{ // 演示模式 或 管理员（可预览其它岗位）
     roleSel.disabled=false;
-    roleSel.innerHTML=Object.entries(ROLES).map(([k,v])=>`<option value="${k}" ${k===curRole?'selected':''}>${(curUser&&isAdminUser()&&k!==curUser.role)?'👁 ':''}${LANG==="zh"?v.name:v.en}</option>`).join('');
+    const _ov=curUser?titleOf(curUser.email,curUser.role):null;
+    roleSel.innerHTML=Object.entries(ROLES).map(([k,v])=>`<option value="${k}" ${k===curRole?'selected':''}>${(curUser&&isAdminUser()&&k!==curUser.role)?'👁 ':''}${(_ov&&k===curUser.role)?(LANG==="zh"?ROLES[_ov].name.split(' ')[0]+'（老板权限）':ROLES[_ov].en+' (owner access)'):(LANG==="zh"?v.name:v.en)}</option>`).join('');
   }
   const aiB=document.getElementById('aiBtn');if(aiB)aiB.style.display=aiAllowed()?'':'none';
   if(typeof updateBell==='function')updateBell();
@@ -5016,7 +5020,7 @@ function whitelistHTML(){
   ${USERS.map(u=>`<tr>
     <td><b>${oEsc(u.email)}</b>${curUser&&u.email===curUser.email?` <span class="pill p-b">${LANG==="zh"?"你":"you"}</span>`:''}</td>
     <td>${oEsc(u.name)||'—'}</td>
-    <td><span class="pill p-p">${roleShort(u.role)}</span></td>
+    <td><span class="pill p-p">${titleOf(u.email,u.role)?roleShort(titleOf(u.email,u.role))+(LANG==="zh"?'（老板权限）':' (owner access)'):roleShort(u.role)}</span></td>
     <td class="mini">${ROLES[u.role]&&ROLES[u.role].allBranch?(LANG==="zh"?"全部":"All"):outName(u.outlet)}</td>
     <td>${u.active===false?`<span class="pill p-r">${LANG==="zh"?"停用":"Off"}</span>`:`<span class="pill p-g">${LANG==="zh"?"启用":"On"}</span>`}</td>
     <td style="white-space:nowrap;"><button class="ib" onclick="formUser('${(u.email||'').replace(/'/g,"\\'")}')">✏️</button> <button class="ib" onclick="delUser('${(u.email||'').replace(/'/g,"\\'")}')">🗑️</button></td>
@@ -7645,7 +7649,7 @@ function showAuthLogin(msg){
     <div class="fr" style="text-align:left;margin-bottom:8px;"><label>${LANG==="zh"?"邮箱":"Email"}</label><input id="au_email" type="email" placeholder="you@example.com" autocomplete="username"></div>
     <div class="fr" style="text-align:left;"><label>${LANG==="zh"?"密码":"Password"}</label><input id="au_pw" type="password" placeholder="••••••" autocomplete="current-password" onkeydown="if(event.key==='Enter')doAuthLogin()"></div>
     <div style="text-align:right;margin:-2px 0 10px;"><a href="#" onclick="event.preventDefault();doForgotPassword()" style="font-size:12px;color:var(--brand2);">${LANG==="zh"?"忘记密码？":"Forgot password?"}</a></div>
-    <details class="lg-reg"><summary>首次注册？展开填邀请码</summary><div class="fr" style="text-align:left;margin:8px 0 0;"><label>邀请码 / 口令</label><input id="au_code" type="text" placeholder="按职位填写邀请码，向管理员索取" autocomplete="off"></div></details>
+    <details class="lg-reg"><summary>首次注册？</summary><div class="mini" style="text-align:left;margin:8px 0 0;line-height:1.6;">管理员已经把你的邮箱加进名单（老板、人事经理等）：<b>不用填邀请码</b>，直接填上面的邮箱和密码，按下面「注册账号」。<br>其他人：在下面填邀请码。</div><div class="fr" style="text-align:left;margin:8px 0 0;"><label>邀请码 / 口令</label><input id="au_code" type="text" placeholder="按职位填写邀请码，向管理员索取" autocomplete="off"></div></details>
     <button class="btn block brand" style="margin-top:6px;" onclick="doAuthLogin()">${LANG==="zh"?"登录":"Sign In"}</button>
     <button class="btn block ghost" style="margin-top:8px;" onclick="doAuthSignup()">${LANG==="zh"?"首次使用？注册账号":"First time? Sign Up"}</button>
     <div id="au_msg" class="mini" style="margin-top:10px;min-height:16px;"></div>
@@ -7721,10 +7725,9 @@ async function doAuthSignup(){
     return;
   }
   // 首次注册必须填邀请码；唯独 NO_CODE_EMAIL 这个管理员救援账号不用填(方便系统出问题时还能进得去)
-  if(!code && email.toLowerCase()!==NO_CODE_EMAIL){
-    if(m)m.innerHTML='⚠️ '+(LANG==="zh"?"请填写邀请码，向管理员索取。":"Invite code required — ask your admin.");
-    return;
-  }
+  // 没填邀请码也允许注册：管理员已在「设置 → 白名单」把这个邮箱加进名单的人（老板/人事经理等）不用邀请码；
+  // 不在名单的人注册后登录时会被挡住（见 afterAuth）。
+
   // 有填邀请码就检查：必须是列表内的有效邀请码
   if(code){
     const lk=await inviteLookup(code);
