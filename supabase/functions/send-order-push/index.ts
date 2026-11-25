@@ -177,15 +177,24 @@ async function loadOrders(): Promise<any[]> {
   let v: any = data?.value; if (typeof v === "string") { try { v = JSON.parse(v); } catch (_e) { v = []; } }
   return Array.isArray(v) ? v : [];
 }
+// 诊断：最近一次 sendTo 找到几台手机、失败的原因（只回报状态码和简短原因，不含任何密钥）
+let lastDiag: { subs: number; fail: string[] } = { subs: 0, fail: [] };
 async function sendTo(emails: Set<string>, title: string, body: string, tag: string, kind = ""): Promise<number> {
+  lastDiag = { subs: 0, fail: [] };
   if (!emails.size) return 0;
   const { data: all } = await supabase.from("erp_push_subs").select("endpoint, sub, email, role");
   const subs = ((all ?? []) as any[]).filter((s) => emails.has(String(s.email || "").toLowerCase()));
+  lastDiag.subs = subs.length;
   const payload = JSON.stringify({ title, body, icon: "icon-192.png", url: "./", tag, kind });
   let sent = 0;
   await Promise.allSettled(subs.map(async (row: any) => {
     try { await webpush.sendNotification(row.sub, payload); sent++; }
-    catch (e: any) { if (e?.statusCode === 404 || e?.statusCode === 410) await supabase.from("erp_push_subs").delete().eq("endpoint", row.endpoint); }
+    catch (e: any) {
+      const host = (() => { try { return new URL(row.endpoint).host; } catch (_e) { return ""; } })();
+      lastDiag.fail.push(`${e?.statusCode ?? "?"}@${host} ${String(e?.body ?? e?.message ?? "").replace(/[\u0000-\u001f]/g, " ").slice(0, 80)}`);
+      console.log("push failed", e?.statusCode, host, String(e?.body ?? e?.message ?? "").slice(0, 200));
+      if (e?.statusCode === 404 || e?.statusCode === 410) await supabase.from("erp_push_subs").delete().eq("endpoint", row.endpoint);
+    }
   }));
   return sent;
 }
@@ -207,8 +216,9 @@ async function versionPush(req: Request, inp: any): Promise<Response> {
   const { data: users } = await supabase.from("erp_users").select("email").eq("active", true);
   const emails = new Set((users ?? []).map((u: any) => String(u.email || "").toLowerCase()));
   const sent = await sendTo(emails, "🔄 明记 ERP 有新版本", `版本 ${build} 已上线，打开 App 点「确认更新」即可。`, "version", "version");
-  await supabase.from("erp_store").upsert({ key: "erpv2:lastpush:version", value: { build, at: new Date().toISOString(), sent }, updated_at: new Date().toISOString() });
-  return reply(req, { ok: true, sent, build });
+  const diag = lastDiag;
+  if (sent > 0) await supabase.from("erp_store").upsert({ key: "erpv2:lastpush:version", value: { build, at: new Date().toISOString(), sent }, updated_at: new Date().toISOString() });   // 一台都没送到就不记，下次还会再试
+  return reply(req, { ok: true, sent, build, users: emails.size, subs: diag.subs, fail: diag.fail.slice(0, 5) });
 }
 const ST_TXT: Record<string, string> = { confirmed: "已确认", rejected: "被拒绝", shipped: "已发货", partial: "部分收货", received: "已收货", cancelled: "已取消" };
 async function orderStatusPush(req: Request, who: any, input: any): Promise<Response> {

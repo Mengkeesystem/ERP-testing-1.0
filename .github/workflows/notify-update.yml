@@ -8,7 +8,12 @@ on:
   push:
     branches: [main]
     paths: ["index.html", "sw.js"]
-  workflow_dispatch: {}
+  workflow_dispatch:
+    inputs:
+      force:
+        description: "同一个版本也重发一次（测试用）"
+        type: boolean
+        default: false
 
 concurrency:
   group: notify-update
@@ -25,6 +30,7 @@ jobs:
       - name: 等网站换成新版本，然后推送通知
         env:
           CRON_SECRET: ${{ secrets.CRON_SECRET }}
+          FORCE: ${{ github.event.inputs.force == 'true' && 'true' || 'false' }}
         run: |
           if [ -z "$CRON_SECRET" ]; then echo "没有设置 CRON_SECRET，跳过推送通知"; exit 0; fi
           BUILD=$(grep -o 'const BUILD="[^"]*"' index.html | head -1 | sed 's/.*"\(.*\)"/\1/')
@@ -38,5 +44,5 @@ jobs:
           if [ "$LIVE" != "$BUILD" ]; then echo "等了 10 分钟网站还没换成新版本，不推送"; exit 1; fi
           curl -sS --max-time 60 -X POST "https://kmcdokwiyetlmsrdlgqw.supabase.co/functions/v1/send-order-push" \
             -H "content-type: application/json" -H "x-cron-secret: $CRON_SECRET" \
-            -d "{\"kind\":\"version\",\"build\":\"$BUILD\"}" | tee /tmp/r.json; echo
+            -d "{\"kind\":\"version\",\"build\":\"$BUILD\",\"force\":${FORCE:-false}}" | tee /tmp/r.json; echo
           grep -q '"ok":true' /tmp/r.json
