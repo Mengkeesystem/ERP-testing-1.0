@@ -1402,7 +1402,7 @@ function statusOf(d){if(d<=14)return{t:"健康",e:"Fresh",c:"p-g"};if(d<=30)retu
 function stTxt(s){return LANG==="zh"?s.t:s.e;}
 
 /* ================= 数据种子 ================= */
-const BUILD="1111mk139";  // 版本标记：页面右上/网格提示可见，用来确认已载入最新版
+const BUILD="1111mk140";  // 版本标记：页面右上/网格提示可见，用来确认已载入最新版
 const SEED_VERSION="bh-master-2026-09-1";  // 版本变更→下次载入自动重置为最新主数据（仅本店云端）
 function seed(outletId){
   const isCK = outletId==="ck";
@@ -7810,7 +7810,7 @@ function tryShowForcedUpdate(){
   document.body.appendChild(ov);
   const _shownAt=Date.now();
   // 弹出后 0.9 秒内的点击不算（避免你正好在点别的东西时，手指落在「确认更新」上被误触发）
-  document.getElementById('forceUpdBtn').onclick=(ev)=>{if(Date.now()-_shownAt<900)return;location.href=location.pathname+'?_ts='+Date.now();};
+  document.getElementById('forceUpdBtn').onclick=(ev)=>{if(Date.now()-_shownAt<900)return;location.replace(location.pathname+'?_ts='+Date.now());};   // 用 replace：不在浏览记录里多垫一页（以前每次更新多一页，iPhone 左边缘滑动就会露出「上一个版本」）
 }
 function showUpdateBanner(newBuild){
   const already=_updPending;
