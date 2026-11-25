@@ -821,6 +821,7 @@ html.ui2 .dv-row.inv-card,html.ui2 .dv-row.grn-card,html.ui2 .dv-row.ap-card,htm
   html.ui2 table.cardy tbody tr[style*="background"]{background:var(--soft)!important;}
 }
 
+.hintd .hp-line{margin:3px 0;}.hintd .hp-ask{margin-top:10px;}.hintd .hp-extra{margin-top:10px;padding-top:8px;border-top:1px dashed var(--line,#ddd);}
 .hintd{margin:6px 0 10px;font-size:12px;color:var(--grey);}.hintd summary{cursor:pointer;list-style:none;font-weight:600;}.hintd summary::-webkit-details-marker{display:none;}.hintd summary::before{content:"ⓘ ";}.hintd div{margin-top:6px;line-height:1.55;}
 .pr-card{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);margin-bottom:9px;overflow:hidden;}
 .pr-card summary{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:13px 14px;cursor:pointer;list-style:none;}.pr-card summary::-webkit-details-marker{display:none;}
@@ -1393,7 +1394,7 @@ function statusOf(d){if(d<=14)return{t:"健康",e:"Fresh",c:"p-g"};if(d<=30)retu
 function stTxt(s){return LANG==="zh"?s.t:s.e;}
 
 /* ================= 数据种子 ================= */
-const BUILD="1111mk127";  // 版本标记：页面右上/网格提示可见，用来确认已载入最新版
+const BUILD="1111mk128";  // 版本标记：页面右上/网格提示可见，用来确认已载入最新版
 const SEED_VERSION="bh-master-2026-09-1";  // 版本变更→下次载入自动重置为最新主数据（仅本店云端）
 function seed(outletId){
   const isCK = outletId==="ck";
@@ -2375,7 +2376,7 @@ function aiContext(){
     L.push(`\n## 各分店对比（上个月 ${pm}；理论/实际成本率按不含 SST 营业额）`);
     ids.forEach(id=>{try{const b=aiBrief(id);L.push(`- ${b.name}：营业额(不含SST) ${money(b.net)}；理论成本率 ${b.theoPct==null?'—':b.theoPct.toFixed(1)+'%'}；实际成本率 ${b.actPct==null?'—':b.actPct.toFixed(1)+'%'}；差异 ${b.diffPct==null?'—':(b.diffPct>0?'+':'')+b.diffPct.toFixed(1)+'%'}；最近进货距今 ${b.lastBuy==null?'无记录':b.lastBuy+' 天'}；价格变动待核对 ${b.pc}；低/负库存 ${b.lowNeg} 项；盘点逾期 ${b.od} 项`);}catch(e){}});
   }
-  return L.join('\n').slice(0,36000);
+  return ((_aiExtra?_aiExtra+'\n\n':'')+L.join('\n')).slice(0,36000);
 }
 
 // ===== 明记小助手浮动圆球（类似 iPhone 辅助触控）=====
@@ -2456,8 +2457,40 @@ function openAi(){
     <div class="mini" style="margin-bottom:8px;">${zh?'AI 只会看到这间店的汇总数字（不含员工资料、邮箱、薪资）。回答仅供参考，重要的请对照原数据。':''}</div>
     <div id="aiQuota">${aiQuotaHTML()}</div><div id="aiBox" class="ai-box"></div>
     <div class="odfoot"><div style="display:flex;gap:8px;align-items:flex-end;"><textarea id="aiQ" rows="2" maxlength="500" placeholder="${zh?'问点什么…例如：上个月食材成本为什么变了？':'Ask…'}" style="flex:1;" onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();aiAsk();}"></textarea><div style="flex:none;display:flex;flex-direction:column;align-items:center;gap:3px;"><span class="mini" style="white-space:nowrap;">0.02USD/次</span><button class="btn brand" onclick="aiAsk()">${zh?'发送':'Send'}</button></div></div>
-      ${_aiMsgs.length?`<div style="text-align:right;margin-top:6px;"><button class="btn ghost sm" onclick="_aiMsgs=[];aiRender()">${zh?'清空对话':'Clear'}</button></div>`:''}</div>`);
+      ${_aiMsgs.length?`<div style="text-align:right;margin-top:6px;"><button class="btn ghost sm" onclick="_aiMsgs=[];_aiExtra='';aiRender()">${zh?'清空对话':'Clear'}</button></div>`:''}</div>`);
   const mb=document.getElementById('mbox');if(mb)mb.classList.add('m-wide');aiRender();aiQuotaLoad();
+}
+const PAGE_HELP={"dash": {"t": "利润大盘", "s": "看这间店这个月赚不赚钱的总览。\n成本率半圆表：食材成本占营业额的比例，绿色区（28–35%）算正常。\n食材成本＝月初库存＋本月进货－月末库存，也就是真的用掉多少食材。\n下面是近 6 个月营业额对食材成本，还有各分店营业额的比较。\n这些数字来自「月度核算」「进货单」「月末盘点」，那几处没填，这里就会空，或不准。"}, "health": {"t": "运营健康", "s": "一页看这间店有哪些事该做、哪些快出问题。\n每一块是一项检查：进货、价格变动、盘点、销量导入、成本差异、库存、订货单、调拨、应付、报废、请假。\n绿色＝正常，黄色＝要留意，红色＝要处理。\n最上面「今天该做的事」会列出来，点按钮直接跳去那一页处理。\n天数、百分比是参考线，不是死规定。选「全部分店」时，要先选一间店才看得到。"}, "sales": {"t": "销售数据", "s": "记录每道菜卖了多少份，系统用「配方成本」算出营业额、食材成本和毛利。\n点右上「录入销量」，填每道菜的份数。\n每张卡显示：售价×份数、单份成本、成本率（绿＝好，黄＝偏高，红＝太高）。\n可以搜索菜名，或按营业额、销量、毛利排序。\n新 POS 没有接口，月底也可以在「月度核算」用「导入 POS 销售报表」一次导进来。"}, "inv": {"t": "库存", "s": "看每样食材现在还剩多少、值多少钱，按供应商分组。\n进货会自动加库存，卖出、报废、调拨会自动减。\n库存低于「最低库存」会标「低库存」；负数表示记录有问题，要查。\n「操作 ▾」里可以批量设定最低/标准库存。\n点上面的数字标签，可以只看某一类（低库存、负库存、高于标准…）。"}, "inv:sup": {"t": "库存 · 供应商品项", "s": "这家供应商的所有品项。\n每张卡显示：现有库存、单位成本、库存值，还有状态标签（低于最低、负库存、高于标准）。\n点品项可以改名称、成本，设最低/标准库存。\n库存数字平时由进货单自动更新，一般不用手改。"}, "proc": {"t": "采购进销", "s": "进销存的作业中心，进货、订货、损耗这些工作的入口都在这里。\n订货单：向供应商或中央厨房下单。订单进度：看订单走到哪一步。\n进货单：每天记收了什么货、多少钱。\n退货补货、报废损耗、招待赠送、跨店调拨、运营开销记录，各自一张卡。\n价格变动：进货价涨跌的提醒。点任何一张卡进去，卡片上的数字是这个月的进度。"}, "purchase": {"t": "进货单", "s": "每天记「收了什么货、什么价钱」，是算成本最重要的原始资料。\n点一家供应商 → 选月份 → 选日期 → 在品项旁填「数量」和「单价」（鱼类填「重量」和单价）。\n按中间的相机可以拍发票，系统读出来，你核对过才写入。\n单价比上次涨跌超过 5% 会标红或绿，提醒你看一下。\n收货当天就录，别等到月底。"}, "purchase:sup": {"t": "进货单 · 供应商", "s": "这家供应商的进货记录。\n上面选月份，再选日期，每个品项填「数量」和「单价」；鱼类供应商填「重量」。\n「Invoice No.」填发票单号，以后对账用。\n右上「拍照识别」可以拍发票自动填；「操作 ▾」有新增品项、复制上一次进货、价格变动。\n运营经理以上可以长按月份，编辑或删除空的月份。"}, "grn": {"t": "退货补货", "s": "记录退货（退回给供应商）和补货（供应商补给你）。\n先选供应商 → 月份 → 新增一笔。\n每笔记：日期、品项、数量、金额、原因。\n可以按「退货 / 补货」筛选，按日期分组查看。"}, "waste2": {"t": "报废损耗", "s": "记录报废损耗：坏掉、过期、做错、掉在地上等被丢掉的东西。\n按月分开，每笔记：日期、物品、成本价、数量、原因、备注，总额＝成本价×数量。\n上面可以按原因筛选，看哪种原因损耗最多。\n记下来，「成本差异」才能解释钱去了哪里。"}, "offer": {"t": "招待赠送", "s": "记录招待和赠送：请客人吃、送客人、不收钱的东西。\n按月分开，每笔记：日期、收据号码、类别（ENT 招待 / Offer 赠送）、品项、当事人、金额。\n记下来，「成本差异」才能解释「为什么用了食材却没有收入」。"}, "transfer": {"t": "跨店调拨", "s": "店和店之间调货，或借人。\n要先「送出申请」，对方店批准后，双方的库存和记录才会真的变动。\n对方还没处理显示「待批准」；被拒绝显示「被拒绝」。\n要批准的话，要先切换到「被申请的那间店」才按得到。\n借调人力只是记录，不会移动员工档案。"}, "ordersheet": {"t": "订货单", "s": "向供应商下订货单。\n选一家供应商，在品项上填「数量」，填完按底部「下单」。\n下单会通知老板和运营经理确认。\n下单之后的进度（待确认 → 已确认 → 已发货 → 已收货）在「订单进度」看。\n中央厨房 (TCY OKR) 用的是带图片的订货表。"}, "orderinv": {"t": "订单发票", "s": "订货单被确认后会生成 Invoice，都集中在这里。\n点供应商 → 选月份 → 看 Invoice，可以打开查看或打印。\n只有运营经理以上才能删除 Invoice。\n这些 Invoice 也会带进「应付账款」去对账。"}, "ck": {"t": "中央厨房", "s": "中央厨房的生产成本和订货。\n填「大锅成本」和「分装包数」，系统自动算「单包成本」。\n订货表里填各分店要的数量，按「下单」提交。\n品项有图片，点图片可以放大。"}, "bom": {"t": "配方成本", "s": "设定每道菜的成本（配方成本），看每道菜赚多少。\n可以只填一个成本价，也可以列出用到的食材，让系统自动算。\n成本率颜色：蓝＝偏低，绿＝28–35% 达标，红＝偏高。\n红色的菜优先检查：是不是食材涨价了，或份量放太多。\n配方成本也会用在「成本差异」的理论成本。"}, "stock": {"t": "盘点", "s": "月底或定期盘点：数实际库存，对照账面库存。\n每个品项填「实盘数量」，系统算出账面和实物差多少（隐性损耗）。\n差异大的会标红，优先找原因。\n上面的「盘点排程」可以设定每周或每月要盘点的提醒。\n这里是逐品项盘点；月底算成本用的是「月末盘点」。"}, "monthend": {"t": "月末盘点", "s": "每月底盘点，把剩余库存填进来，用来算本月真正用掉的食材成本。\n选供应商 → 选日期（月底）→ 每个品项填剩余数量；单价自动用本月进货单价的中位数。\n实耗成本＝月初库存＋本月进货－月末库存，月末盘点没填，成本就不准。\n每个月都要做，建议月底最后一天，或下个月 1–2 号做完。"}, "opexm": {"t": "运营开销录入", "s": "逐月录入运营开销（租金、水电、营销、维修、杂费等）。\n点一个月份进去，直接填金额，按底部「保存本月」。\n只影响当月，不会串到别的月。\n带 🔗 的项目是从「运营开销记录」自动算的，不用手填。\n填好的数字会带进「运营开销」和「月度核算」算净利。"}, "opexlog": {"t": "运营开销记录", "s": "逐笔记零散开销的流水账（买小东西、维修、Wi-Fi 等）。\n按月分开，每笔记：类别、日期、Invoice No.、金额、备注。\n营销、维修、Wi-Fi 等类别会自动汇总进「运营开销」。\n它和「运营开销录入」不同：这里是一笔一笔的流水账，那边是整个月的表。"}, "ap": {"t": "应付账款", "s": "应付账款：你欠供应商多少钱、付了没有。\n订货单确认后生成的 Invoice 会出现在这里。\n逐项核对：对照实际收到的货和发票，对的按 ✔，不对按 ✗。\n全部对完按「订单正确」；付款后，把「未付款」改成已付款。\n可以按供应商、月份看，对账用。"}, "opex": {"t": "运营开销", "s": "按月看和填运营开销（租金、水电、营销、维修、杂费等）。\n点一个月份进去，直接填金额。\n填好的数字会自动带进「损益表」和「月度核算」算净利。\n人工成本目前是手动填，系统不会自动从薪资算。"}, "monthly": {"t": "月度核算", "s": "把一个月的营业额、食材成本、开销放在一起，算出净利。\n先选月份，填当月销售；「操作 ▾ → 导入 POS 销售报表」可以一次导入。\n食材成本用实耗法：月初库存＋本月进货－月末盘点。\n看成本率、毛利、净利。杂饭、小菜没做配方的，靠这页兜底。"}, "variance": {"t": "成本差异", "s": "理论上该用多少食材钱，实际用了多少，差在哪。\n理论成本＝每道菜卖了几份×配方成本。\n实际成本＝月初库存＋本月进货－月末库存。\n差异＝实际－理论：正数表示用得比应该多，要查原因；接近 0 表示控制得好。\n3% 以内正常，3–8% 要留意，超过 8% 要处理（只是参考线）。\n资料不齐（没盘点、没配方）时，这页只会告诉你缺什么，不会乱编数字。"}, "report": {"t": "报表", "s": "用图和表看成本占比、盘点差异、损耗、呆滞货。\n概览：营业额和食材成本的趋势。\n成本占比：钱花在哪些食材上。\n盘点差异、损耗：哪里在漏钱。\n呆滞货：放太久没用掉的货，早点处理。"}, "pricechg": {"t": "价格变动", "s": "进货单价和上一次比，涨跌超过设定幅度（默认 5%）就会出现在这里。\n「多付」＝（新价－旧价）×这次数量。\n核对后可以：确认新价（接受涨价）、已追差价（已向供应商要回差额）、忽略。\n右上「操作 ▾」可以改提醒的幅度。"}, "hr": {"t": "员工档案", "s": "每位员工的基本资料。\n可以搜索、按职位筛选、排序。\n卡片上有年假使用进度条。\n只有运营经理以上才能新增、修改、删除。\n「登入邮箱」要填对，员工才能用自己的账号看自己的资料。"}, "attend": {"t": "打卡考勤", "s": "员工上下班打卡。\n大按钮会按状态变成「上班」或「下班」；打卡会检查手机的位置是不是在店里。\n上面显示在岗人数、本月时数；下面按日期看每个人的打卡记录。"}, "schedule": {"t": "排班", "s": "按周安排每位员工的班次。\n可以切换上周、本周、下周。\n手机一天一张卡，电脑一周七列。"}, "leave": {"t": "请假", "s": "员工提交请假，上级批准。\n员工：新增申请，等上级批准。\n店长、经理：在卡片上直接按「批准」或「拒绝」。\n可以按「待批准、已批、已拒」筛选。"}, "settings": {"t": "系统设置", "s": "账号、权限、界面和系统工具。\n账号权限：谁能用系统、是什么职位（运营经理以上才能管）。\n岗位权限编辑：每个职位能进哪些页面。\n界面风格：Default、机械风、中式风，还有音效开关。\n员工操作监察：看谁改了什么。\n版本更新：看当前版本、手动检查更新。"}};
+function helpKey(){
+  const p=curPage;
+  if(p==='purchase'&&selSupplier)return 'purchase:sup';
+  if(p==='inv'&&typeof invSupplier!=='undefined'&&invSupplier)return 'inv:sup';
+  return PAGE_HELP[p]?p:'';
+}
+// 每页的「说明」：平时折叠，按一下才展开，白话讲这页做什么；还是看不懂可以直接问明记小助手
+function helpBody(key){
+  const H=PAGE_HELP[key];if(!H)return '';
+  const lines=H.s.split('\n');
+  let h=`<div class="hp-line">${oEsc(lines[0])}</div>`+lines.slice(1).map(l=>`<div class="hp-line">• ${oEsc(l)}</div>`).join('');
+  h+=`<div class="hp-ask">${(aiAllowed()&&AUTH()&&AI_FN_URL)?`<button class="btn ghost sm" onclick="aiAskHelp('${key}')">还是看不懂？问明记小助手</button>`:`<span class="mini">还是看不懂？请问你的店长或运营经理。</span>`}</div>`;
+  return h;
+}
+function helpInject(){
+  const key=helpKey();if(!key)return;
+  const pg=document.querySelector('#pageHost .page.active');if(!pg||pg.querySelector('[data-help]'))return;
+  const body=helpBody(key);if(!body)return;
+  // 这一页本来就有一条「说明」：把白话说明放在前面，原来的那句留作「补充」，不重复出现两条
+  const old=[...pg.querySelectorAll('details.hintd')].find(d=>{const s=d.querySelector('summary');return s&&/^(说明|Notes)$/.test(s.textContent.trim());});
+  if(old){const box=old.querySelector(':scope > div');if(box){const ex=box.innerHTML;box.innerHTML=body+`<div class="hp-extra"><b>补充：</b>${ex}</div>`;}old.setAttribute('data-help',key);return;}
+  const det=document.createElement('details');det.className='hintd';det.setAttribute('data-help',key);
+  det.innerHTML=`<summary>说明</summary><div>${body}</div>`;
+  const hd=pg.querySelector(':scope > .fb');if(hd)hd.insertAdjacentElement('afterend',det);else pg.insertBefore(det,pg.firstChild);
+}
+let _aiExtra='';
+function aiAskHelp(key){
+  const H=PAGE_HELP[key];if(!H)return;
+  _aiExtra=`【功能说明——使用者正在看「${H.t}」这一页】\n${H.s}`;_aiMsgs=[];
+  openAi();aiAsk(`请用最白话、一步一步地详细解释「${H.t}」这个功能：它是做什么的、我该怎么用、最容易做错的地方。请根据摘要里的【功能说明】回答；说明里没写到的细节，就直说你不确定，叫我问店长或运营经理。`);
 }
 async function aiAsk(q){
   const zh=LANG==="zh";if(_aiBusy)return;const inp=document.getElementById('aiQ');
@@ -6659,6 +6692,7 @@ function render(){
   if(_pg&&!_same)_pg.classList.add('enter');
   if(_same){try{window.scrollTo(0,_sy);document.querySelectorAll('#pageHost .gwrap,#pageHost .card.tbl').forEach((e,i)=>{if(_sc[i]){e.scrollLeft=_sc[i][0];e.scrollTop=_sc[i][1];}});}catch(e){}}
   window._lastPg=curPage;
+  try{helpInject();}catch(e){}
   if(UI2)ui2AfterRender();
 }
 function skelHTML(){return '<div class="skel-wrap"><div class="skel-b" style="height:30px;width:46%"></div><div class="skel-row"><div class="skel-b" style="height:78px"></div><div class="skel-b" style="height:78px"></div><div class="skel-b" style="height:78px"></div><div class="skel-b" style="height:78px"></div></div><div class="skel-b" style="height:190px"></div><div class="skel-b" style="height:120px"></div></div>';}
