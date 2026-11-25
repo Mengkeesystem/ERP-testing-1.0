@@ -1401,7 +1401,7 @@ function statusOf(d){if(d<=14)return{t:"健康",e:"Fresh",c:"p-g"};if(d<=30)retu
 function stTxt(s){return LANG==="zh"?s.t:s.e;}
 
 /* ================= 数据种子 ================= */
-const BUILD="1111mk134";  // 版本标记：页面右上/网格提示可见，用来确认已载入最新版
+const BUILD="1111mk136";  // 版本标记：页面右上/网格提示可见，用来确认已载入最新版
 const SEED_VERSION="bh-master-2026-09-1";  // 版本变更→下次载入自动重置为最新主数据（仅本店云端）
 function seed(outletId){
   const isCK = outletId==="ck";
@@ -1619,6 +1619,16 @@ function calcLabourSum(db){
     levy:st.reduce((s,e)=>s+n(e.levy),0)};
 }
 /* 把薪资记录合并回内存里的这间店；老板/人事经理第一次载入时，把旧的「薪资混在整包里」搬出去（先备份、确认写成功才剥离）。回传 true = 需要重新存一次整包。 */
+// 早期版本给每间店灌过一份「示范」运营开销（租金 4000、薪资 18500、EPF 2405…合计 35,115）。
+// 这些不是真实数字，却一直躲在「默认模板」里，让利润大盘显示净利 −35,115。只有整份和示范数字「一模一样」才清零，真实填过的不会被动到。
+const DEMO_OPEX={rent:4000,commission:2500,salaries:18500,epf:2405,socso:370,levy:640,ot:1200,electricity:2800,water:420,gas:980,marketing:0,maintenance:0,wifi:180,rubbish:150,possaas:220,accounting:400,repair:350};
+function _isDemoOpex(o){if(!o||typeof o!=='object')return false;const ks=Object.keys(o);if(!ks.length)return false;return ks.every(k=>(+o[k]||0)===(DEMO_OPEX[k]||0))&&Object.keys(DEMO_OPEX).every(k=>(+o[k]||0)===DEMO_OPEX[k]);}
+function purgeDemoOpex(b){
+  if(!b)return false;let ch=false;
+  if(_isDemoOpex(b.opex)){Object.keys(b.opex).forEach(k=>b.opex[k]=0);ch=true;}
+  if(b.opexByMonth)Object.keys(b.opexByMonth).forEach(m=>{if(_isDemoOpex(b.opexByMonth[m])){delete b.opexByMonth[m];ch=true;}});
+  return ch;
+}
 async function attachPayroll(oid){
   const db=DB[oid];PAY_LOADED.delete(oid);PAY_STRIP.delete(oid);
   if(!db||!payReader(oid))return false;
@@ -1907,7 +1917,7 @@ async function loadDB(){
   for(const {o,data:d0} of got){
     let data=d0;
     if(!data || data._sv!==SEED_VERSION){ data=seed(o.id); DB[o.id]=data; syncMenuPrices(data); ensureDishCosts(data); ensureCatalogSeed(data,o.id); dirty.add(o.id); }
-    else { DB[o.id]=data; let ch=syncMenuPrices(data); if(ensureDishCosts(data))ch=true; if(ensureCatalogSeed(data,o.id))ch=true; if(ch)dirty.add(o.id); }
+    else { DB[o.id]=data; let ch=syncMenuPrices(data); if(ensureDishCosts(data))ch=true; if(ensureCatalogSeed(data,o.id))ch=true; if(purgeDemoOpex(data))ch=true; if(ch)dirty.add(o.id); }
     _reloadAt[o.id]=Date.now();
   }
   // 薪资记录 / 中央订货表 / 调拨申请：互不依赖，同时去读（以前一样一样排队）
@@ -1944,7 +1954,7 @@ async function reloadOutlet(oid,force){
   const q=_cloudWrites['erpv2:'+oid];if(q&&(q.running||q.pending!=null))return false;   // 有没存完的改动：别拿旧的盖掉它
   if(!force&&_reloadAt[oid]&&Date.now()-_reloadAt[oid]<20000)return false;
   try{const r=await Store.get('erpv2:'+oid);if(r){const sg=_sigOf(r.value);const same=_rawSig[oid]===sg;
-    if(!same||!DB[oid]){DB[oid]=JSON.parse(r.value);let ch=await attachPayroll(oid);if(applyApprovedFor(oid))ch=true;if(ch)await save(oid);_aggCache=null;}
+    if(!same||!DB[oid]){DB[oid]=JSON.parse(r.value);let ch=await attachPayroll(oid);if(applyApprovedFor(oid))ch=true;if(purgeDemoOpex(DB[oid]))ch=true;if(ch)await save(oid);_aggCache=null;}
     _rawSig[oid]=sg;_reloadAt[oid]=Date.now();return !same;}}catch(e){}
   return false;
 }
@@ -2659,10 +2669,12 @@ function calcFin(){
   const net=gross/1.06, sst=gross-net;       // 剥离 6% SST
   const cogs=calcCOGS()*mult;                // ← 真实食材成本（销量×BOM）
   const grossProfit=net-cogs;
-  const waste=x.moves.filter(m=>m.type==='waste').reduce((s,m)=>s+m.amt,0)*mult;
-  const ent=x.moves.filter(m=>m.type==='ent').reduce((s,m)=>s+m.amt,0)*mult;
-  const op=x.opex;const opex=Object.values(op||{}).reduce((s,v)=>s+(+v||0),0)*mult;
-  const netProfit=grossProfit-waste-ent-opex;
+  // 报废/招待：用「报废损耗」「招待赠送」当月记录，只显示；已经包含在「实耗法」食材成本里（月初库存＋进货－月末库存），不再另外扣，免得重复扣
+  const wm=(x.wasteLog||[]).filter(r=>(r.date||'').slice(0,7)===costMonth).reduce((s,r)=>s+(+r.cost||0)*(+r.qty||0),0)*mult;
+  const waste=wm;const ent=(x.offers||[]).filter(r=>(r.date||'').slice(0,7)===costMonth).reduce((s,r)=>s+(+r.total||0),0)*mult;
+  // 运营开销：用「当月」那份（运营开销页选的月份，和「运营开销」「月度核算」同一个数）；以前误用「默认模板」，清掉当月数字后这里还是旧数
+  const mc=(x.monthClose||{})[costMonth];const opex=((mc&&mc.locked&&mc.opex!=null)?mc.opex:opexTotal(costMonth))*mult;
+  const netProfit=grossProfit-opex;
   return {gross,net,sst,cogs,grossProfit,waste,ent,opex,netProfit,foodPct:net?cogs/net*100:0,netPct:net?netProfit/net*100:0};
 }
 /* 食材成本（只用一种：实耗法＝月初库存＋本月进货−月末库存；SUPY 的 Actual food cost）+ 图表 */
@@ -2710,7 +2722,7 @@ function pgDash(){
   <div class="grid g4">
     <div class="kpi"><div class="k">${LANG==="zh"?"净营业额 (剥离SST)":"Net Sales"}</div><div class="v sm pos">${money(f.net)}</div><div class="s mini">${LANG==="zh"?"含税":"Incl."} ${money(f.gross)}</div></div>
     <div class="kpi"><div class="k">${LANG==="zh"?"毛利润":"Gross Profit"}</div><div class="v sm">${money(f.grossProfit)}</div><div class="s mini">${LANG==="zh"?"成本率":"Food%"} ${f.foodPct.toFixed(1)}%</div></div>
-    <div class="kpi"><div class="k">${LANG==="zh"?"净利润":"Net Profit"}</div><div class="v sm ${f.netProfit>=0?'pos':'neg'}">${money(f.netProfit)}</div><div class="s ${f.netProfit>=0?'pos':'neg'}">${LANG==="zh"?"净利率":"Margin"} ${f.netPct.toFixed(1)}%</div></div>
+    <div class="kpi"><div class="k">${LANG==="zh"?"净利润":"Net Profit"}</div><div class="v sm ${f.netProfit>=0?'pos':'neg'}">${money(f.netProfit)}</div><div class="s ${f.netProfit>=0?'pos':'neg'}">${LANG==="zh"?"净利率":"Margin"} ${f.netPct.toFixed(1)}%</div><div class="mini" style="margin-top:4px;">${LANG==="zh"?`毛利 ${money(f.grossProfit)} − 开销 ${money(f.opex)}`:''}</div></div>
     <div class="kpi"><div class="k">${LANG==="zh"?"SST 6% 代收":"SST 6%"}</div><div class="v sm warnc">${money(f.sst)}</div><div class="s mini">${LANG==="zh"?"需另存缴税":"Set aside"}</div></div>
   </div>
 
@@ -2734,9 +2746,8 @@ function pgDash(){
     <div class="row"><span>${LANG==="zh"?"净营业额":"Net Sales"}</span><b>${money(f.net)}</b></div>
     <div class="row ind"><span>− ${LANG==="zh"?"食材成本 COGS":"COGS"}</span><span class="r-neg">${money(f.cogs)}</span></div>
     <div class="row"><span>= ${LANG==="zh"?"毛利润":"Gross Profit"}</span><b>${money(f.grossProfit)}</b></div>
-    <div class="row ind"><span>− ${LANG==="zh"?"报废损耗":"Wastage"}</span><span class="r-neg">${money(f.waste)}</span></div>
-    <div class="row ind"><span>− ${LANG==="zh"?"招待支出":"Offers/ENT"}</span><span class="r-neg">${money(f.ent)}</span></div>
-    <div class="row ind"><span>− ${LANG==="zh"?"运营开销 OpEx":"OpEx"}</span><span class="r-neg">${money(f.opex)}</span></div>
+    <div class="row ind"><span>− ${LANG==="zh"?"运营开销 OpEx":"OpEx"} <span class="mini">(${monthLabel2(costMonth)})</span></span><span class="r-neg">${money(f.opex)}</span></div>
+    <div class="row ind"><span class="mini">${LANG==="zh"?`报废 ${money(f.waste)}、招待赠送 ${money(f.ent)} 已经包含在上面的食材成本里（实耗法），不再另外扣`:''}</span><span></span></div>
     <div class="row tot"><span>= ${LANG==="zh"?"净利润 Net Profit":"Net Profit"}</span><span class="${f.netProfit>=0?'pos':'r-neg'}">${money(f.netProfit)}</span></div>
   </div>
 
