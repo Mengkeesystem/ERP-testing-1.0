@@ -2,7 +2,7 @@
 <html lang="zh" class="ui2" data-theme="classic">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, minimum-scale=1.0, viewport-fit=cover">
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
@@ -1402,7 +1402,7 @@ function statusOf(d){if(d<=14)return{t:"健康",e:"Fresh",c:"p-g"};if(d<=30)retu
 function stTxt(s){return LANG==="zh"?s.t:s.e;}
 
 /* ================= 数据种子 ================= */
-const BUILD="1111mk137";  // 版本标记：页面右上/网格提示可见，用来确认已载入最新版
+const BUILD="1111mk138";  // 版本标记：页面右上/网格提示可见，用来确认已载入最新版
 const SEED_VERSION="bh-master-2026-09-1";  // 版本变更→下次载入自动重置为最新主数据（仅本店云端）
 function seed(outletId){
   const isCK = outletId==="ck";
@@ -2256,16 +2256,11 @@ function setDashRange(r){dashRange=r;render();}
    未来接 POS：只需让 salesData() 回传 POS 推送的销量。 */
 function salesData(){return d().sales||[];}
 function outletRevenue(id){const b=DB[id];if(!b)return 0;
-  const ms=(b.monthlySales||{})[costMonth]||[];   // POS 导入的当月销量（含税）
-  if(ms.length)return ms.reduce((q,s)=>{const dc=(b.dishCosts||[]).find(x=>x.id===s.dishId);return q+(dc?(+dc.price||0)*(+s.qty||0):0);},0);
-  const s=b.sales||[];if(s.length){return s.reduce((sum,row)=>{const r=(b.recipes||[]).find(x=>x.id===row.recipeId);return sum+(r?r.price*row.qty:0);},0);}return 0;}
-// 营业额来源：有「POS 导入的当月销量」就用它（和月度核算同一个数）；没有再用旧的「销售数据」页
-function revenueSrc(){if(monthSales(costMonth).length)return 'pos';if(salesData().length)return 'sales';return 'none';}
-function calcRevenue(){ // 含税营业额
-  if(monthSales(costMonth).length)return monthlyPnL(costMonth).rev;
-  const s=salesData();
-  if(s.length){return s.reduce((sum,row)=>{const r=(d().recipes||[]).find(x=>x.id===row.recipeId);return sum+(r?r.price*row.qty:0);},0);}
-  return 0;
+  const ms=(b.monthlySales||{})[costMonth]||[];   // 每个月只看「那个月」POS 导入的销量（含税），没导入就是 0，不借别的月或旧资料
+  return ms.reduce((q,s)=>{const dc=(b.dishCosts||[]).find(x=>x.id===s.dishId);return q+(dc?(+dc.price||0)*(+s.qty||0):0);},0);}
+function revenueSrc(){return monthSales(costMonth).length?'pos':'none';}
+function calcRevenue(){ // 含税营业额：当月 POS 导入的销量 × 菜价（和月度核算同一个数）；当月没导入＝0
+  return monthSales(costMonth).length?monthlyPnL(costMonth).rev:0;
 }
 /* ===== 成本核算方式（明记：主力单点/煮炒做BOM + 杂饭小菜月度核算）=====
    rate   ①成本率法：COGS = 净营业额 × 成本率%（当天/平时快速估算）
@@ -2727,7 +2722,7 @@ function pgDash(){
     </div>
   </div>
   <div class="grid g4">
-    <div class="kpi"><div class="k">${LANG==="zh"?"净营业额 (剥离SST)":"Net Sales"}</div><div class="v sm pos">${money(f.net)}</div><div class="s mini">${LANG==="zh"?"含税":"Incl."} ${money(f.gross)}</div><div class="mini" style="margin-top:3px;opacity:.8;">${(()=>{const s=revenueSrc();return LANG==="zh"?(s==='pos'?`来自 POS 导入的${monthLabel2(costMonth)}销量`:s==='sales'?'来自「销售数据」页':`还没有${monthLabel2(costMonth)}的销量（月度核算导入 POS 报表后会自动显示）`):'';})()}</div></div>
+    <div class="kpi"><div class="k">${LANG==="zh"?"净营业额 (剥离SST)":"Net Sales"}</div><div class="v sm pos">${money(f.net)}</div><div class="s mini">${LANG==="zh"?"含税":"Incl."} ${money(f.gross)}</div><div class="mini" style="margin-top:3px;opacity:.8;">${(()=>{const s=revenueSrc();return LANG==="zh"?(s==='pos'?`来自 POS 导入的${monthLabel2(costMonth)}销量`:`${monthLabel2(costMonth)}还没有导入销量（月度核算导入 POS 报表后会自动显示）`):'';})()}</div></div>
     <div class="kpi"><div class="k">${LANG==="zh"?"毛利润":"Gross Profit"}</div><div class="v sm">${money(f.grossProfit)}</div><div class="s mini">${LANG==="zh"?"成本率":"Food%"} ${f.foodPct.toFixed(1)}%</div></div>
     <div class="kpi"><div class="k">${LANG==="zh"?"净利润":"Net Profit"}</div><div class="v sm ${f.netProfit>=0?'pos':'neg'}">${money(f.netProfit)}</div><div class="s ${f.netProfit>=0?'pos':'neg'}">${LANG==="zh"?"净利率":"Margin"} ${f.netPct.toFixed(1)}%</div><div class="mini" style="margin-top:4px;">${LANG==="zh"?`毛利 ${money(f.grossProfit)} − 开销 ${money(f.opex)}`:''}</div></div>
     <div class="kpi"><div class="k">${LANG==="zh"?"SST 6% 代收":"SST 6%"}</div><div class="v sm warnc">${money(f.sst)}</div><div class="s mini">${LANG==="zh"?"需另存缴税":"Set aside"}</div></div>
@@ -5053,6 +5048,21 @@ function pgBudget(){
 }
 
 /* ============ 下拉刷新：在页面最顶部往下拉，顶部中间出现转圈，真的重新读云端资料 ============ */
+
+/* 手机双指放大/缩小页面时，iOS 的「固定」元素会跑到屏幕中间。这里让底部导航条永远贴在「看得到的画面」最底下，大小也不变 */
+(function(){
+  const vv=window.visualViewport;if(!vv)return;let raf=0;
+  function apply(){
+    raf=0;const tb=document.getElementById('tabbar');if(!tb)return;
+    const s=vv.scale;
+    if(Math.abs(s-1)<0.02){if(tb.style.transform){tb.style.transform='';tb.style.transformOrigin='';}return;}   // 没缩放：不动它（键盘弹出也不影响）
+    const lh=document.documentElement.clientHeight;
+    tb.style.transformOrigin='0 100%';
+    tb.style.transform='translate('+vv.offsetLeft+'px,'+(vv.offsetTop+vv.height-lh)+'px) scale('+(1/s)+')';
+  }
+  const q=()=>{if(!raf)raf=requestAnimationFrame(apply);};
+  vv.addEventListener('resize',q);vv.addEventListener('scroll',q);window.addEventListener('scroll',q,{passive:true});window.addEventListener('orientationchange',q);
+})();
 let _ptrBusy=false;
 async function pullRefresh(){
   if(_ptrBusy)return;_ptrBusy=true;
