@@ -6,7 +6,9 @@
 
 
 ## 📌 业主的固定规矩（2026-11-25 业主要求，所有对话/所有仓库通用，**必须照做**）
-1. **需要业主去部署任何东西（Supabase Edge Function、SQL、Secrets、GitHub 设置等）时：只给「代码的链接」，不要把代码整份贴在聊天里**（太长、刷屏）。本仓库是公开的，给 GitHub 网址即可，例如：
+1. **需要业主去部署任何东西（Supabase Edge Function、SQL、Secrets、GitHub 设置等）时：只给「代码的链接」，不要把代码整份贴在聊天里**（太长、刷屏）。**任何需要业主复制粘贴的内容（函数代码、SQL、命令、设定文字）都一样，一律给链接，不贴进聊天。**
+   - **首选：做成「Artifact 复制页」**（claude.ai 的 artifact 链接，业主在 Claude 里的浏览器/App 能直接打开，有大大的「一键复制全部代码」按钮）：用 `python3 tools/code-page.py <代码文件> <输出.html> "<标题>" "<说明>" "<步骤1>" "<步骤2>"…` 生成，再用 Artifact 工具发布，把 artifact 链接给业主。更新代码后要重新生成并用同一个 file_path 重新发布（链接不变）。
+   - 同时附上 GitHub 链接做备用。本仓库是公开的，例如：
    - 看/复制代码页：`https://github.com/Mengkeesystem/ERP-testing-1.0/blob/main/<文件路径>`（页面右上有「Copy raw file」复制按钮）
    - 纯文字版（打开后全选复制）：`https://raw.githubusercontent.com/Mengkeesystem/ERP-testing-1.0/main/<文件路径>`
    - 推送到 main **之后**才给链接（先确认已 push，链接上的内容才是最新的）。
