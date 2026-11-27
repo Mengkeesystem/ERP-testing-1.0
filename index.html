@@ -1483,7 +1483,7 @@ function statusOf(d){if(d<=14)return{t:"健康",e:"Fresh",c:"p-g"};if(d<=30)retu
 function stTxt(s){return LANG==="zh"?s.t:s.e;}
 
 /* ================= 数据种子 ================= */
-const BUILD="1111mk161";  // 版本标记：页面右上/网格提示可见，用来确认已载入最新版
+const BUILD="1111mk162";  // 版本标记：页面右上/网格提示可见，用来确认已载入最新版
 const SEED_VERSION="bh-master-2026-09-1";  // 版本变更→下次载入自动重置为最新主数据（仅本店云端）
 function seed(outletId){
   const isCK = outletId==="ck";
@@ -2377,7 +2377,7 @@ function renderTop(){
 }
 // 侧边栏菜单分组（ERP 结构，方便日后扩充）
 const MENU=[
-  ["营运 Operations",[["dash","💰","dash"],["health","⚠","health"],["temp","🌡","temp"],["sales","🧾","sales"],["proc","🔄","proc"],["ck","🏭","ck"]]],
+  ["营运 Operations",[["dash","💰","dash"],["health","⚠","health"],["sales","🧾","sales"],["proc","🔄","proc"],["ck","🏭","ck"],["temp","🌡","temp"]]],
   ["库存 Inventory",[["inv","📦","inv"],["expiry","⏳","expiry"],["bom","🍲","bom"],["monthend","📋","monthend"]]],
   ["财务 Finance",[["ap","💳","ap"],["opex","💵","opex"],["monthly","📅","monthly"]]],
   ["人事 HR",[["hr","👤","hr"],["attend","🕐","attend"],["schedule","📅","schedule"],["leave","🌴","leave"]]],
@@ -6244,11 +6244,20 @@ function dvAfterRecalc(mod,sup){
 }
 /* 一行三个格子（重量/数量/单价）任何一格改了，都把这一行当前的值一起存：
    数量填好、单价还空着 → 自动带入上次的单价（SUPY 的做法）；先填单价再填数量也不会丢（表格视图会丢，这里不会）。 */
+function dvLive(el){ // 输入时实时：数量/重量清空 → 单价立刻消失并存档
+  const f=el.dataset.f;
+  if(f!=='price'){const box=el.closest('.dv-in');const g=k=>{const i=box.querySelector('input[data-f="'+k+'"]');return i?(+i.value||0):0;};
+    const pi=box.querySelector('input[data-f="price"]');
+    if(g('qty')<=0&&g('weight')<=0&&pi&&pi.value){pi.value='';el.onchange&&el.onchange();return;}}
+  gridCellRecalc(el);
+}
 async function dvCommit(el,sup,cid,dt){
   const box=el.closest('.dv-in');const inp=f=>box.querySelector('input[data-f="'+f+'"]');
   const g=f=>{const i=inp(f);return i?(+i.value||0):0;};
   let wt=g('weight'),q=g('qty'),pr=g('price');
   if(el.dataset.f==='qty'&&q>0&&!pr){const lp=dvLastPrice(sup,cid);if(lp>0){pr=lp;inp('price').value=lp;}}
+  // 重量和数量都清空了 → 单价（含自动带出的）一起消失；只改单价那一格时不动
+  if(el.dataset.f!=='price'&&q<=0&&wt<=0&&pr>0){pr=0;const pi=inp('price');if(pi)pi.value='';}
   if(inp('weight'))await setGridCell('purchase',sup,cid,dt,'weight',wt);
   await setGridCell('purchase',sup,cid,dt,'qty',q);
   await setGridCell('purchase',sup,cid,dt,'price',pr);
@@ -6312,9 +6321,9 @@ function dayViewHTML(sup,month){
     const prevP=priceBefore(sup,c.cid,dvDay);
     return `<div class="dv-row ${r?'has':''}" data-prev="${prevP||0}" data-name="${oEsc(((c.code||'')+' '+(c.name||'')).toLowerCase())}">
       <div><div class="dv-name">${oEsc(c.name||'')}</div>${meta?`<div class="mini">${meta}</div>`:''}<div class="dv-flag">${priceFlagHTML(prevP,price)}</div></div>
-      <div class="dv-in gcw">${fish?`<label>${zh?'重量':'Weight'}<input type="number" inputmode="decimal" step="0.01" data-f="weight" value="${wt||''}" ${dis} oninput="gridCellRecalc(this)" onchange="dvCommit(this,'${S}','${c.cid}','${dvDay}')"></label>`:''}
-        <label>${zh?'数量':'Qty'}<input type="number" inputmode="decimal" step="0.01" data-f="qty" value="${qty||''}" ${dis} oninput="gridCellRecalc(this)" onchange="dvCommit(this,'${S}','${c.cid}','${dvDay}')"></label>
-        <label>${zh?'单价 RM':'Price RM'}<input type="number" inputmode="decimal" step="0.01" data-f="price" placeholder="${lp?lp.toFixed(2):''}" value="${price||''}" ${dis} oninput="gridCellRecalc(this)" onchange="dvCommit(this,'${S}','${c.cid}','${dvDay}')"></label>
+      <div class="dv-in gcw">${fish?`<label>${zh?'重量':'Weight'}<input type="number" inputmode="decimal" step="0.01" data-f="weight" value="${wt||''}" ${dis} oninput="dvLive(this)" onchange="dvCommit(this,'${S}','${c.cid}','${dvDay}')"></label>`:''}
+        <label>${zh?'数量':'Qty'}<input type="number" inputmode="decimal" step="0.01" data-f="qty" value="${qty||''}" ${dis} oninput="dvLive(this)" onchange="dvCommit(this,'${S}','${c.cid}','${dvDay}')"></label>
+        <label>${zh?'单价 RM':'Price RM'}<input type="number" inputmode="decimal" step="0.01" data-f="price" placeholder="${lp?lp.toFixed(2):''}" value="${price||''}" ${dis} oninput="dvLive(this)" onchange="dvCommit(this,'${S}','${c.cid}','${dvDay}')"></label>
         <div class="gcamt dv-amt">${amt?money(amt):'-'}</div></div></div>`;}).join('')||`<div class="empty">${zh?'这家供应商还没有品项，点『+ 品项』添加':'No items — tap + Item'}</div>`;
   const dd=new Date(dvDay+'T00:00:00');
   const dayLabel=zh?`${dd.getMonth()+1}月${dd.getDate()}日 · 周${wd[dd.getDay()]}`:dvDay;
