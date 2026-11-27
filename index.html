@@ -288,6 +288,9 @@
   .bar-row .fill{height:100%;border-radius:5px;}
   .bar-row .val{width:80px;text-align:right;flex-shrink:0;font-weight:700;font-size:11px;}
 .rdot{display:inline-block;width:9px;height:9px;border-radius:50%;background:#e03131;margin-left:8px;vertical-align:middle;box-shadow:0 0 0 2px rgba(224,49,49,.25)}
+.bulkbar{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin:0 0 10px}
+.bulkbar.on{position:sticky;top:calc(var(--topH,56px) + 4px);z-index:30;background:var(--card);border:1px solid var(--line);border-radius:12px;padding:8px 12px;box-shadow:0 4px 14px rgba(0,0,0,.12)}
+.bk-on{position:relative}.bk-on>.bkc{width:22px;height:22px;flex:0 0 auto;margin:0 10px 0 0;accent-color:var(--brand,#7c1619)}
 </style>
 <style id="ui2css">
 #aiBall{position:fixed;left:0;top:0;width:56px;height:56px;z-index:88;display:none;touch-action:none;user-select:none;-webkit-user-select:none;-webkit-touch-callout:none;cursor:pointer;will-change:transform;-webkit-tap-highlight-color:transparent;contain:layout style;}
@@ -1477,7 +1480,7 @@ function statusOf(d){if(d<=14)return{t:"健康",e:"Fresh",c:"p-g"};if(d<=30)retu
 function stTxt(s){return LANG==="zh"?s.t:s.e;}
 
 /* ================= 数据种子 ================= */
-const BUILD="1111mk154";  // 版本标记：页面右上/网格提示可见，用来确认已载入最新版
+const BUILD="1111mk155";  // 版本标记：页面右上/网格提示可见，用来确认已载入最新版
 const SEED_VERSION="bh-master-2026-09-1";  // 版本变更→下次载入自动重置为最新主数据（仅本店云端）
 function seed(outletId){
   const isCK = outletId==="ck";
@@ -7173,14 +7176,32 @@ function tempExport(month){
   if(typeof downloadCSV==='function')downloadCSV(`温度记录_${nm(outletObj())}_${month}.csv`,rows);
 }
 function openTempSetup(){
-  if(!tempCanSetup())return;const zh=LANG==="zh";const eq=tempEquip();const b1=(curOutlet==='b1');
+  if(!tempCanSetup())return;const zh=LANG==="zh";const eq=tempEquip();const b1=(curOutlet==='b1');const bk=bulkAllowed();
   const cnt=(k,def)=>`<div class="fr"><label>${TEMP_KINDS[k].zh}</label><input id="ts-${k}" type="number" min="0" max="40" value="${def}" style="width:90px;"></div>`;
   openForm(`<h3>${zh?'设置温度检查设备':'Equipment'} <span class="x" onclick="closeM()">×</span></h3>
-    ${eq.length?`<div class="sec" style="font-weight:700;margin:4px 0;">${zh?'现有设备':'Current'}</div>${eq.map(e=>`<div style="display:flex;gap:6px;align-items:center;margin-bottom:6px;"><input value="${oEsc(e.name)}" style="flex:1;" onchange="tempEquipRename(${e.id},this.value)"><span class="mini" style="white-space:nowrap;">${tempKind(e).zh} ${tempStd(e)}</span><button class="ib" onclick="tempEquipDel(${e.id})">🗑️</button></div>`).join('')}`:''}
+    ${eq.length?`<div class="sec" style="font-weight:700;margin:4px 0;display:flex;gap:10px;align-items:center;flex-wrap:wrap;">${zh?'现有设备':'Current'}${bk?`<label style="font-weight:400;font-size:13px;display:flex;gap:4px;align-items:center;"><input type="checkbox" onchange="tempSelAll(this.checked)"> ${zh?'全选':'All'}</label><button class="btn sm" style="background:var(--red,#b3261e);color:#fff;" onclick="tempBulkDel()">${zh?'删除选中':'Delete selected'}</button>`:''}</div>${eq.map(e=>`<div style="display:flex;gap:6px;align-items:center;margin-bottom:6px;">${bk?`<input type="checkbox" class="tsel" value="${e.id}" style="width:20px;height:20px;">`:''}<input value="${oEsc(e.name)}" style="flex:1;min-width:0;" onchange="tempEquipRename(${e.id},this.value)"><span class="mini" style="white-space:nowrap;">${tempKind(e).zh} ${tempStd(e)}</span><button class="ib" onclick="tempEquipDel(${e.id})">🗑️</button></div>`).join('')}`:''}
     <div class="sec" style="font-weight:700;margin:12px 0 4px;">${zh?'新增（填几台，名字会自动编号）':'Add'}</div>
     <div class="fg2">${cnt('chiller',eq.length?0:(b1?12:0))}${cnt('bev',eq.length?0:(b1?1:0))}${cnt('freezer',eq.length?0:(b1?1:0))}${cnt('hot',0)}</div>
     <div class="mini" style="margin:4px 0 8px;">${zh?'冷藏柜、饮料冷藏柜标准 0–5°C；冷冻柜 −18°C 或更低；保温柜 60°C 或更高。':''}</div>
-    <button class="btn brand block" onclick="tempEquipAdd()">${zh?'新增':'Add'}</button>`);
+    <button class="btn brand block" onclick="tempEquipAdd()">${zh?'新增':'Add'}</button>
+    ${bk?`<div class="sec" style="font-weight:700;margin:16px 0 4px;">${zh?'批量新增（每行一个名字）':'Bulk add (one name per line)'}</div>
+      <select id="ts-bkind" style="margin-bottom:6px;">${Object.keys(TEMP_KINDS).map(k=>`<option value="${k}">${TEMP_KINDS[k].zh}</option>`).join('')}</select>
+      <textarea id="ts-names" rows="5" placeholder="${zh?'例如：\nWalk in Chiller 1 (milk)\nWalk in Freezer\nCounter Top Chiller 1':'One name per line'}" style="width:100%;"></textarea>
+      <button class="btn ghost block" style="margin-top:6px;" onclick="tempBulkAdd()">${zh?'按名字批量新增':'Add all'}</button>`:''}`);
+}
+function tempSelAll(on){document.querySelectorAll('.tsel').forEach(c=>{c.checked=!!on;});}
+async function tempBulkDel(){
+  const zh=LANG==="zh";const ids=[...document.querySelectorAll('.tsel:checked')].map(c=>+c.value);if(!ids.length)return alert(zh?'先勾选要删除的设备':'Select first');
+  if(!confirm(zh?`删除选中的 ${ids.length} 台设备？它们以前的温度记录会保留在数据里，但不再显示。`:'Delete?'))return;
+  d().tempEquip=tempEquip().filter(e=>!ids.includes(e.id));try{auditLog('温度检查设备','批量删除 '+ids.length+' 台');}catch(e){}await save();closeM();render();openTempSetup();
+}
+async function tempBulkAdd(){
+  const zh=LANG==="zh";if(!bulkAllowed())return;const kind=document.getElementById('ts-bkind').value;
+  const names=document.getElementById('ts-names').value.split(/\r?\n/).map(x=>x.trim()).filter(Boolean);if(!names.length)return alert(zh?'请每行写一个名字':'Enter names');
+  const have=new Set(tempEquip().map(e=>e.name));const fresh=[...new Set(names)].filter(n=>!have.has(n));
+  if(!fresh.length)return alert(zh?'这些名字都已经有了':'Already exist');
+  if(!d().tempEquip)d().tempEquip=[];fresh.forEach((n,i)=>d().tempEquip.push({id:Date.now()+i,name:n,kind}));
+  try{auditLog('温度检查设备','批量新增 '+fresh.length+' 台');}catch(e){}await save();closeM();render();openTempSetup();
 }
 async function tempEquipAdd(){
   const zh=LANG==="zh";if(!d().tempEquip)d().tempEquip=[];let add=0;
@@ -7193,6 +7214,67 @@ async function tempEquipAdd(){
 async function tempEquipRename(id,v){const e=tempEquip().find(x=>x.id===id);v=(v||'').trim();if(!e||!v)return;e.name=v;await save();render();}
 async function tempEquipDel(id){const zh=LANG==="zh";const e=tempEquip().find(x=>x.id===id);if(!e)return;if(!confirm(zh?`删除「${e.name}」？它以前的温度记录会保留在数据里，但不再显示。`:'Delete?'))return;
   d().tempEquip=d().tempEquip.filter(x=>x.id!==id);try{auditLog('温度检查设备','删除 '+e.name);}catch(x){}await save();closeM();render();openTempSetup();}
+
+/* ============ 批量操作（mk155）：多选 → 一次删除 / 一次标记，只给店长以上 ============
+   做法：不改各页面原来的代码。页面画好之后（render 末尾 bulkDecorate），找出每张卡片上原本的「🗑 删除」按钮，
+   把它的 onclick（例如 delWaste2(3)）当作这张卡片的「删除动作」；批量删除时就把选中的卡片的删除动作逐个执行，
+   执行期间暂时跳过逐笔确认和逐笔保存，最后只保存一次（所以每一笔的库存还原、审计记录都和单个删除一模一样）。
+   按钮没出现的卡片（没权限、已锁定）自然不能选。 */
+const BULK_ROLES=['owner','hrmgr','area','outletmgr','manager'];
+const BULK_PAGES=['inv','hr','waste2','offer','opexlog','grn','transfer','schedule','bom','monthly','expiry'];
+let bulkOn=false,bulkPage='',bulkSel=new Set();
+function bulkAllowed(){const r=(typeof realRole==='function')?realRole():curRole;return BULK_ROLES.includes(r)&&BULK_ROLES.includes(curRole)&&!isAgg();}
+function bulkItems(){ // 每张可删除的卡片：{card,call}
+  const host=document.getElementById('pageHost');if(!host)return [];const out=[],seen=new Set();
+  host.querySelectorAll('[onclick]').forEach(b=>{const c=(b.getAttribute('onclick')||'').trim();
+    if(!/^del[A-Za-z0-9]+\([^()]*\)$/.test(c))return;
+    const card=b.closest('.dv-row,.stf-card,.inv-card,.xfer-card');if(!card||seen.has(card))return;
+    const dels=[...card.querySelectorAll('[onclick]')].filter(x=>/^del[A-Za-z0-9]+\(/.test((x.getAttribute('onclick')||'').trim()));
+    if(dels.length!==1)return;seen.add(card);out.push({card,call:c});});
+  return out;}
+function bulkToggle(on){bulkOn=!!on;if(!on)bulkSel.clear();render();}
+function bulkPick(call,checked){if(checked)bulkSel.add(call);else bulkSel.delete(call);bulkRefresh();}
+function bulkAll(checked){bulkItems().forEach(x=>{if(checked)bulkSel.add(x.call);else bulkSel.delete(x.call);});render();}
+function bulkRefresh(){const n=bulkSel.size;const c=document.getElementById('bulkCnt');if(c)c.textContent=n;document.querySelectorAll('.bulkbar button[data-needsel]').forEach(b=>{b.disabled=!n;});}
+function bulkDecorate(){
+  document.querySelectorAll('.bulkbar').forEach(e=>e.remove());
+  if(bulkPage!==curPage){bulkOn=false;bulkSel.clear();bulkPage=curPage;}
+  if(!BULK_PAGES.includes(curPage)||!bulkAllowed()){return;}
+  const items=bulkItems();if(!items.length){bulkOn=false;return;}
+  const zh=LANG==="zh",host=document.getElementById('pageHost');
+  const bar=document.createElement('div');bar.className='bulkbar';
+  if(!bulkOn){bar.innerHTML=`<button class="btn ghost sm" onclick="bulkToggle(true)">${zh?'批量操作':'Bulk actions'}</button>`;
+    const fb=host.querySelector('.fb');if(fb&&fb.nextSibling)fb.parentNode.insertBefore(bar,fb.nextSibling);else host.insertBefore(bar,host.firstChild);return;}
+  // 清掉已经不存在的选择
+  const calls=new Set(items.map(x=>x.call));[...bulkSel].forEach(c=>{if(!calls.has(c))bulkSel.delete(c);});
+  items.forEach(x=>{x.card.classList.add('bk-on');const ck=document.createElement('input');ck.type='checkbox';ck.className='bkc';ck.checked=bulkSel.has(x.call);
+    ck.onclick=ev=>ev.stopPropagation();ck.onchange=()=>bulkPick(x.call,ck.checked);x.card.insertBefore(ck,x.card.firstChild);});
+  const extra=(curPage==='expiry')?`<button class="btn ghost sm" data-needsel="1" onclick="bulkLotsUsed()">${zh?'批量用完':'Mark used'}</button>`:'';
+  bar.className='bulkbar on';
+  bar.innerHTML=`<label style="display:flex;gap:6px;align-items:center;"><input type="checkbox" ${bulkSel.size===items.length?'checked':''} onchange="bulkAll(this.checked)"> ${zh?'全选':'All'}</label><span>${zh?'已选':'Selected'} <b id="bulkCnt">${bulkSel.size}</b> / ${items.length}</span><span style="flex:1"></span>${extra}<button class="btn sm" style="background:var(--red,#b3261e);color:#fff;" data-needsel="1" onclick="bulkDelete()">${zh?'删除选中':'Delete'}</button><button class="btn ghost sm" onclick="bulkToggle(false)">${zh?'取消':'Cancel'}</button>`;
+  host.insertBefore(bar,host.firstChild);bulkRefresh();
+}
+async function bulkDelete(){
+  const zh=LANG==="zh";const calls=[...bulkSel];if(!calls.length)return;
+  if(!confirm(zh?`确定删除选中的 ${calls.length} 项？\n每一项都和单个删除一样处理（例如报废会把库存加回去），删除后不能复原。`:`Delete ${calls.length} items?`))return;
+  // 同一种删除，按参数从大到小执行（按位置删除的列表才不会错位）
+  const parsed=calls.map(c=>{const m=c.match(/^(del[A-Za-z0-9]+)\((.*)\)$/);const args=m?m[2].split(','):[];const last=(args[args.length-1]||'').trim();
+    return {c,fn:(m?m[1]:'')+'|'+args.slice(0,-1).join(','),num:/^-?\d+$/.test(last)?+last:-1};})
+    .sort((a,b)=>a.fn.localeCompare(b.fn)||b.num-a.num);
+  const rs=save,rr=render,rc=window.confirm;let ok=0,bad=0;
+  save=async()=>{};render=()=>{};window.confirm=()=>true;
+  try{for(const p of parsed){try{await (new Function('return '+p.c))();ok++;}catch(e){bad++;}}}
+  finally{save=rs;render=rr;window.confirm=rc;}
+  try{auditLog('批量删除',`${curPage} 共 ${ok} 项`+(bad?`，失败 ${bad} 项`:''));}catch(e){}
+  bulkSel.clear();bulkOn=false;await save();render();
+  if(bad)alert(zh?`有 ${bad} 项没删掉，其余 ${ok} 项已删除。`:`${bad} failed`);
+}
+async function bulkLotsUsed(){
+  const zh=LANG==="zh";const ids=[...bulkSel].map(c=>{const m=c.match(/^delLot\((\d+)\)$/);return m?+m[1]:null;}).filter(Boolean);if(!ids.length)return;
+  if(!confirm(zh?`把选中的 ${ids.length} 批标记为「已用完」？`:'Mark used?'))return;
+  let n=0;(d().expiryLots||[]).forEach(l=>{if(ids.includes(l.id)&&(l.st==='open'||!l.st)){l.st='used';l.doneAt=TODAY;n++;}});
+  try{auditLog('效期批次批量用完',n+' 批');}catch(e){}bulkSel.clear();bulkOn=false;await save();render();
+}
 
 function render(){
   // 流畅度：同一页重画时保持滚动位置（页面、表格内部）；换页才播进场动画
@@ -7210,6 +7292,7 @@ function render(){
   if(_same){try{window.scrollTo(0,_sy);document.querySelectorAll('#pageHost .gwrap,#pageHost .card.tbl').forEach((e,i)=>{if(_sc[i]){e.scrollLeft=_sc[i][0];e.scrollTop=_sc[i][1];}});}catch(e){}}
   window._lastPg=curPage;
   try{helpInject();}catch(e){}
+  try{bulkDecorate();}catch(e){}
   if(UI2)ui2AfterRender();
   try{updateMoreBadge();}catch(e){}
 }
