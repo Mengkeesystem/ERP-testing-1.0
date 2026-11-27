@@ -1482,7 +1482,7 @@ function statusOf(d){if(d<=14)return{t:"健康",e:"Fresh",c:"p-g"};if(d<=30)retu
 function stTxt(s){return LANG==="zh"?s.t:s.e;}
 
 /* ================= 数据种子 ================= */
-const BUILD="1111mk158";  // 版本标记：页面右上/网格提示可见，用来确认已载入最新版
+const BUILD="1111mk159";  // 版本标记：页面右上/网格提示可见，用来确认已载入最新版
 const SEED_VERSION="bh-master-2026-09-1";  // 版本变更→下次载入自动重置为最新主数据（仅本店云端）
 function seed(outletId){
   const isCK = outletId==="ck";
@@ -7238,16 +7238,26 @@ function bulkToggle(on){bulkOn=!!on;if(!on)bulkSel.clear();render();}
 function bulkPick(call,checked){if(checked)bulkSel.add(call);else bulkSel.delete(call);bulkRefresh();}
 function bulkAll(checked){bulkItems().forEach(x=>{if(checked)bulkSel.add(x.call);else bulkSel.delete(x.call);});render();}
 function bulkRefresh(){const n=bulkSel.size;const c=document.getElementById('bulkCnt');if(c)c.textContent=n;document.querySelectorAll('.bulkbar button[data-needsel]').forEach(b=>{b.disabled=!n;});}
+// 批量按钮放哪里：优先放在页面上已有的「操作 ▾」右边；没有的话放进页头那排按钮的最后；都没有才单独一行（页面不要多出一整行）
+function bulkPlaceBtn(label,on,cls){
+  const host=document.getElementById('pageHost');if(!host)return;
+  const btn=document.createElement('button');btn.className='btn ghost sm bulkbtn';btn.textContent=label;btn.setAttribute('onclick',on);
+  const am=host.querySelector('.actm');
+  if(am&&am.parentNode){am.insertAdjacentElement('afterend',btn);return;}
+  const fb=host.querySelector('.fb');const grp=fb&&fb.lastElementChild;
+  if(grp&&grp.tagName==='DIV'&&grp.querySelector('button')){grp.appendChild(btn);return;}
+  const bar=document.createElement('div');bar.className='bulkbar';bar.appendChild(btn);
+  if(fb&&fb.nextSibling)fb.parentNode.insertBefore(bar,fb.nextSibling);else host.insertBefore(bar,host.firstChild);
+}
 function bulkDecorate(){
-  document.querySelectorAll('.bulkbar').forEach(e=>e.remove());
+  document.querySelectorAll('.bulkbar,.bulkbtn').forEach(e=>e.remove());
   if(bulkPage!==curPage){bulkOn=false;bulkSel.clear();bulkPage=curPage;}
   try{supBulkDecorate();}catch(e){}
   if(!BULK_PAGES.includes(curPage)||!bulkAllowed()){return;}
   const items=bulkItems();if(!items.length){bulkOn=false;return;}
   const zh=LANG==="zh",host=document.getElementById('pageHost');
   const bar=document.createElement('div');bar.className='bulkbar';
-  if(!bulkOn){bar.innerHTML=`<button class="btn ghost sm" onclick="bulkToggle(true)">${zh?'批量操作':'Bulk actions'}</button>`;
-    const fb=host.querySelector('.fb');if(fb&&fb.nextSibling)fb.parentNode.insertBefore(bar,fb.nextSibling);else host.insertBefore(bar,host.firstChild);return;}
+  if(!bulkOn){bulkPlaceBtn(zh?'批量操作':'Bulk actions','bulkToggle(true)');return;}
   // 清掉已经不存在的选择
   const calls=new Set(items.map(x=>x.call));[...bulkSel].forEach(c=>{if(!calls.has(c))bulkSel.delete(c);});
   items.forEach(x=>{x.card.classList.add('bk-on');const ck=document.createElement('input');ck.type='checkbox';ck.className='bkc';ck.checked=bulkSel.has(x.call);
@@ -7290,8 +7300,7 @@ function supBulkDecorate(){
   if(['purchase','grn','monthend'].includes(curPage)&&selSupplier&&subCanW(curPage))on=`openGridBulk('${curPage}')`;
   else if(curPage==='inv'&&invSupplier&&canW('inv'))on='openInvBulk()';
   if(!on)return;
-  const bar=document.createElement('div');bar.className='bulkbar';bar.innerHTML=`<button class="btn ghost sm" onclick="${on}">${zh?'批量管理品项':'Bulk edit items'}</button>`;
-  const fb=host.querySelector('.fb');if(fb&&fb.nextSibling)fb.parentNode.insertBefore(bar,fb.nextSibling);else host.insertBefore(bar,host.firstChild);
+  bulkPlaceBtn(zh?'批量管理':'Bulk edit',on);
 }
 function supBulkSel(){return [...document.querySelectorAll('.sbsel:checked')].map(c=>c.value);}
 function supBulkAll(on){document.querySelectorAll('.sbsel').forEach(c=>{c.checked=!!on;});supBulkCount();}
