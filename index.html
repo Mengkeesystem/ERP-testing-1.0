@@ -287,6 +287,7 @@
   .bar-row .track{flex:1;background:var(--soft);border-radius:5px;height:18px;overflow:hidden;}
   .bar-row .fill{height:100%;border-radius:5px;}
   .bar-row .val{width:80px;text-align:right;flex-shrink:0;font-weight:700;font-size:11px;}
+.rdot{display:inline-block;width:9px;height:9px;border-radius:50%;background:#e03131;margin-left:8px;vertical-align:middle;box-shadow:0 0 0 2px rgba(224,49,49,.25)}
 </style>
 <style id="ui2css">
 #aiBall{position:fixed;left:0;top:0;width:56px;height:56px;z-index:88;display:none;touch-action:none;user-select:none;-webkit-user-select:none;-webkit-touch-callout:none;cursor:pointer;will-change:transform;-webkit-tap-highlight-color:transparent;contain:layout style;}
@@ -1476,7 +1477,7 @@ function statusOf(d){if(d<=14)return{t:"健康",e:"Fresh",c:"p-g"};if(d<=30)retu
 function stTxt(s){return LANG==="zh"?s.t:s.e;}
 
 /* ================= 数据种子 ================= */
-const BUILD="1111mk152";  // 版本标记：页面右上/网格提示可见，用来确认已载入最新版
+const BUILD="1111mk153";  // 版本标记：页面右上/网格提示可见，用来确认已载入最新版
 const SEED_VERSION="bh-master-2026-09-1";  // 版本变更→下次载入自动重置为最新主数据（仅本店云端）
 function seed(outletId){
   const isCK = outletId==="ck";
@@ -2257,7 +2258,7 @@ function renderSidebar(){
       const act=g?(finGroupOf(curPage)===p):(p===curPage||(p==='monthend'&&curPage==='stock'));
       const target=g?(g.pages.find(([k])=>pageAllowed(k))||[p])[0]:p;
       const label=g?g.label:mlabel(p);
-      return `<button class="${act?'active':''}" onclick="${p==='monthend'?"goProcSub('monthend')":`nav('${target}')`}"><span class="si">${ic}</span>${label}</button>`;}).join('');
+      return `<button class="${act?'active':''}" onclick="${p==='monthend'?"goProcSub('monthend')":`nav('${target}')`}"><span class="si">${ic}</span>${label}${p==='expiry'&&expiredTotal()?'<i class="rdot" title="有货过期了"></i>':''}</button>`;}).join('');
   }).join('');
   document.getElementById('sidebar').innerHTML=html;
 }
@@ -6996,6 +6997,28 @@ async function lotDone(id,st){
       const r=document.getElementById('w_reason');if(r){const o=[...r.options].find(x=>/过期|Spoilage/.test(x.value));if(o)r.value=o.value;}}}catch(e){}
   }
 }
+// ---- 过期提醒：侧栏红点 + 打开 App 时弹窗（每天一次）----
+function expiredLotsOf(db){return ((db&&db.expiryLots)||[]).filter(l=>(l.st==='open'||!l.st)&&l.exp&&lotDiff(l.exp)<0);}
+function expiredAcross(){ // 我能看到的各店里，已过期还没处理的批次
+  const ids=(ROLES[curRole].allBranch&&typeof branchIds==='function')?branchIds():[curOutlet];const out=[];
+  ids.forEach(id=>{if(id===ALL_ID||!DB[id])return;const L=expiredLotsOf(DB[id]);if(L.length)out.push({oid:id,oname:nm(OUTLETS.find(o=>o.id===id)||{id,name:id}),lots:L});});
+  return out;}
+function expiredTotal(){try{if(!pageAllowed('expiry'))return 0;return expiredAcross().reduce((q,x)=>q+x.lots.length,0);}catch(e){return 0;}}
+function expiryGo(oid){closeM();try{const s=document.getElementById('outletSel');if(s&&oid&&curOutlet!==oid&&[...s.options].some(o=>o.value===oid)){s.value=oid;switchOutlet();}}catch(e){}nav('expiry');}
+function expiryAlertCheck(){
+  try{
+    if(!curUser||typeof isBusyEditing==='function'&&isBusyEditing())return;
+    const A=expiredAcross();if(!A.length)return;
+    const k='erpExpPop';let last='';try{last=localStorage.getItem(k)||'';}catch(e){}
+    if(last===TODAY)return;
+    try{localStorage.setItem(k,TODAY);}catch(e){}
+    const zh=LANG==="zh";const n=A.reduce((q,x)=>q+x.lots.length,0);
+    openForm(`<h3>${zh?'有货过期了':'Expired stock'} <span class="x" onclick="closeM()">×</span></h3>
+      <div class="al al-r" style="margin:0 0 10px;"><div class="t">${zh?`共 ${n} 批已经过期，还没处理`:`${n} lots expired`}</div>${zh?'请检查后按「用完」或「丢弃」。处理完红点才会消失。':''}</div>
+      ${A.map(x=>`<div style="margin:8px 0;"><b>${oEsc(x.oname)}</b>${x.lots.slice(0,6).map(l=>`<div class="mini">· ${oEsc(l.item)} ${l.qty}${oEsc(l.unit||'')} · ${zh?'到期':'exp'} ${l.exp}（${zh?`过期 ${-lotDiff(l.exp)} 天`:`${-lotDiff(l.exp)}d ago`}）</div>`).join('')}${x.lots.length>6?`<div class="mini">… ${zh?`还有 ${x.lots.length-6} 批`:''}</div>`:''}<button class="btn brand sm" style="margin-top:6px;" onclick="expiryGo('${x.oid}')">${zh?'去处理':'Handle'}</button></div>`).join('')}
+      <button class="btn ghost block" onclick="closeM()">${zh?'知道了，稍后处理':'Later'}</button>`);
+  }catch(e){}
+}
 async function delLot(id){const zh=LANG==="zh";const l=(d().expiryLots||[]).find(x=>x.id===id);if(!l)return;if(!confirm(zh?'删除这一批的记录？':'Delete?'))return;
   d().expiryLots=d().expiryLots.filter(x=>x.id!==id);auditLog('删除效期批次',l.item);await save();render();}
 
@@ -7614,6 +7637,7 @@ async function afterAuth(user){
   const sb=document.getElementById('sidebar');if(sb)sb.style.display='';
   curPage=firstAllowedPage();render();
   try{startOrderPoll();notifyNewOrders(true);enablePushSub();startXferPoll();updateXferBell();}catch(e){}
+  setTimeout(expiryAlertCheck,2500);
   markActivity(); // 登录当下重新起算闲置时间，避免登入前累积的闲置时间被算进去
 }
 async function authLogout(idleReason){if(typeof dismissIdleWarn==='function')dismissIdleWarn();try{if(AUTH())await _sb.auth.signOut();}catch(e){}curUser=null;clearSession();showAuthLogin(idleReason?`<b>${LANG==="zh"?"⏱️ 长时间未操作，已自动登出，请重新登录。":"Logged out due to inactivity. Please sign in again."}</b>`:undefined);}

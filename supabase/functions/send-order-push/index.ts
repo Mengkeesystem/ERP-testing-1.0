@@ -26,7 +26,7 @@ import { createECDH } from "node:crypto";
 import { Buffer } from "node:buffer";
 
 // 部署版本标记：打开 ?health=1 能看到。网页端改了函数就把这个号码 +1，业主就能看出云端贴的是不是最新版
-const FN_VER = "1111mk151";
+const FN_VER = "1111mk153";
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL") ?? "";
 const SUPABASE_ANON_KEY = Deno.env.get("SUPABASE_ANON_KEY") ?? "";
 const SERVICE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
@@ -102,6 +102,14 @@ function outletTodos(db: any, orders: any[], oid: string, today: string): string
   if (oid !== "ck") {
     let lastP = ""; for (const r of (db.purchases || [])) { if (r.date && r.date > lastP) lastP = r.date; }
     if (lastP) { const ago = schedDiff(today, lastP); if (ago > 3) out.push(`进货已 ${ago} 天没录`); }
+  }
+  // 效期：已登记的批次里，已过期 / 3 天内到期还没处理的（网页「效期管理」登记的 expiryLots）
+  {
+    const open = (db.expiryLots || []).filter((l: any) => (l.st === "open" || !l.st) && l.exp);
+    const ex = open.filter((l: any) => l.exp < today).length;
+    const soon = open.filter((l: any) => l.exp >= today && schedDiff(l.exp, today) <= 3).length;
+    if (ex) out.push(`${ex} 批货已过期，要处理（效期管理）`);
+    if (soon) out.push(`${soon} 批货 3 天内到期，请先用`);
   }
   const neg = (db.items || []).filter((i: any) => (+i.qty || 0) < 0).length;
   if (neg) out.push(`${neg} 项库存是负数`);
