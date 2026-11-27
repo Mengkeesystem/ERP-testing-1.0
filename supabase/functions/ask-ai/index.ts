@@ -10,6 +10,8 @@
 //       GET ?health=1 只检查设定，不会调用 Claude。
 import { createClient } from "npm:@supabase/supabase-js@2";
 
+// 部署版本标记：打开 ?health=1 能看到。网页端改了函数就把这个号码 +1，业主就能看出云端贴的是不是最新版
+const FN_VER = "1111mk151";
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL") ?? "";
 const SUPABASE_ANON_KEY = Deno.env.get("SUPABASE_ANON_KEY") ?? "";
 const SERVICE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
@@ -90,7 +92,7 @@ Deno.serve(async (req) => {
     const problems: string[] = [];
     if (!API_KEY) problems.push("ANTHROPIC_API_KEY_not_set");
     if (!SUPABASE_URL || !SERVICE_KEY) problems.push("supabase_env_missing");
-    return problems.length ? reply(req, { ok: false, problems }, 503) : reply(req, { ok: true });
+    return problems.length ? reply(req, { ok: false, problems }, 503) : reply(req, { ok: true, fn: "ask-ai", ver: FN_VER });
   }
   if (req.method !== "POST") return reply(req, { error: "method_not_allowed" }, 405);
   const who = await authenticate(req);
