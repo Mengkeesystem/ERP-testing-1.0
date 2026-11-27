@@ -38,6 +38,19 @@ jobs:
             echo "Supabase 没有正常回应（可能已被暂停或在维护）"; exit 1
           fi
 
+      - name: 安全检查：没登录的人读不到任何资料（读到就变红、发邮件）
+        run: |
+          URL="https://kmcdokwiyetlmsrdlgqw.supabase.co"
+          KEY="sb_publishable_HVJ_hcFmSDU-N2kFUg5CRw_LH-X_phO"
+          bad=0
+          for t in erp_store erp_users erp_push_subs erp_invite_codes; do
+            body=$(curl -sS --max-time 30 "$URL/rest/v1/$t?select=*&limit=1" -H "apikey: $KEY" -H "Authorization: Bearer $KEY" || true)
+            echo "$t → $(echo "$body" | head -c 80)"
+            case "$body" in \[\{*) echo "⚠️ $t 没登录就读得到资料！"; bad=1;; esac
+          done
+          if [ "$bad" = 1 ]; then exit 1; fi
+          echo "OK：没登录读不到任何表"
+
       - name: 看一眼拍照识别函数（只看，不算失败）
         continue-on-error: true
         run: |
