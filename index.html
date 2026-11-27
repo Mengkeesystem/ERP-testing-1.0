@@ -1482,7 +1482,7 @@ function statusOf(d){if(d<=14)return{t:"健康",e:"Fresh",c:"p-g"};if(d<=30)retu
 function stTxt(s){return LANG==="zh"?s.t:s.e;}
 
 /* ================= 数据种子 ================= */
-const BUILD="1111mk157";  // 版本标记：页面右上/网格提示可见，用来确认已载入最新版
+const BUILD="1111mk158";  // 版本标记：页面右上/网格提示可见，用来确认已载入最新版
 const SEED_VERSION="bh-master-2026-09-1";  // 版本变更→下次载入自动重置为最新主数据（仅本店云端）
 function seed(outletId){
   const isCK = outletId==="ck";
@@ -7374,6 +7374,8 @@ async function invBulkApply(){
 async function invBulkClear(){
   const zh=LANG==="zh";const L=invBulkPick();if(!L.length)return alert(zh?'先勾选品项':'Select items first');
   if(!confirm(zh?`把选中的 ${L.length} 个品项的库存数量改成 0？\n（进货记录不会删，只是现有库存归零）`:'Zero stock?'))return;
+  // 第二次确认：归零不能复原，业主要求要按两次确认才会真的执行
+  if(!confirm(zh?`再次确认：真的要把这 ${L.length} 个品项的库存全部归零吗？\n按「确定」才会真的归零，不能复原。`:'Confirm again: zero the stock?'))return;
   L.forEach(i=>{i.qty=0;i.batches=[];});try{auditLog('批量库存归零',`${invSupplier} ${L.length} 项`);}catch(e){}await save();closeM();render();
 }
 async function invBulkClearLv(){
