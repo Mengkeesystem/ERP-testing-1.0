@@ -291,6 +291,7 @@
 .bulkbar{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin:0 0 10px}
 .bulkbar.on{position:sticky;top:calc(var(--topH,56px) + 4px);z-index:30;background:var(--card);border:1px solid var(--line);border-radius:12px;padding:8px 12px;box-shadow:0 4px 14px rgba(0,0,0,.12)}
 .bk-on{position:relative}.bk-on>.bkc{width:22px;height:22px;flex:0 0 auto;margin:0 10px 0 0;accent-color:var(--brand,#7c1619)}
+#syncBar{position:fixed;top:0;left:0;right:0;z-index:100000;background:#b3261e;color:#fff;padding:calc(8px + env(safe-area-inset-top,0px)) 14px 8px;font-size:14px;display:flex;gap:10px;align-items:center;justify-content:space-between}#syncBar button{background:#fff;color:#b3261e;border:0;border-radius:8px;padding:6px 12px;font-weight:700}
 </style>
 <style id="ui2css">
 #aiBall{position:fixed;left:0;top:0;width:56px;height:56px;z-index:88;display:none;touch-action:none;user-select:none;-webkit-user-select:none;-webkit-touch-callout:none;cursor:pointer;will-change:transform;-webkit-tap-highlight-color:transparent;contain:layout style;}
@@ -1482,7 +1483,7 @@ function statusOf(d){if(d<=14)return{t:"健康",e:"Fresh",c:"p-g"};if(d<=30)retu
 function stTxt(s){return LANG==="zh"?s.t:s.e;}
 
 /* ================= 数据种子 ================= */
-const BUILD="1111mk159";  // 版本标记：页面右上/网格提示可见，用来确认已载入最新版
+const BUILD="1111mk160";  // 版本标记：页面右上/网格提示可见，用来确认已载入最新版
 const SEED_VERSION="bh-master-2026-09-1";  // 版本变更→下次载入自动重置为最新主数据（仅本店云端）
 function seed(outletId){
   const isCK = outletId==="ck";
@@ -1585,9 +1586,110 @@ function initCloud(){
 }
 /* 云端写入队列：本地立即保存，云端在后台按 key 顺序合并写入，
    避免每次操作都卡在网络等待上（界面秒响应，数据后台同步）。 */
+/* ============ 云端保存（mk160）：① 多人同时改同一间店不再互相盖掉 ② 存不上云端会提示并自动重试 ============
+   以前：整包覆盖，后存的人会把先存的人的改动盖掉；失败了没人知道。
+   现在：
+   ① 每个 key 记住「上一次和云端一致的内容」(_base)。存档时先读云端最新的一份(remote)，
+      如果云端在这期间被别人改过，就做「三方合并」(基准 _base、我的 ours、别人的 remote)：
+      我没动的地方采用别人的，别人没动的地方采用我的，两边都改了同一个地方就合并列表/对象，真的冲突的单个数值以我的为准。
+      写入时用「更新时间没变」当条件（别人在中间又存了就重来），所以不会把别人刚存的盖掉。
+   ② 写入失败（断网、权限、冲突太多次）：保留待存内容，自动重试（3→6→12…最多每 60 秒一次，网络恢复和回到前台也会重试），
+      页面最上面显示「有 N 项还没存到云端」；还没存上就关掉 App，下次登录会先把本机留着的改动补存上去（一样用合并，不会盖掉别人）。 */
 const _cloudWrites={};
+let _base={};                       // key -> 最后一次确定和云端一致的内容（对象）
+const MERGE_KEY=/^erpv2:(b\d+|ck|orders|ckorder)$/;
+function _deq(a,b){
+  if(a===b)return true;
+  if(a==null||b==null||typeof a!=='object'||typeof b!=='object')return false;
+  if(Array.isArray(a)!==Array.isArray(b))return false;
+  if(Array.isArray(a)){if(a.length!==b.length)return false;for(let i=0;i<a.length;i++)if(!_deq(a[i],b[i]))return false;return true;}
+  const ka=Object.keys(a),kb=Object.keys(b);if(ka.length!==kb.length)return false;
+  for(const k of ka){if(!(k in b)||!_deq(a[k],b[k]))return false;}return true;
+}
+function _canon(x){ // 不受键顺序影响的字串（云端 jsonb 会改键顺序）
+  if(x==null||typeof x!=='object')return JSON.stringify(x);
+  if(Array.isArray(x))return '['+x.map(_canon).join(',')+']';
+  return '{'+Object.keys(x).sort().map(k=>JSON.stringify(k)+':'+_canon(x[k])).join(',')+'}';
+}
+function _isObj(x){return x!=null&&typeof x==='object'&&!Array.isArray(x);}
+function _mergeVal(base,ours,remote){
+  if(_deq(ours,base))return remote;           // 我没动：用别人的
+  if(_deq(remote,base))return ours;           // 别人没动：用我的
+  if(_deq(ours,remote))return ours;
+  if(ours===undefined)return remote;          // 我删了、别人改了：保留别人的（宁可多留，不丢资料）
+  if(remote===undefined)return ours;
+  if(_isObj(ours)&&_isObj(remote)){
+    const b=_isObj(base)?base:{};const out={};
+    new Set([...Object.keys(ours),...Object.keys(remote),...Object.keys(b)]).forEach(k=>{const v=_mergeVal(b[k],ours[k],remote[k]);if(v!==undefined)out[k]=v;});
+    return out;
+  }
+  if(Array.isArray(ours)&&Array.isArray(remote))return _mergeArr(Array.isArray(base)?base:[],ours,remote);
+  return ours;                                 // 两边都改了同一个数值/文字：以我的为准
+}
+function _mergeArr(base,ours,remote){
+  const hasId=a=>a.every(x=>_isObj(x)&&x.id!==undefined&&x.id!==null);
+  const uniq=a=>new Set(a.map(x=>String(x.id))).size===a.length;
+  if(hasId(base)&&hasId(ours)&&hasId(remote)&&uniq(base)&&uniq(ours)&&uniq(remote)){
+    const mb=new Map(base.map(x=>[String(x.id),x])),mo=new Map(ours.map(x=>[String(x.id),x])),mr=new Map(remote.map(x=>[String(x.id),x]));
+    const out=[];
+    remote.forEach(r=>{const id=String(r.id);const b=mb.get(id),o=mo.get(id);
+      if(o===undefined){ if(b!==undefined&&_deq(b,r))return; out.push(r); return; }   // 我删了：别人没改就删掉，别人改过就保留
+      out.push(_mergeVal(b,o,r));});
+    ours.forEach(o=>{const id=String(o.id);if(!mr.has(id))out.push(o);});             // 我新增的
+    return out;
+  }
+  // 没有 id 的列表：按内容当「集合」合并（别人的 + 我新增的 − 我删掉的）
+  const cnt=a=>{const m=new Map();a.forEach(x=>{const c=_canon(x);m.set(c,(m.get(c)||0)+1);});return m;};
+  const cb=cnt(base),co=cnt(ours);
+  const added=new Map(),removed=new Map();
+  co.forEach((n,c)=>{const d=n-(cb.get(c)||0);if(d>0)added.set(c,d);});
+  cb.forEach((n,c)=>{const d=n-(co.get(c)||0);if(d>0)removed.set(c,d);});
+  const out=[];
+  remote.forEach(r=>{const c=_canon(r);const n=removed.get(c)||0;if(n>0){removed.set(c,n-1);return;}out.push(r);});
+  const seen=new Map();ours.forEach(o=>{const c=_canon(o);const need=added.get(c)||0;const got=seen.get(c)||0;if(got<need){seen.set(c,got+1);out.push(o);}});
+  return out;
+}
+function _applyMerged(key,obj){ // 把合并后的内容放回内存（原地改，别的地方拿着的引用不会失效）
+  try{
+    if(key==='erpv2:orders'&&Array.isArray(obj)){ORDERS.length=0;obj.forEach(x=>ORDERS.push(x));return;}
+    if(key==='erpv2:ckorder'){if(!CKO_FAILED)CKO={orderList:obj&&obj.orderList};return;}
+    const m=key.match(/^erpv2:(b\d+|ck)$/);if(!m||!DB[m[1]])return;
+    const db=DB[m[1]];const oldStaff=new Map((db.staff||[]).map(e=>[e.id,e]));
+    const keep={};PAY_TOP.forEach(k=>{if(k in db)keep[k]=db[k];});if('labourSum' in db&&!('labourSum' in obj))keep.labourSum=db.labourSum;
+    Object.keys(db).forEach(k=>delete db[k]);Object.assign(db,JSON.parse(JSON.stringify(obj)),keep);
+    if(Array.isArray(db.staff))db.staff.forEach(e=>{const o=oldStaff.get(e.id);if(o)PAY_FIELDS.forEach(f=>{if(f in o&&!(f in e))e[f]=o[f];});});  // 薪资栏位另存，不能因合并丢掉
+    _rawSig[m[1]]=_sigOf(JSON.stringify(obj));_aggCache=null;
+    if(!(typeof isBusyEditing==='function'&&isBusyEditing())&&!(document.getElementById('mbg')&&document.getElementById('mbg').classList.contains('show')))render();
+  }catch(e){}
+}
+async function cloudCommit(key,val,q,baseOverride){
+  const ours=JSON.parse(val);const T=CLOUD_TABLE;
+  if(baseOverride!==undefined&&!(key in _base))_base[key]=baseOverride;
+  if(!MERGE_KEY.test(key)||!(key in _base)||_base[key]==null){   // 没有基准（第一次）或不是要合并的 key：照旧整包写入
+    const {error}=await _sb.from(T).upsert({key,value:ours,updated_at:new Date().toISOString()},{onConflict:'key'});
+    if(error)throw error;if(MERGE_KEY.test(key))_base[key]=ours;return;
+  }
+  for(let attempt=0;attempt<6;attempt++){
+    const {data,error}=await _sb.from(T).select('value,updated_at').eq('key',key).maybeSingle();
+    if(error)throw error;
+    if(!data){const r=await _sb.from(T).insert({key,value:ours,updated_at:new Date().toISOString()});if(!r.error){_base[key]=ours;return;}continue;}
+    const remote=data.value;const merged=!_deq(remote,_base[key]);
+    const toWrite=merged?_mergeVal(_base[key],ours,remote):ours;
+    if(_deq(toWrite,remote)){_base[key]=remote;if(merged&&!q.pending)_applyMerged(key,remote);return;}      // 没有要写的
+    const r=await _sb.from(T).update({value:toWrite,updated_at:new Date().toISOString()}).eq('key',key).eq('updated_at',data.updated_at).select('key');
+    if(r.error)throw r.error;
+    if(r.data&&r.data.length){   // 写进去了
+      if(!merged)_base[key]=ours;
+      else if(q.pending==null){_base[key]=toWrite;_applyMerged(key,toWrite);}   // 期间没有更新的改动：把合并结果放回内存
+      // else：期间又有新改动，基准保持不动，下一轮会再合并一次
+      return;
+    }
+    // 没写进去＝别人在这中间又存了：重读重合并
+  }
+  throw new Error('conflict');
+}
 function queueCloudWrite(key,val){
-  const q=_cloudWrites[key]||(_cloudWrites[key]={pending:null,running:false});
+  const q=_cloudWrites[key]||(_cloudWrites[key]={pending:null,running:false,failed:0,timer:null});
   q.pending=val;            // 连续修改只保留最新值（自动合并）
   flushCloudWrite(key);
 }
@@ -1595,17 +1697,54 @@ function flushCloudWrite(key){
   const q=_cloudWrites[key];
   if(!q||q.running||q.pending==null||!CLOUD||!_sb)return;
   const val=q.pending; q.pending=null; q.running=true;
-  Promise.resolve(_sb.from(CLOUD_TABLE).upsert({key,value:JSON.parse(val),updated_at:new Date().toISOString()},{onConflict:'key'}))
-    .catch(()=>{})
-    .finally(()=>{q.running=false; if(q.pending!=null)flushCloudWrite(key);}); // 期间又有新改动就接着写
+  Promise.resolve().then(()=>cloudCommit(key,val,q))
+    .then(()=>{q.failed=0;if(q.timer){clearTimeout(q.timer);q.timer=null;}try{localStorage.removeItem('erpPending:'+key);}catch(e){}})
+    .catch(()=>{
+      if(q.pending==null)q.pending=val;        // 留着，等重试
+      q.failed=(q.failed||0)+1;
+      try{localStorage.setItem('erpPending:'+key,JSON.stringify({base:_base[key]===undefined?null:_base[key],user:(curUser&&curUser.email)||''}));}catch(e){}
+      if(!q.timer){q.timer=setTimeout(()=>{q.timer=null;flushCloudWrite(key);},Math.min(60000,3000*Math.pow(2,Math.min(q.failed-1,5))));}
+    })
+    .finally(()=>{q.running=false;if(q.pending!=null&&!q.failed)flushCloudWrite(key);updateSyncBar();});
 }
+function syncUnsavedCount(){return Object.keys(_cloudWrites).filter(k=>{const q=_cloudWrites[k];return q&&q.failed>0&&q.pending!=null;}).length;}
+function syncRetryAll(){Object.keys(_cloudWrites).forEach(k=>{const q=_cloudWrites[k];if(q&&q.failed>0){if(q.timer){clearTimeout(q.timer);q.timer=null;}flushCloudWrite(k);}});}
+function updateSyncBar(){
+  try{
+    const n=syncUnsavedCount();let bar=document.getElementById('syncBar');
+    if(!n){if(bar)bar.remove();return;}
+    if(!bar){bar=document.createElement('div');bar.id='syncBar';document.body.appendChild(bar);}
+    const zh=LANG==="zh";
+    bar.innerHTML=`<span>⚠️ ${zh?`有 ${n} 项改动还没存到云端，正在自动重试。请先不要关掉 App`:`${n} change(s) not saved to the cloud yet — retrying…`}</span><button onclick="syncRetryAll()">${zh?'立即重试':'Retry'}</button>`;
+  }catch(e){}
+}
+async function resumePending(){ // 登录时：上次没存上云端就关掉 App 的改动，先补存（一样会合并，不会盖掉别人）
+  if(!CLOUD||!_sb)return;
+  const keys=Object.keys(localStorage).filter(k=>k.indexOf('erpPending:')===0);
+  for(const mk of keys){
+    const key=mk.slice('erpPending:'.length);
+    try{
+      const m=JSON.parse(localStorage.getItem(mk)||'{}');const email=(curUser&&curUser.email)||'';
+      if(m.user&&m.user!==email){localStorage.removeItem(mk);continue;}      // 别人留下的，不碰
+      const val=localStorage.getItem(key);if(!val||!MERGE_KEY.test(key)){localStorage.removeItem(mk);continue;}
+      if(!(key in _base)&&m.base)_base[key]=m.base;
+      const q=_cloudWrites[key]||(_cloudWrites[key]={pending:null,running:false,failed:0,timer:null});
+      await Promise.race([cloudCommit(key,val,q),new Promise((_,rej)=>setTimeout(()=>rej(new Error('timeout')),12000))]);
+      localStorage.removeItem(mk);
+    }catch(e){}   // 补存失败就留着，下次再试
+  }
+}
+window.addEventListener('online',()=>{try{syncRetryAll();}catch(e){}});
+document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible'){try{syncRetryAll();}catch(e){}}});
+window.addEventListener('beforeunload',e=>{if(syncUnsavedCount()>0){e.preventDefault();e.returnValue='';}});
+
 /* 统一存储接口：优先云端，永远在本地留一份（离线可用），云端失败自动回退 */
 const Store={
   async get(key){
     if(CLOUD){
       try{const {data,error}=await _sb.from(CLOUD_TABLE).select('value').eq('key',key).maybeSingle();
         if(error)throw error;
-        if(data){try{localStorage.setItem(key,JSON.stringify(data.value));}catch(_){}return {value:JSON.stringify(data.value)};}
+        if(data){try{localStorage.setItem(key,JSON.stringify(data.value));}catch(_){}if(MERGE_KEY.test(key)){const q=_cloudWrites[key];if(!(q&&(q.running||q.pending!=null)))_base[key]=data.value;}return {value:JSON.stringify(data.value)};}
       }catch(e){/* 落到本地读取 */}
     }
     try{const v=localStorage.getItem(key);return v?{value:v}:null;}catch(e){return null;}
@@ -1676,7 +1815,7 @@ async function payFetch(key){ // {ok,val}：ok:false = 网络/权限出错，绝
   if(CLOUD&&_sb){
     try{const {data,error}=await _sb.from(CLOUD_TABLE).select('value').eq('key',key).maybeSingle();
       if(error)return {ok:false};
-      if(data){try{localStorage.setItem(key,JSON.stringify(data.value));}catch(_){}return {ok:true,val:data.value};}
+      if(data){try{localStorage.setItem(key,JSON.stringify(data.value));}catch(_){}if(MERGE_KEY.test(key)){const q=_cloudWrites[key];if(!(q&&(q.running||q.pending!=null)))_base[key]=data.value;}return {ok:true,val:data.value};}
       return {ok:true,val:null};
     }catch(e){return {ok:false};}
   }
@@ -1985,11 +2124,12 @@ async function withdrawXreq(id){
   XREQ=XREQ.filter(x=>x.id!==id);updateXferBell();if(_xferInboxOpen)openXferInbox();render();
 }
 function clearSession(){ // 换人登录/退出时：内存里和本机缓存里不留上一位的数据（尤其薪资）
-  try{DB={};PAY_LOADED.clear();PAY_STRIP.clear();CKO={};CKO_FAILED=false;_aggCache=null;XREQ=[];_xreqSig='';_xferInboxOpen=false;if(_xreqPollT){clearInterval(_xreqPollT);_xreqPollT=null;}}catch(e){}
+  try{_base={};DB={};PAY_LOADED.clear();PAY_STRIP.clear();CKO={};CKO_FAILED=false;_aggCache=null;XREQ=[];_xreqSig='';_xferInboxOpen=false;if(_xreqPollT){clearInterval(_xreqPollT);_xreqPollT=null;}}catch(e){}
   try{if(CLOUD){Object.keys(localStorage).filter(k=>k.indexOf('erpv2:payroll:')===0||k.indexOf('erpv2:req:')===0).forEach(k=>localStorage.removeItem(k));}}catch(e){}
 }
 async function loadDB(){
   clearSession();
+  try{await resumePending();}catch(e){}
   try{const _t=document.querySelector('.top'),_h=document.getElementById('pageHost');if(_h&&_t&&_t.style.display!=='none')_h.innerHTML=skelHTML();}catch(e){}
   const pOrders=(typeof loadOrders==='function')?Promise.resolve().then(()=>loadOrders()).catch(()=>{}):Promise.resolve();   // 订单列表和各分店同时去读，不排队
   const dirty=new Set();const mine=myOutlets();   // 只载入自己能碰的分店
