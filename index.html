@@ -1476,7 +1476,7 @@ function statusOf(d){if(d<=14)return{t:"健康",e:"Fresh",c:"p-g"};if(d<=30)retu
 function stTxt(s){return LANG==="zh"?s.t:s.e;}
 
 /* ================= 数据种子 ================= */
-const BUILD="1111mk151";  // 版本标记：页面右上/网格提示可见，用来确认已载入最新版
+const BUILD="1111mk152";  // 版本标记：页面右上/网格提示可见，用来确认已载入最新版
 const SEED_VERSION="bh-master-2026-09-1";  // 版本变更→下次载入自动重置为最新主数据（仅本店云端）
 function seed(outletId){
   const isCK = outletId==="ck";
@@ -2183,7 +2183,7 @@ function auditLog(act,detail,oldv,newv){
 function can(p){return ROLES[curRole].can.includes(p);}
 // 作业中心(proc)只要拥有任一子作业权限即可进入；子页与页面级访问统一由 pageAllowed 判定
 function hasAnyOp(){return ['proc','transfer','waste','ent','stock'].some(p=>can(p));}
-function pageAllowed(p){if(p==='proc')return hasAnyOp();if(p==='monthly'||p==='variance')return can('report');if(p==='budget')return can('opex');if(p==='stockled')return can('inv');if(p==='health'||p==='notif')return can('dash')||can('proc');if(p==='rank')return !!ROLES[curRole].allBranch&&can('report');if(p==='opexm')return can('opex');if(p==='payrun'||p==='payroll')return PAYROLL_ON&&can('payroll');if(p==='orderinv')return ['owner','area','hrmgr','manager','headchef'].includes(curRole);if(typeof PROC_SUB!=='undefined'&&PROC_SUB[p])return can(PROC_SUB[p]);return can(p);}
+function pageAllowed(p){if(p==='proc')return hasAnyOp();if(p==='monthly'||p==='variance'||p==='menueng')return can('report');if(p==='expiry')return can('inv');if(p==='budget')return can('opex');if(p==='stockled')return can('inv');if(p==='health'||p==='notif')return can('dash')||can('proc');if(p==='rank')return !!ROLES[curRole].allBranch&&can('report');if(p==='opexm')return can('opex');if(p==='payrun'||p==='payroll')return PAYROLL_ON&&can('payroll');if(p==='orderinv')return ['owner','area','hrmgr','manager','headchef'].includes(curRole);if(typeof PROC_SUB!=='undefined'&&PROC_SUB[p])return can(PROC_SUB[p]);return can(p);}
 function firstAllowedPage(){const order=['dash','attend','leave','hr','schedule','sales','inv','proc','ck','stock','opex','ap','bom','report','settings'];for(const p of order)if(pageAllowed(p))return p;return 'dash';}
 function canW(p){if(isAgg())return false;if((p==='payroll'||p==='payrun')&&ROLES[curRole].salaryLock)return false;return can(p);} // 汇总视图只读；店面经理薪资只读(锁死)
 function renderTop(){
@@ -2229,18 +2229,18 @@ function renderTop(){
 // 侧边栏菜单分组（ERP 结构，方便日后扩充）
 const MENU=[
   ["营运 Operations",[["dash","💰","dash"],["health","⚠","health"],["sales","🧾","sales"],["proc","🔄","proc"],["ck","🏭","ck"]]],
-  ["库存 Inventory",[["inv","📦","inv"],["bom","🍲","bom"],["monthend","📋","monthend"]]],
+  ["库存 Inventory",[["inv","📦","inv"],["expiry","⏳","expiry"],["bom","🍲","bom"],["monthend","📋","monthend"]]],
   ["财务 Finance",[["ap","💳","ap"],["opex","💵","opex"],["monthly","📅","monthly"]]],
   ["人事 HR",[["hr","👤","hr"],["attend","🕐","attend"],["schedule","📅","schedule"],["leave","🌴","leave"]]],
   ["系统 System",[["settings","⚙️","settings"]]],
 ];
-const MENU_LABELS={health:{zh:"运营健康",en:"Ops Health"},variance:{zh:"成本差异",en:"Cost Variance"},rank:{zh:"各分店排行",en:"Branch Ranking"},budget:{zh:"预算对比",en:"Budget vs Actual"},stockled:{zh:"库存流水",en:"Stock Ledger"},notif:{zh:"通知中心",en:"Notifications"},pricechg:{zh:"价格变动",en:"Price Changes"},sales:{zh:"销售 (POS)",en:"Sales (POS)"},orderinv:{zh:"订单发票",en:"Order Invoices"},ck:{zh:"中央厨房",en:"Central Kitchen"},stock:{zh:"盘点",en:"Stock Take"},hr:{zh:"员工档案",en:"Staff Profiles"},attend:{zh:"打卡考勤",en:"Attendance"},schedule:{zh:"排班",en:"Schedule"},leave:{zh:"请假",en:"Leave"},monthly:{zh:"月度核算",en:"Monthly Cost"},bom:{zh:"配方成本",en:"Recipe Cost"},opexm:{zh:"运营开销录入",en:"OpEx Entry"},monthend:{zh:"月末盘点",en:"Month-End Count"},payrun:{zh:"薪资发放 Payroll",en:"Payroll Run"}};
+const MENU_LABELS={expiry:{zh:"效期管理",en:"Expiry"},menueng:{zh:"菜单分析",en:"Menu Analysis"},health:{zh:"运营健康",en:"Ops Health"},variance:{zh:"成本差异",en:"Cost Variance"},rank:{zh:"各分店排行",en:"Branch Ranking"},budget:{zh:"预算对比",en:"Budget vs Actual"},stockled:{zh:"库存流水",en:"Stock Ledger"},notif:{zh:"通知中心",en:"Notifications"},pricechg:{zh:"价格变动",en:"Price Changes"},sales:{zh:"销售 (POS)",en:"Sales (POS)"},orderinv:{zh:"订单发票",en:"Order Invoices"},ck:{zh:"中央厨房",en:"Central Kitchen"},stock:{zh:"盘点",en:"Stock Take"},hr:{zh:"员工档案",en:"Staff Profiles"},attend:{zh:"打卡考勤",en:"Attendance"},schedule:{zh:"排班",en:"Schedule"},leave:{zh:"请假",en:"Leave"},monthly:{zh:"月度核算",en:"Monthly Cost"},bom:{zh:"配方成本",en:"Recipe Cost"},opexm:{zh:"运营开销录入",en:"OpEx Entry"},monthend:{zh:"月末盘点",en:"Month-End Count"},payrun:{zh:"薪资发放 Payroll",en:"Payroll Run"}};
 function mlabel(p){if(MENU_LABELS[p])return MENU_LABELS[p][LANG];return t(p);}
 // 财务菜单整合（业主批准）：三个入口，每个入口里面用标签切换
 const FIN_GROUPS={
   ap:{label:'应付账款',pages:[['ap','对账付款'],['orderinv','订单发票']]},
   opex:{label:'运营开销',pages:[['opex','本月开销'],['opexm','逐月录入'],['budget','预算对比']]},
-  monthly:{label:'月结与分析',pages:[['monthly','月度核算'],['variance','成本差异'],['rank','各分店排行'],['report','报表']]}
+  monthly:{label:'月结与分析',pages:[['monthly','月度核算'],['variance','成本差异'],['rank','各分店排行'],['menueng','菜单分析'],['report','报表']]}
 };
 function finGroupOf(p){return Object.keys(FIN_GROUPS).find(k=>FIN_GROUPS[k].pages.some(x=>x[0]===p))||'';}
 function finTabs(p){
@@ -2599,6 +2599,8 @@ function helpBody(key){
   h+=`<div class="hp-ask">${(aiAllowed()&&AUTH()&&AI_FN_URL)?`<button class="btn ghost sm" onclick="aiAskHelp('${key}')">还是看不懂？问明记小助手</button>`:`<span class="mini">还是看不懂？请问你的店长或运营经理。</span>`}</div>`;
   return h;
 }
+PAGE_HELP.expiry={t:"效期管理",s:"每一批有保质期的货登记到期日，快到期会提醒，先到期的先用。\n收到肉、海鲜、酱料、半成品这类货，按「登记批次」：填品项、数量、到期日（或填保质天数，系统自动算到期日）。\n列表按到期日从早到晚排，最上面的要先用。\n用完了按「用完」；坏了、过期了按「丢弃」，会打开报废表单并填好，按保存才扣库存。\n快到期（3 天内）和已过期的，会出现在「运营健康 → 通知中心」。"};
+PAGE_HELP.menueng={t:"菜单分析",s:"把每道菜分成四类，看哪些该推、哪些该改、哪些该下架。\n明星菜＝卖得多又赚钱；跑量菜＝卖得多但每份赚得少；潜力菜＝每份赚得多但卖得少；拖累菜＝卖得少也赚得少。\n用当月 POS 销量 × 菜品配方成本，只算食材成本，不含人工租金。\n要先导入当月销量，并且菜品要设好成本，才分析得出来。"};
 function helpInject(){
   const key=helpKey();if(!key)return;
   const pg=document.querySelector('#pageHost .page.active');if(!pg||pg.querySelector('[data-help]'))return;
@@ -2682,6 +2684,9 @@ function healthChecks(){
   // 6 库存
   {const sc=stockCounts(x.items||[]);const neg=sc.neg,low=sc.low;const st=neg?'bad':low?'warn':'ok';
    add({k:'stock',st,t:zh?'库存':'Stock',go:"nav('inv')",page:'inv',lines:[zh?`低于最低库存 ${low} 项`:`Low ${low}`,zh?`库存为负 ${neg} 项`:`Negative ${neg}`],todo:neg?(zh?`${neg} 项库存是负数，查进货/盘点有没有漏记`:'Negative stock'):low?(zh?`${low} 项低于最低库存，该订货了`:'Low stock'):''});}
+  // 6b 效期（mk152：只在有登记批次时才出现）
+  if((x.expiryLots||[]).length){const ec=expiryCounts();const st=ec.exp?'bad':ec.d3?'warn':'ok';
+   add({k:'expiry',st,t:zh?'效期':'Expiry',go:"nav('expiry')",page:'expiry',lines:[zh?`已过期 ${ec.exp} 批 · 3 天内到期 ${ec.d3} 批`:`Expired ${ec.exp} · ≤3d ${ec.d3}`,zh?`在库批次 ${ec.open} 批`:`Open ${ec.open}`],todo:ec.exp?(zh?`${ec.exp} 批已经过期，检查后用完或丢弃`:'Expired lots'):ec.d3?(zh?`${ec.d3} 批 3 天内到期，请先用`:'Expiring soon'):''});}
   // 7 订单
   {const all=(typeof ORDERS!=='undefined'?ORDERS:[]).filter(o=>o&&(!o.outlet||o.outlet===curOutlet));const po=all.filter(o=>o.status==='pending'||!o.status),rc=all.filter(o=>['shipped','partial'].includes(o.status));
    const needC=po.length&&canConfirmOrder(),needR=rc.length&&can('proc');
@@ -6692,6 +6697,7 @@ function pgOffer(){
   const sumT=l=>l.reduce((q,r)=>q+(+r.total||0),0);
   const tot=sumT(mrs),ent=mrs.filter(r=>r.type==='ENT'),off=mrs.filter(r=>r.type!=='ENT');
   let rs=mrs.filter(r=>offerType==='all'||(offerType==='ENT')===(r.type==='ENT'));
+  if(offerReason!=='all')rs=rs.filter(r=>((r.reason||'').trim()||'')===offerReason||((r.reason||'').trim()===''&&offerReason===(zh?'没写原因':'—')));
   const wd=zh?['日','一','二','三','四','五','六']:['Su','Mo','Tu','We','Th','Fr','Sa'];
   const card=(r,showDate)=>{const gi=x.offers.indexOf(r);return `<div class="dv-row inv-card" data-name="${oEsc(((r.item||'')+' '+(r.person||'')+' '+(r.receipt||'')+' '+(r.reason||r.note||'')).toLowerCase())}">
       <div style="min-width:0;"><div class="dv-name">${oEsc(r.item)} <span class="pill ${r.type==='ENT'?'p-a':'p-b'}">${oEsc(r.type)}</span></div><div class="mini">${r.person?oEsc(r.person)+' · ':''}${r.receipt?(zh?'收据 ':'Rcpt ')+oEsc(r.receipt):(zh?'无收据号':'No receipt')}${showDate?' · '+oEsc(r.date||''):''}</div>${(r.reason||r.note)?`<div class="mini">${oEsc(r.reason||r.note)}</div>`:''}</div>
@@ -6705,6 +6711,7 @@ function pgOffer(){
   ${logMonthTabs(months,cur,'setOfferMonth').replace('class="seg"','class="seg mtabs nox"')}
   <div class="grid g3 sup-sum"><div class="kpi"><div class="k">${zh?"本月总额":"Total"}</div><div class="v sm warnc">${money(tot)}</div><div class="mini">${mrs.length} ${zh?'笔':''}</div></div><div class="kpi"><div class="k">ENT ${zh?"招待":""}</div><div class="v sm">${money(sumT(ent))}</div><div class="mini">${ent.length} ${zh?'笔':''}</div></div><div class="kpi"><div class="k">Offer ${zh?"赠送":""}</div><div class="v sm">${money(sumT(off))}</div><div class="mini">${off.length} ${zh?'笔':''}</div></div></div>
   <details class="hintd"><summary>${zh?'说明':'Notes'}</summary><div>${zh?"按月分开。日期 · 收据号码 · 类别(ENT/Offer) · 品项 · 当事人 · 金额(含SST6%) · 原因（跟随明记 ENT/Offer 表）。":"By month."}</div></details>
+  ${offerReasonHTML(mrs)}
   ${mrs.length?`<div class="dv-tools"><input class="dv-search" type="search" placeholder="${zh?'搜索品项/当事人/收据号…':'Search…'}" oninput="dvFilter(this.value)" autocomplete="off"><div class="seg"><button class="${offerSort==='date'?'active':''}" onclick="offerSortSet('date')">${zh?'按日期':'By date'}</button><button class="${offerSort==='amt'?'active':''}" onclick="offerSortSet('amt')">${zh?'按金额':'By amount'}</button></div></div>
   <div class="seg mtabs nox" style="margin-bottom:10px;"><button class="${offerType==='all'?'active':''}" onclick="offerTypeSet('all')">${zh?'全部':'All'}</button><button class="${offerType==='ENT'?'active':''}" onclick="offerTypeSet('ENT')">ENT</button><button class="${offerType==='Offer'?'active':''}" onclick="offerTypeSet('Offer')">Offer</button></div>`:''}
   <div id="dvList">${body||`<div class="empty">${zh?"本月暂无招待/赠送":"None"}</div>`}</div>
@@ -6900,7 +6907,7 @@ function t2(k){return t(k);} // 别名
 
 /* 页面路由补充（ap/opex 不在底部tab，用函数导航） */
 const _pages={dash:pgDash,sales:pgSales,inv:pgInv,proc:pgProc,bom:pgBom,report:pgReport,settings:pgSettings,ap:pgAp,opex:pgOpex,opexm:pgOpexM,hr:pgHR,attend:pgAttend,schedule:pgSchedule,leave:pgLeave,ck:pgCK,stock:pgStock,
-  purchase:pgPurchase,pricechg:pgPriceChg,variance:pgVariance,health:pgHealth,rank:pgRank,budget:pgBudget,stockled:pgStockLed,notif:pgNotif,grn:pgGRN,transfer:pgTransfer,waste2:pgWaste2,offer:pgOffer,monthend:pgMonthEnd,monthly:pgMonthly,ordersheet:pgOrderSheet,orderinv:pgOrderInv,opexlog:pgOpexLog};
+  purchase:pgPurchase,pricechg:pgPriceChg,variance:pgVariance,health:pgHealth,rank:pgRank,menueng:pgMenuEng,expiry:pgExpiry,budget:pgBudget,stockled:pgStockLed,notif:pgNotif,grn:pgGRN,transfer:pgTransfer,waste2:pgWaste2,offer:pgOffer,monthend:pgMonthEnd,monthly:pgMonthly,ordersheet:pgOrderSheet,orderinv:pgOrderInv,opexlog:pgOpexLog};
 /* 顶栏在窄手机上文字太多会自动换行、变高(实测 375px 宽的手机顶栏可以到 139px 高)；
    量出顶栏"现在真正的高度"写进 --topH 这个 CSS 变量，侧边菜单/遮罩层跟着它定位，
    永远从顶栏结束的地方开始，不会被拉高的顶栏盖住导致点不到。 */
@@ -6913,6 +6920,136 @@ if(typeof window!=='undefined'){
   window.addEventListener('resize',syncTopH);
   window.addEventListener('orientationchange',()=>setTimeout(syncTopH,150));
 }
+/* ============ 效期管理（mk152）：每一批货登记到期日，快到期/过期提醒，先到期的先用 ============
+   独立的数据 d().expiryLots=[{id,item,qty,unit,recv,exp,st:'open'|'used'|'discard',note,by,doneAt}]，
+   不碰旧的「品项批次 batches」；用完/丢弃只改这一批的状态，库存数量照旧由进货/报废等流程管。
+   「过期丢弃」会打开报废表单并填好品项/数量/原因，按保存才真的扣库存、记损耗。 */
+let lotFilter='open',lotQuery='';
+function lotDiff(exp){return Math.round((new Date(exp+'T00:00:00')-new Date(TODAY+'T00:00:00'))/86400000);} // 负数=已过期几天
+function lotStatus(l){if(l.st==='used')return {k:'used',c:'p-n',t:'已用完'};if(l.st==='discard')return {k:'discard',c:'p-n',t:'已丢弃'};
+  const n=lotDiff(l.exp);if(n<0)return {k:'exp',c:'p-r',t:'已过期'};if(n<=3)return {k:'d3',c:'p-r',t:'3 天内到期'};if(n<=7)return {k:'d7',c:'p-a',t:'7 天内到期'};return {k:'ok',c:'p-g',t:'正常'};}
+function expiryCounts(){const L=(d().expiryLots||[]).filter(l=>l.st==='open'||!l.st);let exp=0,d3=0,d7=0;
+  L.forEach(l=>{const n=lotDiff(l.exp);if(n<0)exp++;else if(n<=3)d3++;else if(n<=7)d7++;});return {open:L.length,exp,d3,d7};}
+function setLotFilter(k){lotFilter=k;render();}
+function pgExpiry(){
+  const zh=LANG==="zh";
+  if(isAgg())return `<div class="fb"><h2 class="h" style="margin:0;">${zh?'效期管理':'Expiry'}</h2></div><div class="empty">${zh?'请先在右上角选一间分店再看效期。':'Pick an outlet first.'}</div>`;
+  const w=canW('inv');const all=(d().expiryLots||[]).map(l=>Object.assign({},l,{st:l.st||'open'}));const c=expiryCounts();
+  const q=lotQuery.trim().toLowerCase();
+  let list=all.filter(l=>{const s=lotStatus(l).k;
+    if(lotFilter==='open'&&l.st!=='open')return false;
+    if(lotFilter==='exp'&&s!=='exp')return false;
+    if(lotFilter==='d3'&&!(s==='d3'||s==='exp'))return false;
+    if(lotFilter==='d7'&&!(s==='d7'||s==='d3'||s==='exp'))return false;
+    if(lotFilter==='done'&&l.st==='open')return false;
+    return !q||(l.item||'').toLowerCase().includes(q)||(l.note||'').toLowerCase().includes(q);});
+  list.sort((a,b)=>(a.st==='open'?0:1)-(b.st==='open'?0:1)||String(a.exp).localeCompare(String(b.exp)));
+  const chip=(k,t,n)=>`<button class="${lotFilter===k?'active':''}" onclick="setLotFilter('${k}')">${t}${n!=null?' '+n:''}</button>`;
+  const cards=list.map(l=>{const s=lotStatus(l),n=lotDiff(l.exp),open=l.st==='open';
+    const left=!open?'':(n<0?(zh?`已过期 ${-n} 天`:`Expired ${-n}d`):n===0?(zh?'今天到期':'Expires today'):(zh?`还剩 ${n} 天`:`${n} days left`));
+    return `<div class="dv-row inv-card ${open&&n<=3?'low':''}" data-name="${oEsc(((l.item||'')+' '+(l.note||'')).toLowerCase())}">
+      <div style="min-width:0;"><div class="dv-name">${oEsc(l.item)} <span class="pill ${s.c}">${zh?s.t:s.k}</span></div>
+        <div class="mini">${zh?'到期':'Exp'} ${l.exp}${left?' · <b>'+left+'</b>':''} · ${zh?'进货':'In'} ${l.recv||'—'}</div>${l.note?`<div class="mini">${oEsc(l.note)}</div>`:''}</div>
+      <div class="inv-qty"><div class="inv-q">${l.qty} <small>${oEsc(l.unit||'')}</small></div>${w?`<div class="inv-act">${open?`<button class="btn ghost sm" onclick="lotDone(${l.id},'used')">${zh?'用完':'Used'}</button><button class="btn ghost sm" onclick="lotDone(${l.id},'discard')">${zh?'丢弃':'Discard'}</button>`:''}<button class="ib" onclick="formLot(${l.id})">✏️</button><button class="ib" onclick="delLot(${l.id})">🗑️</button></div>`:''}</div></div>`;}).join('');
+  return `<div class="fb"><h2 class="h" style="margin:0;">${zh?'效期管理':'Expiry'} <span class="tag">${nm(outletObj())}</span></h2>${w?`<button class="btn brand sm" onclick="formLot()">+ ${zh?'登记批次':'Add lot'}</button>`:''}</div>
+  <div class="grid g3 sup-sum"><div class="kpi"><div class="k">${zh?'已过期':'Expired'}</div><div class="v sm ${c.exp?'neg':'pos'}">${c.exp}</div></div><div class="kpi"><div class="k">${zh?'3 天内到期':'Within 3d'}</div><div class="v sm ${c.d3?'neg':'pos'}">${c.d3}</div></div><div class="kpi"><div class="k">${zh?'在库批次':'Open lots'}</div><div class="v sm">${c.open}</div></div></div>
+  <details class="hintd"><summary>${zh?'说明':'Notes'}</summary><div>${zh?'每次收到有保质期的货（肉、海鲜、酱料、半成品…），就登记一批：品项、数量、到期日。系统按到期日从早到晚排，最早到期的排最上面，请先用它。\n用完了按「用完」；坏了、过期了按「丢弃」（会打开报废表单并填好，按保存才扣库存）。\n快到期（3 天内）或已过期的会出现在「运营健康 → 通知中心」。\n这里只管「哪一批什么时候到期」，库存数量照旧由进货单、报废等地方管。':'Register each lot with an expiry date. Earliest first. Mark used / discard.'}</div></details>
+  <div class="dv-tools"><input class="dv-search" type="search" value="${oEsc(lotQuery)}" placeholder="${zh?'搜索品项/备注…':'Search…'}" oninput="lotQuery=this.value;render()" autocomplete="off"></div>
+  <div class="seg mtabs nox" style="margin-bottom:10px;">${chip('open',zh?'在库':'Open',c.open)}${chip('d7',zh?'7 天内':'≤7d')}${chip('d3',zh?'3 天内':'≤3d')}${chip('exp',zh?'已过期':'Expired')}${chip('done',zh?'已处理':'Done')}${chip('all',zh?'全部':'All')}</div>
+  <div class="inv-grid">${cards||`<div class="empty">${zh?(all.length?'没有符合的批次':'还没有登记任何批次。收到有保质期的货，按右上「登记批次」。'):'None'}</div>`}</div>`;
+}
+function formLot(id){
+  const zh=LANG==="zh";const l=id?(d().expiryLots||[]).find(x=>x.id===id):null;
+  const names=[...new Set((d().items||[]).map(i=>i.name).filter(Boolean))].sort();
+  openForm(`<h3>${l?(zh?'编辑批次':'Edit lot'):(zh?'登记批次':'Add lot')} <span class="x" onclick="closeM()">×</span></h3>
+    <div class="fr"><label>${zh?'品项':'Item'}</label><input id="lot_item" list="lot_items" value="${oEsc(l?l.item:'')}" onchange="lotItemAuto()" autocomplete="off"><datalist id="lot_items">${names.map(n=>`<option value="${oEsc(n)}">`).join('')}</datalist></div>
+    <div class="fg2"><div class="fr"><label>${zh?'数量':'Qty'}</label><input id="lot_qty" type="number" step="0.01" value="${l?l.qty:''}"></div><div class="fr"><label>${zh?'单位':'Unit'}</label><input id="lot_unit" value="${oEsc(l?(l.unit||''):'')}"></div></div>
+    <div class="fg2"><div class="fr"><label>${zh?'进货日':'Received'}</label><input id="lot_recv" type="date" value="${l?(l.recv||TODAY):TODAY}" onchange="lotDaysCalc()"></div><div class="fr"><label>${zh?'保质天数（可选）':'Shelf days (opt.)'}</label><input id="lot_days" type="number" min="0" placeholder="${zh?'填了会自动算到期日':''}" oninput="lotDaysCalc()"></div></div>
+    <div class="fr"><label>${zh?'到期日':'Expiry'}</label><input id="lot_exp" type="date" value="${l?l.exp:''}"></div>
+    <div class="fr"><label>${zh?'备注':'Note'}</label><input id="lot_note" value="${oEsc(l?(l.note||''):'')}"></div>
+    <button class="btn block brand" onclick="saveLot(${l?l.id:'null'})">${zh?'保存':'Save'}</button>`);
+}
+function lotItemAuto(){const it=(d().items||[]).find(i=>i.name===document.getElementById('lot_item').value);const u=document.getElementById('lot_unit');if(it&&u&&!u.value)u.value=it.unit||'';}
+function lotDaysCalc(){const n=document.getElementById('lot_days').value,r=document.getElementById('lot_recv').value;if(n===''||!r)return;const dt=new Date(r+'T00:00:00');dt.setDate(dt.getDate()+(+n||0));document.getElementById('lot_exp').value=dt.toLocaleDateString('en-CA');}
+async function saveLot(id){
+  const zh=LANG==="zh",g=k=>document.getElementById(k).value.trim();
+  const item=g('lot_item'),qty=+g('lot_qty'),exp=g('lot_exp');
+  if(!item)return alert(zh?'请填品项':'Item required');
+  if(!(qty>0))return alert(zh?'数量要大于 0':'Qty > 0');
+  if(!exp)return alert(zh?'请填到期日（或填保质天数）':'Expiry required');
+  if(!d().expiryLots)d().expiryLots=[];
+  const rec={item,qty,unit:g('lot_unit'),recv:g('lot_recv')||TODAY,exp,note:g('lot_note')};
+  if(id){const l=d().expiryLots.find(x=>x.id===id);if(!l)return;Object.assign(l,rec);auditLog('编辑效期批次',item+' '+exp);}
+  else{d().expiryLots.push(Object.assign({id:Date.now(),st:'open',by:(curUser&&curUser.name)||''},rec));auditLog('登记效期批次',item+' ×'+qty+' 到期 '+exp);}
+  await save();closeM();render();
+}
+async function lotDone(id,st){
+  const zh=LANG==="zh";const l=(d().expiryLots||[]).find(x=>x.id===id);if(!l)return;
+  if(!confirm(st==='used'?(zh?`「${l.item}」这一批已经用完？`:'Mark used?'):(zh?`「${l.item}」这一批要丢弃？接下来会打开报废表单，按保存才会扣库存。`:'Discard this lot?')))return;
+  l.st=st;l.doneAt=TODAY;auditLog(st==='used'?'效期批次用完':'效期批次丢弃',l.item+' ×'+l.qty);await save();render();
+  if(st==='discard'){
+    try{if(typeof formWaste2==='function'&&can('waste')){formWaste2();
+      const set=(k,v)=>{const e=document.getElementById(k);if(e)e.value=v;};
+      const it=(d().items||[]).find(i=>i.name===l.item);
+      if(it&&[...document.getElementById('w_item').options].some(o=>o.value===l.item)){set('w_item',l.item);set('w_cost',it.cost);}
+      set('w_qty',l.qty);set('w_note',(zh?'效期管理：到期 ':'Expiry lot: ')+l.exp);
+      const r=document.getElementById('w_reason');if(r){const o=[...r.options].find(x=>/过期|Spoilage/.test(x.value));if(o)r.value=o.value;}}}catch(e){}
+  }
+}
+async function delLot(id){const zh=LANG==="zh";const l=(d().expiryLots||[]).find(x=>x.id===id);if(!l)return;if(!confirm(zh?'删除这一批的记录？':'Delete?'))return;
+  d().expiryLots=d().expiryLots.filter(x=>x.id!==id);auditLog('删除效期批次',l.item);await save();render();}
+
+/* ============ 菜单分析（mk152）：每道菜「卖得多不多」×「赚得多不多」分四类 ============
+   用当月 POS 导入的销量（monthSales）× 菜品配方成本。只看食材成本毛利，不含人工租金。
+   分类法（餐饮业常用的 Kasavana–Smith）：受欢迎＝份数 ≥ 平均份数×70%；赚钱＝单份毛利 ≥ 全部菜的加权平均单份毛利。 */
+let meMonth=null;
+function pgMenuEng(){return finTabs('menueng')+pgMenuEngBody();}
+function menuEngData(m){
+  const dishes=d().dishCosts||[];const rows=[],nocost=[];
+  monthSales(m).forEach(s=>{const dc=dishes.find(x=>x.id===s.dishId);const q=+s.qty||0;if(!dc||q<=0)return;
+    const price=+dc.price||0,cost=dishCostForMonth(dc,m);
+    if(!(cost>0)||!(price>0)){nocost.push({name:dc.cn||dc.code||'?',qty:q,price,cost});return;}
+    rows.push({name:dc.cn||dc.code||'?',en:dc.en||'',qty:q,price,cost,gp:price-cost,pct:cost/price*100});});
+  const totQ=rows.reduce((a,r)=>a+r.qty,0),totGP=rows.reduce((a,r)=>a+r.gp*r.qty,0);
+  const avgGP=totQ?totGP/totQ:0,popLine=rows.length?totQ/rows.length*0.7:0;
+  rows.forEach(r=>{r.share=totQ?r.qty/totQ*100:0;r.pop=r.qty>=popLine;r.prof=r.gp>=avgGP;r.cls=r.pop&&r.prof?'star':r.pop?'horse':r.prof?'puzzle':'dog';});
+  return {rows,nocost,totQ,totGP,avgGP,popLine};
+}
+function pgMenuEngBody(){
+  const zh=LANG==="zh",cur=TODAY.slice(0,7),pm=prevMonthOf(cur),months=[prevMonthOf(pm),pm,cur];
+  if(!meMonth)meMonth=months.find(x=>monthSales(x).length)||pm;const m=meMonth;
+  if(isAgg())return `<div class="empty">${zh?'请先在右上角选一间分店。':'Pick an outlet first.'}</div>`;
+  const D=menuEngData(m);
+  const tabs=`<div class="seg mtabs nox" style="margin-bottom:10px;">${months.map(x=>`<button class="${x===m?'active':''}" onclick="meMonth='${x}';render()">${monthLabel2(x)}</button>`).join('')}</div>`;
+  const head=`<div class="fb"><h2 class="h" style="margin:0;">${zh?'菜单分析':'Menu analysis'} <span class="tag">${nm(outletObj())}</span></h2></div>`;
+  if(!D.rows.length)return head+tabs+`<div class="empty">${zh?`${monthLabel2(m)} 还没有可以分析的销量。先到「月度核算」导入 POS 销售报表（或手动录入销量），并确认每道菜都设好成本。`:'No sales.'}</div>`+(D.nocost.length?`<div class="mini" style="margin-top:8px;">${zh?'这些菜没设成本，没法分析：':'No cost:'} ${D.nocost.map(r=>oEsc(r.name)).join('、')}</div>`:'');
+  const info={star:{t:zh?'明星菜':'Stars',c:'p-g',h:zh?'卖得多、也赚钱。保持品质，放在菜单最显眼位置，不要乱涨价。':'Popular & profitable.'},
+    horse:{t:zh?'跑量菜':'Plowhorses',c:'p-a',h:zh?'卖得多、但每份赚得少。试试微调售价、缩一点份量、或换便宜一点的材料。':'Popular, low margin.'},
+    puzzle:{t:zh?'潜力菜':'Puzzles',c:'p-b',h:zh?'每份赚得多、但卖得少。让服务员主动推荐、放到更显眼的位置、或做套餐。':'Profitable, less popular.'},
+    dog:{t:zh?'拖累菜':'Dogs',c:'p-r',h:zh?'卖得少、赚得也少。考虑改良配方、改名重新包装，实在不行就下架。':'Low on both.'}};
+  const sec=k=>{const L=D.rows.filter(r=>r.cls===k).sort((a,b)=>b.qty*b.gp-a.qty*a.gp);if(!L.length)return '';
+    return `<h3 style="margin:16px 0 4px;font-size:16px;">${info[k].t} <span class="pill ${info[k].c}">${L.length}</span></h3><div class="mini" style="margin-bottom:8px;">${info[k].h}</div>
+    <div class="inv-grid">${L.map(r=>`<div class="dv-row inv-card"><div style="min-width:0;"><div class="dv-name">${oEsc(r.name)}</div>
+      <div class="mini">${zh?'卖':'Sold'} ${r.qty} ${zh?'份':''}（${zh?'占':''}${r.share.toFixed(1)}%）· ${zh?'售价':'Price'} ${money(r.price)} · ${zh?'成本':'Cost'} ${money(r.cost)}</div></div>
+      <div class="inv-qty"><div class="inv-q">${money(r.gp)}</div><div class="mini">${zh?'每份毛利':'GP/dish'} · ${zh?'成本率':''} ${r.pct.toFixed(0)}%</div></div></div>`).join('')}</div>`;};
+  return head+tabs+`<div class="grid g3 sup-sum"><div class="kpi"><div class="k">${zh?'有分析的菜':'Dishes'}</div><div class="v sm">${D.rows.length}</div></div><div class="kpi"><div class="k">${zh?'总份数':'Total sold'}</div><div class="v sm">${D.totQ}</div></div><div class="kpi"><div class="k">${zh?'平均每份毛利':'Avg GP/dish'}</div><div class="v sm">${money(D.avgGP)}</div></div></div>
+  <details class="hintd"><summary>${zh?'说明':'Notes'}</summary><div>${zh?`把每道菜按两个问题分成四类：卖得多不多（份数 ≥ 平均份数的 70%，现在是 ${Math.round(D.popLine)} 份）、赚得多不多（每份毛利 ≥ 全部菜的平均 ${money(D.avgGP)}）。\n用的是当月 POS 销量 × 菜品配方成本，只算食材成本，不含人工和租金。\n只是帮你看方向，不是命令：例如明星菜被你涨价后可能就不再受欢迎。`:'Kasavana–Smith menu engineering.'}</div></details>
+  ${sec('star')}${sec('horse')}${sec('puzzle')}${sec('dog')}
+  ${D.nocost.length?`<div class="al al-a" style="margin-top:14px;"><div class="t">${zh?'这些菜还没设成本，没算进去':'No cost set'}</div>${D.nocost.map(r=>oEsc(r.name)).join('、')}<br><span class="mini">${zh?'到「配方成本」设好成本就会出现在上面。':''}</span></div>`:''}`;
+}
+
+/* ============ 员工餐 / 试菜 单独统计（mk152）：在「招待赠送」页里按原因分开看 ============ */
+let offerReason='all';
+function offerReasonSet(k){offerReason=k;render();}
+function offerReasonStats(rows){const zh=LANG==="zh";const by={};rows.forEach(r=>{const k=(r.reason||'').trim()||(zh?'没写原因':'—');(by[k]=by[k]||{n:0,t:0});by[k].n++;by[k].t+=(+r.total||0);});return by;}
+function offerReasonHTML(mrs){
+  const zh=LANG==="zh";const by=offerReasonStats(mrs);const keys=Object.keys(by).sort((a,b)=>by[b].t-by[a].t);if(!keys.length)return '';
+  const sm=keys.filter(k=>/员工餐|Staff Meal/i.test(k)),tt=keys.filter(k=>/试菜|Tasting/i.test(k));
+  const sum=l=>l.reduce((q,k)=>q+by[k].t,0),cnt=l=>l.reduce((q,k)=>q+by[k].n,0);
+  return `<div class="grid g3 sup-sum"><div class="kpi"><div class="k">${zh?'员工餐':'Staff meal'}</div><div class="v sm">${money(sum(sm))}</div><div class="mini">${cnt(sm)} ${zh?'笔':''}</div></div><div class="kpi"><div class="k">${zh?'试菜':'Tasting'}</div><div class="v sm">${money(sum(tt))}</div><div class="mini">${cnt(tt)} ${zh?'笔':''}</div></div><div class="kpi"><div class="k">${zh?'其他招待/赠送':'Others'}</div><div class="v sm">${money(sum(keys.filter(k=>!sm.includes(k)&&!tt.includes(k))))}</div></div></div>
+  <div class="seg mtabs nox" style="margin-bottom:10px;"><button class="${offerReason==='all'?'active':''}" onclick="offerReasonSet('all')">${zh?'全部原因':'All reasons'}</button>${keys.map(k=>`<button class="${offerReason===k?'active':''}" onclick="offerReasonSet(this.dataset.k)" data-k="${oEsc(k)}">${oEsc(k.replace(/ [A-Za-z].*$/,''))} ${by[k].n}</button>`).join('')}</div>`;
+}
+
 function render(){
   // 流畅度：同一页重画时保持滚动位置（页面、表格内部）；换页才播进场动画
   const _same=(window._lastPg===curPage),_sy=window.scrollY;
