@@ -1482,7 +1482,7 @@ function statusOf(d){if(d<=14)return{t:"健康",e:"Fresh",c:"p-g"};if(d<=30)retu
 function stTxt(s){return LANG==="zh"?s.t:s.e;}
 
 /* ================= 数据种子 ================= */
-const BUILD="1111mk156";  // 版本标记：页面右上/网格提示可见，用来确认已载入最新版
+const BUILD="1111mk157";  // 版本标记：页面右上/网格提示可见，用来确认已载入最新版
 const SEED_VERSION="bh-master-2026-09-1";  // 版本变更→下次载入自动重置为最新主数据（仅本店云端）
 function seed(outletId){
   const isCK = outletId==="ck";
@@ -7223,7 +7223,7 @@ async function tempEquipDel(id){const zh=LANG==="zh";const e=tempEquip().find(x=
    执行期间暂时跳过逐笔确认和逐笔保存，最后只保存一次（所以每一笔的库存还原、审计记录都和单个删除一模一样）。
    按钮没出现的卡片（没权限、已锁定）自然不能选。 */
 const BULK_ROLES=['owner','hrmgr','area','outletmgr','manager'];
-const BULK_PAGES=['inv','hr','waste2','offer','opexlog','grn','transfer','schedule','bom','monthly','expiry'];
+const BULK_PAGES=['hr','waste2','offer','opexlog','grn','transfer','schedule','bom','monthly','expiry'];
 let bulkOn=false,bulkPage='',bulkSel=new Set();
 function bulkAllowed(){const r=(typeof realRole==='function')?realRole():curRole;return BULK_ROLES.includes(r)&&BULK_ROLES.includes(curRole)&&!isAgg();}
 function bulkItems(){ // 每张可删除的卡片：{card,call}
@@ -7241,6 +7241,7 @@ function bulkRefresh(){const n=bulkSel.size;const c=document.getElementById('bul
 function bulkDecorate(){
   document.querySelectorAll('.bulkbar').forEach(e=>e.remove());
   if(bulkPage!==curPage){bulkOn=false;bulkSel.clear();bulkPage=curPage;}
+  try{supBulkDecorate();}catch(e){}
   if(!BULK_PAGES.includes(curPage)||!bulkAllowed()){return;}
   const items=bulkItems();if(!items.length){bulkOn=false;return;}
   const zh=LANG==="zh",host=document.getElementById('pageHost');
@@ -7276,6 +7277,115 @@ async function bulkLotsUsed(){
   if(!confirm(zh?`把选中的 ${ids.length} 批标记为「已用完」？`:'Mark used?'))return;
   let n=0;(d().expiryLots||[]).forEach(l=>{if(ids.includes(l.id)&&(l.st==='open'||!l.st)){l.st='used';l.doneAt=TODAY;n++;}});
   try{auditLog('效期批次批量用完',n+' 批');}catch(e){}bulkSel.clear();bulkOn=false;await save();render();
+}
+
+/* ============ 供应商品项批量管理（mk157，店长以上）============
+   两个地方：① 进货单 / 退货补货 / 月末盘点 点进某家供应商后（品项表 d().gridCat[供应商]，三处共用）；
+            ② 库存 点进某家供应商后（库存品项 d().items）。
+   页面上自动多一个「批量管理品项」按钮（supBulkDecorate，在 bulkDecorate 里调用，不改原页面代码）。
+   能做：勾选品项 → 批量更动（只套用有填的栏位）/ 清除数据 / 删除。删除和清除的处理方式跟原本单个删除一样。 */
+function supBulkDecorate(){
+  if(!bulkAllowed())return;const zh=LANG==="zh";const host=document.getElementById('pageHost');if(!host)return;
+  let on='';
+  if(['purchase','grn','monthend'].includes(curPage)&&selSupplier&&subCanW(curPage))on=`openGridBulk('${curPage}')`;
+  else if(curPage==='inv'&&invSupplier&&canW('inv'))on='openInvBulk()';
+  if(!on)return;
+  const bar=document.createElement('div');bar.className='bulkbar';bar.innerHTML=`<button class="btn ghost sm" onclick="${on}">${zh?'批量管理品项':'Bulk edit items'}</button>`;
+  const fb=host.querySelector('.fb');if(fb&&fb.nextSibling)fb.parentNode.insertBefore(bar,fb.nextSibling);else host.insertBefore(bar,host.firstChild);
+}
+function supBulkSel(){return [...document.querySelectorAll('.sbsel:checked')].map(c=>c.value);}
+function supBulkAll(on){document.querySelectorAll('.sbsel').forEach(c=>{c.checked=!!on;});supBulkCount();}
+function supBulkCount(){const n=supBulkSel().length,e=document.getElementById('sbCnt');if(e)e.textContent=n;}
+function supBulkList(rows){ // rows:[{v,t,s}]
+  return `<div style="display:flex;gap:10px;align-items:center;margin:4px 0 6px;"><label style="display:flex;gap:6px;align-items:center;"><input type="checkbox" onchange="supBulkAll(this.checked)"> ${LANG==="zh"?'全选':'All'}</label><span class="mini">${LANG==="zh"?'已选':'Selected'} <b id="sbCnt">0</b> / ${rows.length}</span></div>
+  <div style="max-height:38vh;overflow:auto;border:1px solid var(--line);border-radius:10px;padding:4px 8px;">${rows.map(r=>`<label style="display:flex;gap:8px;align-items:center;padding:6px 0;border-bottom:1px dashed var(--line);"><input type="checkbox" class="sbsel" value="${oEsc(r.v)}" onchange="supBulkCount()" style="width:20px;height:20px;flex:0 0 auto;"><span style="min-width:0;"><b>${oEsc(r.t)}</b><br><span class="mini">${r.s}</span></span></label>`).join('')}</div>`;
+}
+// ---------- ① 进货单 / 退货补货 / 月末盘点 ----------
+function openGridBulk(mod){
+  const zh=LANG==="zh";const sup=selSupplier;if(!sup)return;const cat=ensureGridCat(sup);const arr=d()[ledgerCfg(mod).arr]||[];
+  const months=[...new Set(arr.filter(r=>r.supplier===sup).map(r=>(r.date||'').slice(0,7)).filter(Boolean))].sort().reverse();
+  const def=(ledgerMonth&&ledgerMonth!=='all')?ledgerMonth:TODAY.slice(0,7);if(!months.includes(def))months.unshift(def);
+  const S=gEsc(sup);const priceOK=mod==='grn';
+  openForm(`<h3>${zh?'批量管理品项':'Bulk edit items'} <span class="x" onclick="closeM()">×</span></h3>
+    <div class="mini" style="margin-bottom:6px;">${oEsc(sup)} · ${ledgerCfg(mod).title}</div>
+    ${supBulkList(cat.map(c=>({v:c.cid,t:c.name,s:[c.code&&('Code '+oEsc(c.code)),c.uom&&oEsc(c.uom),c.spec&&oEsc(c.spec)].filter(Boolean).join(' · ')||'—'})))}
+    <div class="sec" style="font-weight:700;margin:14px 0 4px;">${zh?'批量更动（只套用有填的栏位，空的不动）':'Change (only filled fields)'}</div>
+    <div class="fg2"><div class="fr"><label>${zh?'单位':'Unit'}</label><input id="gb-uom" placeholder="KG"></div><div class="fr"><label>${zh?'规格':'Pack'}</label><input id="gb-spec" placeholder="10kg x 6/ctn"></div></div>
+    <div class="fg2"><div class="fr"><label>${zh?'代码':'Code'}</label><input id="gb-code"></div>${priceOK?`<div class="fr"><label>${zh?'单价 RM':'Price'}</label><input id="gb-price" type="number" step="0.01"></div>`:''}</div>
+    ${priceOK?'':`<div class="mini" style="margin-bottom:6px;">${mod==='purchase'?(zh?'进货单的单价是每天各自填的，这里不批量改。':''):(zh?'月末盘点的单价是自动算的（本月进货单价中位数），这里不批量改。':'')}</div>`}
+    <button class="btn brand block" onclick="gridBulkApply('${mod}')">${zh?'套用到选中的品项':'Apply'}</button>
+    <div class="sec" style="font-weight:700;margin:16px 0 4px;">${zh?'清除数据 / 删除':'Clear / delete'}</div>
+    <div class="fr"><label>${zh?'哪个月':'Month'}</label><select id="gb-month">${months.map(m=>`<option value="${m}" ${m===def?'selected':''}>${monthLabel2(m)}</option>`).join('')}</select></div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;"><button class="btn ghost" onclick="gridBulkClear('${mod}')">${zh?'清除选中品项这个月的录入':'Clear entries'}</button>
+    <button class="btn" style="background:var(--red,#b3261e);color:#fff;" onclick="gridBulkDel('${mod}')">${zh?'删除选中品项':'Delete items'}</button></div>
+    <div class="mini" style="margin-top:6px;">${zh?'清除＝品项留着，只把这个月填过的数量/价钱清空。删除＝品项从这家供应商的清单拿掉（进货单、退货补货、月末盘点共用同一份清单），并清除它这个月的录入。':''}</div>`);
+}
+async function gridBulkApply(mod){
+  const zh=LANG==="zh";const ids=supBulkSel();if(!ids.length)return alert(zh?'先勾选品项':'Select items first');
+  const v=k=>{const e=document.getElementById(k);return e?e.value.trim():'';};const uom=v('gb-uom'),spec=v('gb-spec'),code=v('gb-code'),price=v('gb-price');
+  if(!uom&&!spec&&!code&&price==='')return alert(zh?'没有填要改的东西':'Nothing to change');
+  const cat=ensureGridCat(selSupplier);let n=0;cat.forEach(c=>{if(!ids.includes(c.cid))return;if(uom)c.uom=uom;if(spec)c.spec=spec;if(code)c.code=code;if(price!==''&&!isNaN(+price))c.price=+price;n++;});
+  try{auditLog('批量更动品项',`${selSupplier} ${n} 项`+[uom&&('单位='+uom),spec&&('规格='+spec),code&&('代码='+code),price!==''&&('单价='+price)].filter(Boolean).map(x=>' '+x).join(''));}catch(e){}
+  await save();closeM();render();
+}
+function gridBulkRemoveEntries(mod,ids,month){ // 和单个删除一样：进货单要把库存扣回去
+  const arr=d()[ledgerCfg(mod).arr]||[];let n=0;
+  for(let k=arr.length-1;k>=0;k--){const r=arr[k];if(r.supplier===selSupplier&&ids.includes(r.cid)&&(r.date||'').slice(0,7)===month){if(mod==='purchase')invUnreceive(r.item,+r.qty||0);arr.splice(k,1);n++;}}
+  return n;}
+async function gridBulkClear(mod){
+  const zh=LANG==="zh";const ids=supBulkSel();if(!ids.length)return alert(zh?'先勾选品项':'Select items first');const m=document.getElementById('gb-month').value;
+  if(!confirm(zh?`清除选中的 ${ids.length} 个品项在 ${monthLabel2(m)} 的全部录入？品项会留着。${mod==='purchase'?'\n进货的库存会一起扣回去。':''}\n清除后不能复原。`:'Clear?'))return;
+  const n=gridBulkRemoveEntries(mod,ids,m);try{auditLog('批量清除录入',`${selSupplier} ${monthLabel2(m)} ${ids.length} 个品项，共 ${n} 笔`);}catch(e){}
+  await save();closeM();render();
+}
+async function gridBulkDel(mod){
+  const zh=LANG==="zh";const ids=supBulkSel();if(!ids.length)return alert(zh?'先勾选品项':'Select items first');const m=document.getElementById('gb-month').value;
+  if(!confirm(zh?`删除选中的 ${ids.length} 个品项？\n它们会从这家供应商的清单拿掉（进货单、退货补货、月末盘点都看不到），${monthLabel2(m)} 的录入也会清除。\n删除后不能复原。`:'Delete?'))return;
+  const n=gridBulkRemoveEntries(mod,ids,m);const cat=ensureGridCat(selSupplier);
+  for(let i=cat.length-1;i>=0;i--)if(ids.includes(cat[i].cid))cat.splice(i,1);
+  try{auditLog('批量删除品项',`${selSupplier} ${ids.length} 个品项，清除 ${n} 笔录入`);}catch(e){}
+  await save();closeM();render();
+}
+// ---------- ② 库存 ----------
+function openInvBulk(){
+  const zh=LANG==="zh";const sup=invSupplier;if(!sup)return;const items=(d().items||[]).filter(i=>i.supplier===sup);
+  openForm(`<h3>${zh?'批量管理品项':'Bulk edit items'} <span class="x" onclick="closeM()">×</span></h3>
+    <div class="mini" style="margin-bottom:6px;">${oEsc(sup)} · ${zh?'库存':'Stock'}</div>
+    ${supBulkList(items.map(i=>({v:String(i.id),t:i.name,s:`${zh?'库存':'Qty'} ${+i.qty||0} ${oEsc(i.unit||'')} · ${zh?'成本':'Cost'} ${money(+i.cost||0)} · ${zh?'最低':'Min'} ${i.min||'—'} / ${zh?'标准':'Par'} ${i.par||'—'}`})))}
+    <div class="sec" style="font-weight:700;margin:14px 0 4px;">${zh?'批量更动（只套用有填的栏位，空的不动）':'Change (only filled fields)'}</div>
+    <div class="fg2"><div class="fr"><label>${zh?'单位':'Unit'}</label><input id="ib-unit" placeholder="KG"></div><div class="fr"><label>${zh?'代码':'Code'}</label><input id="ib-code"></div></div>
+    <div class="fg2"><div class="fr"><label>${zh?'最低库存':'Min'}</label><input id="ib-min" type="number" step="0.01"></div><div class="fr"><label>${zh?'标准库存':'Par'}</label><input id="ib-par" type="number" step="0.01"></div></div>
+    <div class="fr"><label>${zh?'单价 / 成本 RM':'Unit cost'}</label><input id="ib-cost" type="number" step="0.01"></div>
+    <button class="btn brand block" onclick="invBulkApply()">${zh?'套用到选中的品项':'Apply'}</button>
+    <div class="sec" style="font-weight:700;margin:16px 0 4px;">${zh?'清除数据 / 删除':'Clear / delete'}</div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;"><button class="btn ghost" onclick="invBulkClear()">${zh?'库存数量归零':'Zero stock'}</button><button class="btn ghost" onclick="invBulkClearLv()">${zh?'清空最低/标准库存':'Clear min/par'}</button>
+    <button class="btn" style="background:var(--red,#b3261e);color:#fff;" onclick="invBulkDel()">${zh?'删除选中品项':'Delete items'}</button></div>
+    <div class="mini" style="margin-top:6px;">${zh?'库存数量归零：选中品项的现有库存变成 0（例如重新盘点前）。删除：品项从库存清单拿掉（进货单的品项清单不受影响）。':''}</div>`);
+}
+function invBulkPick(){const ids=supBulkSel().map(Number);return (d().items||[]).filter(i=>ids.includes(i.id));}
+async function invBulkApply(){
+  const zh=LANG==="zh";const L=invBulkPick();if(!L.length)return alert(zh?'先勾选品项':'Select items first');
+  const v=k=>document.getElementById(k).value.trim();const unit=v('ib-unit'),code=v('ib-code'),mn=v('ib-min'),pr=v('ib-par'),cost=v('ib-cost');
+  if(!unit&&!code&&mn===''&&pr===''&&cost==='')return alert(zh?'没有填要改的东西':'Nothing to change');
+  L.forEach(i=>{if(unit)i.unit=unit;if(code)i.code=code;if(mn!==''&&!isNaN(+mn))i.min=+mn;if(pr!==''&&!isNaN(+pr))i.par=+pr;if(cost!==''&&!isNaN(+cost))i.cost=+cost;});
+  try{auditLog('批量更动库存品项',`${invSupplier} ${L.length} 项`+[unit&&('单位='+unit),code&&('代码='+code),mn!==''&&('最低='+mn),pr!==''&&('标准='+pr),cost!==''&&('成本='+cost)].filter(Boolean).map(x=>' '+x).join(''));}catch(e){}
+  await save();closeM();render();
+}
+async function invBulkClear(){
+  const zh=LANG==="zh";const L=invBulkPick();if(!L.length)return alert(zh?'先勾选品项':'Select items first');
+  if(!confirm(zh?`把选中的 ${L.length} 个品项的库存数量改成 0？\n（进货记录不会删，只是现有库存归零）`:'Zero stock?'))return;
+  L.forEach(i=>{i.qty=0;i.batches=[];});try{auditLog('批量库存归零',`${invSupplier} ${L.length} 项`);}catch(e){}await save();closeM();render();
+}
+async function invBulkClearLv(){
+  const zh=LANG==="zh";const L=invBulkPick();if(!L.length)return alert(zh?'先勾选品项':'Select items first');
+  if(!confirm(zh?`清空选中的 ${L.length} 个品项的最低/标准库存设定？`:'Clear min/par?'))return;
+  L.forEach(i=>{i.min=0;i.par=0;});try{auditLog('批量清空最低标准库存',`${invSupplier} ${L.length} 项`);}catch(e){}await save();closeM();render();
+}
+async function invBulkDel(){
+  const zh=LANG==="zh";const L=invBulkPick();if(!L.length)return alert(zh?'先勾选品项':'Select items first');
+  if(!confirm(zh?`删除选中的 ${L.length} 个品项？它们会从库存清单拿掉，删除后不能复原。`:'Delete?'))return;
+  const ids=L.map(i=>i.id);d().items=(d().items||[]).filter(i=>!ids.includes(i.id));
+  try{auditLog('批量删除库存品项',`${invSupplier} ${L.length} 项：`+L.map(i=>i.name).slice(0,10).join('、'));}catch(e){}await save();closeM();render();
 }
 
 function render(){
