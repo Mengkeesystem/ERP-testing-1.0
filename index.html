@@ -1483,7 +1483,7 @@ function statusOf(d){if(d<=14)return{t:"健康",e:"Fresh",c:"p-g"};if(d<=30)retu
 function stTxt(s){return LANG==="zh"?s.t:s.e;}
 
 /* ================= 数据种子 ================= */
-const BUILD="1111mk162";  // 版本标记：页面右上/网格提示可见，用来确认已载入最新版
+const BUILD="1111mk163";  // 版本标记：页面右上/网格提示可见，用来确认已载入最新版
 const SEED_VERSION="bh-master-2026-09-1";  // 版本变更→下次载入自动重置为最新主数据（仅本店云端）
 function seed(outletId){
   const isCK = outletId==="ck";
@@ -5372,6 +5372,19 @@ function pgBudgetBody(){
   }
   const q=()=>{if(!raf)raf=requestAnimationFrame(apply);};
   vv.addEventListener('resize',q);vv.addEventListener('scroll',q);window.addEventListener('scroll',q,{passive:true});window.addEventListener('orientationchange',q);
+  // iPhone：键盘收起后，底部导航条有时卡在原本键盘上沿（屏幕中间），要滚一下才回去。
+  // 键盘收起时（输入框失焦 / 可视区域变回全高）强制浏览器重新排一次固定元素。
+  let kick=0;
+  function relayout(){
+    const a=document.activeElement;if(a&&/^(INPUT|TEXTAREA|SELECT)$/.test(a.tagName))return; // 键盘还开着
+    const tb=document.getElementById('tabbar');
+    const y=window.scrollY,x=window.scrollX;window.scrollTo(x,y+1);window.scrollTo(x,y);
+    if(tb){const pv=tb.style.display;tb.style.display='none';void tb.offsetHeight;tb.style.display=pv;}
+    q();
+  }
+  const later=()=>{clearTimeout(kick);kick=setTimeout(relayout,120);setTimeout(relayout,450);};
+  document.addEventListener('focusout',e=>{const t=e.target;if(t&&/^(INPUT|TEXTAREA|SELECT)$/.test(t.tagName))later();},true);
+  let lastH=vv.height;vv.addEventListener('resize',()=>{if(vv.height>lastH+80)later();lastH=vv.height;});
 })();
 let _ptrBusy=false;
 async function pullRefresh(){
@@ -6323,7 +6336,7 @@ function dayViewHTML(sup,month){
       <div><div class="dv-name">${oEsc(c.name||'')}</div>${meta?`<div class="mini">${meta}</div>`:''}<div class="dv-flag">${priceFlagHTML(prevP,price)}</div></div>
       <div class="dv-in gcw">${fish?`<label>${zh?'重量':'Weight'}<input type="number" inputmode="decimal" step="0.01" data-f="weight" value="${wt||''}" ${dis} oninput="dvLive(this)" onchange="dvCommit(this,'${S}','${c.cid}','${dvDay}')"></label>`:''}
         <label>${zh?'数量':'Qty'}<input type="number" inputmode="decimal" step="0.01" data-f="qty" value="${qty||''}" ${dis} oninput="dvLive(this)" onchange="dvCommit(this,'${S}','${c.cid}','${dvDay}')"></label>
-        <label>${zh?'单价 RM':'Price RM'}<input type="number" inputmode="decimal" step="0.01" data-f="price" placeholder="${lp?lp.toFixed(2):''}" value="${price||''}" ${dis} oninput="dvLive(this)" onchange="dvCommit(this,'${S}','${c.cid}','${dvDay}')"></label>
+        <label>${zh?'单价 RM':'Price RM'}<input type="number" inputmode="decimal" step="0.01" data-f="price" value="${price||''}" ${dis} oninput="dvLive(this)" onchange="dvCommit(this,'${S}','${c.cid}','${dvDay}')"></label>
         <div class="gcamt dv-amt">${amt?money(amt):'-'}</div></div></div>`;}).join('')||`<div class="empty">${zh?'这家供应商还没有品项，点『+ 品项』添加':'No items — tap + Item'}</div>`;
   const dd=new Date(dvDay+'T00:00:00');
   const dayLabel=zh?`${dd.getMonth()+1}月${dd.getDate()}日 · 周${wd[dd.getDay()]}`:dvDay;
