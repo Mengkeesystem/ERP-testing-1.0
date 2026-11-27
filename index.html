@@ -1324,31 +1324,31 @@ const DISH_CATALOG=[
 
 const ROLES={
   owner:{name:"执行董事 Director",en:"Director",
-    can:["dash","sales","inv","proc","transfer","ck","stock","waste","ent","bom","ap","opex","report","hr","attend","schedule","leave","settings"],
+    can:["temp","dash","sales","inv","proc","transfer","ck","stock","waste","ent","bom","ap","opex","report","hr","attend","schedule","leave","settings"],
     allBranch:true, hrScope:"all", salaryView:"full", salaryLock:true, approveLeave:true, canEditPerms:true}, // 全权：含财务、人力财务(个人明细)、所有分店、系统设置；薪资发放只读(锁死)，实际发放交人事经理处理
   hrmgr:{name:"人事经理 HR Manager",en:"HR Manager",
-    can:["dash","sales","inv","proc","transfer","ck","stock","waste","ent","bom","ap","opex","report","hr","attend","schedule","leave","settings"],
+    can:["temp","dash","sales","inv","proc","transfer","ck","stock","waste","ent","bom","ap","opex","report","hr","attend","schedule","leave","settings"],
     allBranch:true, hrScope:"all", salaryView:"full", approveLeave:true, canEditPerms:true}, // 权限与执行董事相同；唯一能实际处理『薪资发放』的角色(不锁死)；后台手动分配，不走邀请码注册
   area:{name:"运营经理 Ops Manager",en:"Operations Manager",
-    can:["dash","sales","inv","proc","transfer","stock","waste","ent","bom","ap","opex","report","hr","attend","schedule","leave","settings"],
+    can:["temp","dash","sales","inv","proc","transfer","stock","waste","ent","bom","ap","opex","report","hr","attend","schedule","leave","settings"],
     allBranch:true, hrScope:"all", salaryView:"total", salaryLock:true, approveLeave:true, canEditPerms:true}, // 全分店(不含中央厨房)；人力财务只看总数(不看个人薪水)；薪资发放锁死只读，实际发放只交给人事经理(hrmgr)独占处理
   outletmgr:{name:"店面经理 Outlet P.I.C",en:"Outlet P.I.C",
-    can:["dash","inv","proc","stock","waste","ent","bom","opex","report","ap","hr","attend","schedule","leave"],
+    can:["temp","dash","inv","proc","stock","waste","ent","bom","opex","report","ap","hr","attend","schedule","leave"],
     allBranch:false, hrScope:"branch", salaryView:"full", salaryLock:true, approveLeave:true}, // 本店负责人：可看本店每位员工薪水(锁死只读，不能处理发放)；不含中央厨房、不跨店
   manager:{name:"店长 Manager",en:"Manager",
-    can:["dash","inv","proc","stock","waste","opex","report","ap"],
+    can:["temp","dash","inv","proc","stock","waste","opex","report","ap"],
     allBranch:false, hrScope:"branch", salaryView:"self", approveLeave:true}, // 本店采购/盘点/损耗/OpEx录入 + 本店报表
   headchef:{name:"厨师长 Head Chef",en:"Head Chef",
-    can:["dash","inv","transfer","stock","ap"],
+    can:["temp","dash","inv","transfer","stock","ap"],
     allBranch:false, hrScope:"self", salaryView:"self", approveLeave:false}, // 生产工单/成品入库/配送调拨；可核对/更改应付账款(不能删除)
   staff:{name:"员工 Staff",en:"Staff",
-    can:["hr","attend","leave"],
+    can:["temp","hr","attend","leave"],
     allBranch:false, hrScope:"self", salaryView:"self", approveLeave:false}, // 只有人事自助：打卡、请假、查看自己薪资/Payslip
   ckmgr:{name:"中央经理 Central Manager",en:"Central Manager",
-    can:["dash","inv","proc","ck","stock","waste","opex","report","ap","hr","attend","schedule","leave"],
+    can:["temp","dash","inv","proc","ck","stock","waste","opex","report","ap","hr","attend","schedule","leave"],
     allBranch:false, hrScope:"self", salaryView:"self", approveLeave:true, ckOnly:true}, // 中央厨房专属：权限同店长 + 自己的档案/考勤/请假/薪资(只看自己)；不能看薪资发放Payroll
   ckstaff:{name:"中央员工 Central Staff",en:"Central Staff",
-    can:["dash","inv","ck","transfer","stock","hr","attend","schedule","leave"],
+    can:["temp","dash","inv","ck","transfer","stock","hr","attend","schedule","leave"],
     allBranch:false, hrScope:"self", salaryView:"self", approveLeave:false, ckOnly:true}, // 中央厨房专属：权限同厨师长 + 自己的档案/考勤/请假/薪资(只看自己)；不能看薪资发放Payroll
 };
 // 可编辑权限的角色（执行董事/人事经理、运营经理）
@@ -1477,7 +1477,7 @@ function statusOf(d){if(d<=14)return{t:"健康",e:"Fresh",c:"p-g"};if(d<=30)retu
 function stTxt(s){return LANG==="zh"?s.t:s.e;}
 
 /* ================= 数据种子 ================= */
-const BUILD="1111mk153";  // 版本标记：页面右上/网格提示可见，用来确认已载入最新版
+const BUILD="1111mk154";  // 版本标记：页面右上/网格提示可见，用来确认已载入最新版
 const SEED_VERSION="bh-master-2026-09-1";  // 版本变更→下次载入自动重置为最新主数据（仅本店云端）
 function seed(outletId){
   const isCK = outletId==="ck";
@@ -2037,9 +2037,12 @@ async function reloadOutlet(oid,force){
 /* ---- 角色权限：全局配置，持久化到云端/本地，所有分店同步 ---- */
 const ROLE_DEFAULTS=Object.fromEntries(Object.keys(ROLES).map(k=>[k,ROLES[k].can.slice()]));
 async function loadRolePerms(){
-  try{const r=await Store.get('erpv2:roleperms');if(r){const o=JSON.parse(r.value);Object.keys(o).forEach(k=>{if(ROLES[k]&&Array.isArray(o[k]))ROLES[k].can=o[k].slice();});}}catch(e){}
+  try{const r=await Store.get('erpv2:roleperms');if(r){const o=JSON.parse(r.value);Object.keys(o).forEach(k=>{if(ROLES[k]&&Array.isArray(o[k]))ROLES[k].can=o[k].slice();});
+    // 保存权限之后才新增的功能模块（例如 temp）：照默认岗位给上，但业主日后在「岗位权限编辑」里拿掉的不会被加回来
+    const known=Array.isArray(o._mods)?o._mods:[];
+    PERM_MODULES.forEach(([mk])=>{if(known.includes(mk))return;Object.keys(ROLES).forEach(k=>{if(_DEF_CAN[k]&&_DEF_CAN[k].includes(mk)&&!ROLES[k].can.includes(mk))ROLES[k].can.push(mk);});});}}catch(e){}
 }
-async function saveRolePerms(){const o={};Object.keys(ROLES).forEach(k=>o[k]=ROLES[k].can.slice());try{await Store.set('erpv2:roleperms',JSON.stringify(o));}catch(e){}}
+async function saveRolePerms(){const o={};Object.keys(ROLES).forEach(k=>o[k]=ROLES[k].can.slice());o._mods=PERM_MODULES.map(x=>x[0]);try{await Store.set('erpv2:roleperms',JSON.stringify(o));}catch(e){}}
 const ALL_ID="ALL"; // 全部分店总和（不含中央厨房）
 function branchIds(){return OUTLETS.filter(o=>!o.ck).map(o=>o.id);}
 function isAgg(){return curOutlet===ALL_ID;}
@@ -2229,13 +2232,13 @@ function renderTop(){
 }
 // 侧边栏菜单分组（ERP 结构，方便日后扩充）
 const MENU=[
-  ["营运 Operations",[["dash","💰","dash"],["health","⚠","health"],["sales","🧾","sales"],["proc","🔄","proc"],["ck","🏭","ck"]]],
+  ["营运 Operations",[["dash","💰","dash"],["health","⚠","health"],["temp","🌡","temp"],["sales","🧾","sales"],["proc","🔄","proc"],["ck","🏭","ck"]]],
   ["库存 Inventory",[["inv","📦","inv"],["expiry","⏳","expiry"],["bom","🍲","bom"],["monthend","📋","monthend"]]],
   ["财务 Finance",[["ap","💳","ap"],["opex","💵","opex"],["monthly","📅","monthly"]]],
   ["人事 HR",[["hr","👤","hr"],["attend","🕐","attend"],["schedule","📅","schedule"],["leave","🌴","leave"]]],
   ["系统 System",[["settings","⚙️","settings"]]],
 ];
-const MENU_LABELS={expiry:{zh:"效期管理",en:"Expiry"},menueng:{zh:"菜单分析",en:"Menu Analysis"},health:{zh:"运营健康",en:"Ops Health"},variance:{zh:"成本差异",en:"Cost Variance"},rank:{zh:"各分店排行",en:"Branch Ranking"},budget:{zh:"预算对比",en:"Budget vs Actual"},stockled:{zh:"库存流水",en:"Stock Ledger"},notif:{zh:"通知中心",en:"Notifications"},pricechg:{zh:"价格变动",en:"Price Changes"},sales:{zh:"销售 (POS)",en:"Sales (POS)"},orderinv:{zh:"订单发票",en:"Order Invoices"},ck:{zh:"中央厨房",en:"Central Kitchen"},stock:{zh:"盘点",en:"Stock Take"},hr:{zh:"员工档案",en:"Staff Profiles"},attend:{zh:"打卡考勤",en:"Attendance"},schedule:{zh:"排班",en:"Schedule"},leave:{zh:"请假",en:"Leave"},monthly:{zh:"月度核算",en:"Monthly Cost"},bom:{zh:"配方成本",en:"Recipe Cost"},opexm:{zh:"运营开销录入",en:"OpEx Entry"},monthend:{zh:"月末盘点",en:"Month-End Count"},payrun:{zh:"薪资发放 Payroll",en:"Payroll Run"}};
+const MENU_LABELS={temp:{zh:"温度检查",en:"Temperature"},expiry:{zh:"效期管理",en:"Expiry"},menueng:{zh:"菜单分析",en:"Menu Analysis"},health:{zh:"运营健康",en:"Ops Health"},variance:{zh:"成本差异",en:"Cost Variance"},rank:{zh:"各分店排行",en:"Branch Ranking"},budget:{zh:"预算对比",en:"Budget vs Actual"},stockled:{zh:"库存流水",en:"Stock Ledger"},notif:{zh:"通知中心",en:"Notifications"},pricechg:{zh:"价格变动",en:"Price Changes"},sales:{zh:"销售 (POS)",en:"Sales (POS)"},orderinv:{zh:"订单发票",en:"Order Invoices"},ck:{zh:"中央厨房",en:"Central Kitchen"},stock:{zh:"盘点",en:"Stock Take"},hr:{zh:"员工档案",en:"Staff Profiles"},attend:{zh:"打卡考勤",en:"Attendance"},schedule:{zh:"排班",en:"Schedule"},leave:{zh:"请假",en:"Leave"},monthly:{zh:"月度核算",en:"Monthly Cost"},bom:{zh:"配方成本",en:"Recipe Cost"},opexm:{zh:"运营开销录入",en:"OpEx Entry"},monthend:{zh:"月末盘点",en:"Month-End Count"},payrun:{zh:"薪资发放 Payroll",en:"Payroll Run"}};
 function mlabel(p){if(MENU_LABELS[p])return MENU_LABELS[p][LANG];return t(p);}
 // 财务菜单整合（业主批准）：三个入口，每个入口里面用标签切换
 const FIN_GROUPS={
@@ -2600,6 +2603,7 @@ function helpBody(key){
   h+=`<div class="hp-ask">${(aiAllowed()&&AUTH()&&AI_FN_URL)?`<button class="btn ghost sm" onclick="aiAskHelp('${key}')">还是看不懂？问明记小助手</button>`:`<span class="mini">还是看不懂？请问你的店长或运营经理。</span>`}</div>`;
   return h;
 }
+PAGE_HELP.temp={t:"温度检查",s:"冷藏柜、冷冻柜每天检查 4 次：10am、2pm、5pm、9pm，把温度登记在这里。\n点上面的时间，逐台填温度，按保存。不用一次填完，没填的回来再填。\n标准：冷藏柜 0–5°C，冷冻柜 −18°C 或更低。超出范围一定要写处理方法才能保存。\n页面最上面会显示今天已完成几次。「记录表」就是纸本那种表格，每次看 5 天。\n超标，或者该做的检查过了时间还没做，会出现在「运营健康 → 通知中心」。\n店长、厨师长可以按「设置设备」增减这间店的冷柜。"};
 PAGE_HELP.expiry={t:"效期管理",s:"每一批有保质期的货登记到期日，快到期会提醒，先到期的先用。\n收到肉、海鲜、酱料、半成品这类货，按「登记批次」：填品项、数量、到期日（或填保质天数，系统自动算到期日）。\n列表按到期日从早到晚排，最上面的要先用。\n用完了按「用完」；坏了、过期了按「丢弃」，会打开报废表单并填好，按保存才扣库存。\n快到期（3 天内）和已过期的，会出现在「运营健康 → 通知中心」。"};
 PAGE_HELP.menueng={t:"菜单分析",s:"把每道菜分成四类，看哪些该推、哪些该改、哪些该下架。\n明星菜＝卖得多又赚钱；跑量菜＝卖得多但每份赚得少；潜力菜＝每份赚得多但卖得少；拖累菜＝卖得少也赚得少。\n用当月 POS 销量 × 菜品配方成本，只算食材成本，不含人工租金。\n要先导入当月销量，并且菜品要设好成本，才分析得出来。"};
 function helpInject(){
@@ -2688,6 +2692,10 @@ function healthChecks(){
   // 6b 效期（mk152：只在有登记批次时才出现）
   if((x.expiryLots||[]).length){const ec=expiryCounts();const st=ec.exp?'bad':ec.d3?'warn':'ok';
    add({k:'expiry',st,t:zh?'效期':'Expiry',go:"nav('expiry')",page:'expiry',lines:[zh?`已过期 ${ec.exp} 批 · 3 天内到期 ${ec.d3} 批`:`Expired ${ec.exp} · ≤3d ${ec.d3}`,zh?`在库批次 ${ec.open} 批`:`Open ${ec.open}`],todo:ec.exp?(zh?`${ec.exp} 批已经过期，检查后用完或丢弃`:'Expired lots'):ec.d3?(zh?`${ec.d3} 批 3 天内到期，请先用`:'Expiring soon'):''});}
+  // 6c 温度检查（mk154）：只在这间店设了冷柜、且我有这个模块时出现
+  if(can('temp')&&(x.tempEquip||[]).length){const od=tempOverdue(TODAY),bd=tempLatestBad(TODAY);const st=bd.length?'bad':od.length?'warn':'ok';
+   add({k:'temp',st,t:zh?'温度检查':'Temperature',go:"nav('temp')",page:'temp',lines:[zh?`今天已完成 ${TEMP_SLOTS.filter(s=>tempSlotInfo(TODAY,s[0]).full).length} / 4 次`:'',bd.length?(zh?`超标：${bd.map(b=>b.e.name+' '+b.t+'°C').join('、')}`:'Out of range'):(zh?'读数都在范围内':'')],
+     todo:bd.length?(zh?`${bd.map(b=>b.e.name+' '+b.t+'°C').join('、')} 温度超出范围，马上检查处理`:'Out of range'):od.length?(zh?`${od.map(s=>s[1]).join('、')} 的温度检查还没做完`:'Overdue'):''});}
   // 7 订单
   {const all=(typeof ORDERS!=='undefined'?ORDERS:[]).filter(o=>o&&(!o.outlet||o.outlet===curOutlet));const po=all.filter(o=>o.status==='pending'||!o.status),rc=all.filter(o=>['shipped','partial'].includes(o.status));
    const needC=po.length&&canConfirmOrder(),needR=rc.length&&can('proc');
@@ -4862,8 +4870,9 @@ const PERM_MODULES=[
   ["waste","报废损耗","Wastage"],["ent","招待赠送","Offers"],["ck","中央厨房","Central Kitchen"],["inv","库存","Inventory"],
   ["bom","配方成本","Recipe"],["stock","盘点/月末","Stock/Month-End"],["ap","应付账款","Payables"],["opex","运营开销","OpEx"],
   ["report","报表","Reports"],["hr","员工档案","Staff"],["attend","打卡考勤","Attendance"],["schedule","排班","Schedule"],
-  ["leave","请假","Leave"],["settings","系统设置","Settings"],
+  ["leave","请假","Leave"],["temp","温度检查","Temperature"],["settings","系统设置","Settings"],
 ];
+const _DEF_CAN=Object.fromEntries(Object.keys(ROLES).map(k=>[k,ROLES[k].can.slice()])); // 出厂默认权限（载入保存过的权限之前先记下）
 function permLabel(m){const x=PERM_MODULES.find(p=>p[0]===m);return x?(LANG==="zh"?x[1]:x[2]):m;}
 async function togglePerm(role,mod,checked){
   if(!canEditPerms()){alert(LANG==="zh"?"你没有权限修改岗位权限。":"No permission to edit roles.");render();return;}
@@ -6908,7 +6917,7 @@ function t2(k){return t(k);} // 别名
 
 /* 页面路由补充（ap/opex 不在底部tab，用函数导航） */
 const _pages={dash:pgDash,sales:pgSales,inv:pgInv,proc:pgProc,bom:pgBom,report:pgReport,settings:pgSettings,ap:pgAp,opex:pgOpex,opexm:pgOpexM,hr:pgHR,attend:pgAttend,schedule:pgSchedule,leave:pgLeave,ck:pgCK,stock:pgStock,
-  purchase:pgPurchase,pricechg:pgPriceChg,variance:pgVariance,health:pgHealth,rank:pgRank,menueng:pgMenuEng,expiry:pgExpiry,budget:pgBudget,stockled:pgStockLed,notif:pgNotif,grn:pgGRN,transfer:pgTransfer,waste2:pgWaste2,offer:pgOffer,monthend:pgMonthEnd,monthly:pgMonthly,ordersheet:pgOrderSheet,orderinv:pgOrderInv,opexlog:pgOpexLog};
+  purchase:pgPurchase,pricechg:pgPriceChg,variance:pgVariance,health:pgHealth,rank:pgRank,temp:pgTemp,menueng:pgMenuEng,expiry:pgExpiry,budget:pgBudget,stockled:pgStockLed,notif:pgNotif,grn:pgGRN,transfer:pgTransfer,waste2:pgWaste2,offer:pgOffer,monthend:pgMonthEnd,monthly:pgMonthly,ordersheet:pgOrderSheet,orderinv:pgOrderInv,opexlog:pgOpexLog};
 /* 顶栏在窄手机上文字太多会自动换行、变高(实测 375px 宽的手机顶栏可以到 139px 高)；
    量出顶栏"现在真正的高度"写进 --topH 这个 CSS 变量，侧边菜单/遮罩层跟着它定位，
    永远从顶栏结束的地方开始，不会被拉高的顶栏盖住导致点不到。 */
@@ -7072,6 +7081,118 @@ function offerReasonHTML(mrs){
   return `<div class="grid g3 sup-sum"><div class="kpi"><div class="k">${zh?'员工餐':'Staff meal'}</div><div class="v sm">${money(sum(sm))}</div><div class="mini">${cnt(sm)} ${zh?'笔':''}</div></div><div class="kpi"><div class="k">${zh?'试菜':'Tasting'}</div><div class="v sm">${money(sum(tt))}</div><div class="mini">${cnt(tt)} ${zh?'笔':''}</div></div><div class="kpi"><div class="k">${zh?'其他招待/赠送':'Others'}</div><div class="v sm">${money(sum(keys.filter(k=>!sm.includes(k)&&!tt.includes(k))))}</div></div></div>
   <div class="seg mtabs nox" style="margin-bottom:10px;"><button class="${offerReason==='all'?'active':''}" onclick="offerReasonSet('all')">${zh?'全部原因':'All reasons'}</button>${keys.map(k=>`<button class="${offerReason===k?'active':''}" onclick="offerReasonSet(this.dataset.k)" data-k="${oEsc(k)}">${oEsc(k.replace(/ [A-Za-z].*$/,''))} ${by[k].n}</button>`).join('')}</div>`;
 }
+
+/* ============ 温度检查（mk154）：冷藏柜/冷冻柜每天 4 次（10am、2pm、5pm、9pm）登记温度 ============
+   照业主给的纸本表格（Chillers Temperature Monitoring Chart）做：冷藏 0–5°C、冷冻 −18°C 或更低。
+   数据：d().tempEquip=[{id,name,kind:'chiller'|'bev'|'freezer'|'hot'}]（每间店自己的设备）
+        d().tempLogs={'YYYY-MM-DD':{'10':{设备id:{t,time,by,note}}, '14':…, '17':…, '21':…}}
+   读数超出范围必须写处理方法；超标/该做没做会进「运营健康 → 通知中心」。
+   以后可加（业主说先记录）：拍温度计照片存证、店长每天签名核对。 */
+const TEMP_SLOTS=[['10','10am',10],['14','2pm',14],['17','5pm',17],['21','9pm',21]];
+const TEMP_KINDS={chiller:{zh:'冷藏柜',min:0,max:5},bev:{zh:'饮料冷藏柜',min:0,max:5},freezer:{zh:'冷冻柜',min:-40,max:-18},hot:{zh:'保温柜',min:60,max:99}};
+let tempTab='today',tempSlot=null,tempDate=null,tempGrid=null;
+function tempEquip(){return d().tempEquip||[];}
+function tempKind(e){return TEMP_KINDS[e.kind]||TEMP_KINDS.chiller;}
+function tempOK(e,t){const k=tempKind(e);return t>=k.min&&t<=k.max;}
+function tempStd(e){const k=tempKind(e);return e.kind==='freezer'?'≤ −18°C':e.kind==='hot'?'≥ 60°C':`${k.min}–${k.max}°C`;}
+function tempLog(date){return ((d().tempLogs||{})[date])||{};}
+function tempCanSetup(){return ['owner','hrmgr','area','outletmgr','manager','headchef'].includes(curRole)&&!isAgg();}
+function tempNowHour(){return myNow().getUTCHours();}
+function tempSlotInfo(date,slot){const eq=tempEquip(),L=(tempLog(date)[slot])||{};const done=eq.filter(e=>L[e.id]&&L[e.id].t!=null).length;
+  const bad=eq.filter(e=>L[e.id]&&L[e.id].t!=null&&!tempOK(e,+L[e.id].t));const by=[...new Set(Object.values(L).map(x=>x&&x.by).filter(Boolean))];
+  return {done,total:eq.length,bad,by,full:eq.length>0&&done===eq.length};}
+function tempDefaultSlot(){const h=tempNowHour();let pick=TEMP_SLOTS[0][0];TEMP_SLOTS.forEach(s=>{if(s[2]<=h+1)pick=s[0];});return pick;}
+function tempOverdue(date){ // 该做没做：过了该时段 2 小时还没填满（只算今天）
+  if(date!==TODAY)return [];const h=tempNowHour();return TEMP_SLOTS.filter(s=>h>=s[2]+2&&!tempSlotInfo(date,s[0]).full);}
+function tempLatestBad(date){ // 今天每台设备最近一次读数，超标的
+  const eq=tempEquip(),L=tempLog(date),out=[];
+  eq.forEach(e=>{let last=null;TEMP_SLOTS.forEach(s=>{const r=(L[s[0]]||{})[e.id];if(r&&r.t!=null)last={r,s};});if(last&&!tempOK(e,+last.r.t))out.push({e,t:last.r.t,slot:last.s[1]});});return out;}
+function tempSet(k,v){if(k==='tab')tempTab=v;else if(k==='slot')tempSlot=v;else if(k==='date')tempDate=v;render();}
+function pgTemp(){
+  const zh=LANG==="zh";
+  if(isAgg())return `<div class="fb"><h2 class="h" style="margin:0;">${zh?'温度检查':'Temperature'}</h2></div><div class="empty">${zh?'请先在右上角选一间分店。':'Pick an outlet first.'}</div>`;
+  const eq=tempEquip();const setup=tempCanSetup();
+  const head=`<div class="fb"><h2 class="h" style="margin:0;">${zh?'温度检查':'Temperature'} <span class="tag">${nm(outletObj())}</span></h2>${setup?`<button class="btn ghost sm" onclick="openTempSetup()">${zh?'设置设备':'Equipment'}</button>`:''}</div>`;
+  if(!eq.length)return head+`<div class="empty">${zh?'这间店还没设定冷柜。':'No equipment yet.'}${setup?`<br><button class="btn brand sm" style="margin-top:10px;" onclick="openTempSetup()">${zh?'设置设备':'Set up'}</button>`:`<br>${zh?'请店长或厨师长先在这里设定有几台冷藏柜、冷冻柜。':''}`}</div>`;
+  const tabs=`<div class="seg mtabs nox" style="margin-bottom:10px;"><button class="${tempTab==='today'?'active':''}" onclick="tempSet('tab','today')">${zh?'登记':'Entry'}</button><button class="${tempTab==='grid'?'active':''}" onclick="tempSet('tab','grid')">${zh?'记录表':'Chart'}</button></div>`;
+  return head+tabs+(tempTab==='grid'?tempGridHTML(zh):tempTodayHTML(zh));
+}
+function tempTodayHTML(zh){
+  const eq=tempEquip();const date=(tempCanSetup()&&tempDate)?tempDate:TODAY;
+  if(!tempSlot)tempSlot=tempDefaultSlot();const slot=tempSlot;const L=(tempLog(date)[slot])||{};
+  const infos=TEMP_SLOTS.map(s=>({s,i:tempSlotInfo(date,s[0])}));const nFull=infos.filter(x=>x.i.full).length;
+  const od=tempOverdue(date).length,badN=tempLatestBad(date).length;
+  const banner=nFull===4?`<div class="al al-b" style="margin-bottom:10px;"><div class="t">${zh?'今天 4 次检查都做完了':'All 4 checks done'}</div></div>`:
+    `<div class="al ${od?'al-r':'al-a'}" style="margin-bottom:10px;"><div class="t">${zh?`${date===TODAY?'今天':date} 已完成 ${nFull} / 4 次检查`:`${nFull} / 4 done`}</div>${od?(zh?`有 ${od} 次已经过了时间还没做完`:''):(zh?'还没做的，到时间记得做':'')}</div>`;
+  const chips=`<div class="seg mtabs nox" style="margin-bottom:10px;">${infos.map(x=>`<button class="${x.s[0]===slot?'active':''}" onclick="tempSet('slot','${x.s[0]}')">${x.i.full?'✓ ':''}${x.s[1]}${x.i.total&&!x.i.full&&x.i.done?` ${x.i.done}/${x.i.total}`:''}</button>`).join('')}</div>`;
+  const dateSel=tempCanSetup()?`<div class="fr" style="max-width:220px;"><label>${zh?'日期（补记用）':'Date'}</label><input type="date" value="${date}" max="${TODAY}" onchange="tempSet('date',this.value||null)"></div>`:'';
+  const rows=eq.map(e=>{const r=L[e.id];const has=r&&r.t!=null;const ok=has?tempOK(e,+r.t):true;
+    return `<div class="dv-row inv-card ${has&&!ok?'low':''}" data-name="${oEsc((e.name||'').toLowerCase())}" style="flex-wrap:wrap;">
+      <div style="min-width:0;flex:1 1 140px;"><div class="dv-name">${oEsc(e.name)}</div><div class="mini">${zh?'标准':'Std'} ${tempStd(e)}${has?` · ${r.time||''} ${oEsc(r.by||'')}`:''}</div></div>
+      <div class="inv-qty" style="display:flex;gap:8px;align-items:center;"><input id="tt-${e.id}" type="number" step="0.1" inputmode="decimal" value="${has?r.t:''}" placeholder="°C" style="width:88px;font-size:18px;text-align:right;" oninput="tempChk(${e.id})"><span id="tp-${e.id}" class="pill ${has?(ok?'p-g':'p-r'):'p-n'}">${has?(ok?(zh?'正常':'OK'):(zh?'超标':'High/Low')):'—'}</span></div>
+      <div id="tn-wrap-${e.id}" style="flex:1 1 100%;${has&&!ok?'':'display:none;'}margin-top:6px;"><input id="tn-${e.id}" value="${oEsc(has?(r.note||''):'')}" placeholder="${zh?'超出范围，请写处理方法（必填）':'Action taken (required)'}" style="width:100%;"></div></div>`;}).join('');
+  return banner+chips+dateSel+`<div class="inv-grid">${rows}</div><button class="btn brand block" style="margin-top:12px;" onclick="saveTemp('${date}','${slot}')">${zh?`保存 ${TEMP_SLOTS.find(s=>s[0]===slot)[1]} 检查`:'Save'}</button>
+  <details class="hintd" style="margin-top:10px;"><summary>${zh?'说明':'Notes'}</summary><div>${zh?'每天 4 次：10am、2pm、5pm、9pm。点上面的时间，逐台填温度，按保存。\n标准：冷藏柜 0–5°C，冷冻柜 −18°C 或更低。超出范围一定要写处理方法才能保存。\n不用一次填完，没填的下次回来再填。':'4 checks a day.'}</div></details>`;
+}
+function tempChk(id){const e=tempEquip().find(x=>x.id===id);if(!e)return;const el=document.getElementById('tt-'+id),pill=document.getElementById('tp-'+id),w=document.getElementById('tn-wrap-'+id);if(!el)return;
+  const zh=LANG==="zh";if(el.value===''){pill.className='pill p-n';pill.textContent='—';w.style.display='none';return;}
+  const ok=tempOK(e,+el.value);pill.className='pill '+(ok?'p-g':'p-r');pill.textContent=ok?(zh?'正常':'OK'):(zh?'超标':'High/Low');w.style.display=ok?'none':'';}
+async function saveTemp(date,slot){
+  const zh=LANG==="zh";const eq=tempEquip();const now=myNow();const hhmm=String(now.getUTCHours()).padStart(2,'0')+':'+String(now.getUTCMinutes()).padStart(2,'0');
+  const by=(curUser&&curUser.name)||ROLES[curRole].name;const next={};let n=0,missing=null,bad=[];
+  const old=(tempLog(date)[slot])||{};
+  for(const e of eq){const v=document.getElementById('tt-'+e.id).value;const note=(document.getElementById('tn-'+e.id)||{value:''}).value.trim();
+    if(v===''){continue;}
+    const t=+v;if(isNaN(t))continue;n++;
+    if(!tempOK(e,t)){if(note.length<2){missing=e;break;}bad.push(e.name+' '+t+'°C');}
+    const prev=old[e.id];const same=prev&&prev.t===t&&(prev.note||'')===note;
+    next[e.id]=same?prev:{t,time:hhmm,by,note};}
+  if(missing)return alert(zh?`「${missing.name}」温度超出范围，请写处理方法（至少 2 个字）才能保存。`:'Action required.');
+  if(!n)return alert(zh?'还没填任何温度':'Nothing entered');
+  if(!d().tempLogs)d().tempLogs={};if(!d().tempLogs[date])d().tempLogs[date]={};
+  d().tempLogs[date][slot]=Object.assign({},old,next);
+  try{auditLog('温度检查',`${date} ${TEMP_SLOTS.find(s=>s[0]===slot)[1]} 填了 ${n} 台`+(bad.length?'；超标：'+bad.join('、'):''));}catch(e){}
+  await save();render();
+}
+function tempGridHTML(zh){
+  const eq=tempEquip();const cur=TODAY.slice(0,7);if(!tempGrid)tempGrid=TODAY;
+  const g=new Date(tempGrid+'T00:00:00');let start=Math.floor((g.getDate()-1)/5)*5+1;const y=g.getFullYear(),m=g.getMonth();const last=new Date(y,m+1,0).getDate();
+  const days=[];for(let i=0;i<5&&start+i<=last;i++){const dd=start+i;days.push(`${y}-${String(m+1).padStart(2,'0')}-${String(dd).padStart(2,'0')}`);}
+  const shift=n=>{const x=new Date(y,m,start+n*5);return x.toLocaleDateString('en-CA');};
+  const nav=`<div style="display:flex;gap:8px;align-items:center;margin-bottom:8px;flex-wrap:wrap;"><button class="btn ghost sm" onclick="tempGrid='${shift(-1)}';render()">‹ ${zh?'前 5 天':'Prev'}</button><b>${days[0].slice(5)} ～ ${days[days.length-1].slice(5)}</b><button class="btn ghost sm" onclick="tempGrid='${shift(1)}';render()">${zh?'后 5 天':'Next'} ›</button><button class="btn ghost sm" onclick="tempExport('${y}-${String(m+1).padStart(2,'0')}')">${zh?'导出本月 CSV':'Export CSV'}</button></div>`;
+  const th1=days.map(dt=>`<th colspan="4" style="text-align:center;border-left:2px solid var(--line);">${dt.slice(5)}</th>`).join('');
+  const th2=days.map(()=>TEMP_SLOTS.map((s,i)=>`<th style="font-size:11px;${i===0?'border-left:2px solid var(--line);':''}">${s[1]}</th>`).join('')).join('');
+  const body=eq.map(e=>`<tr><td style="white-space:nowrap;font-weight:600;position:sticky;left:0;background:var(--card);">${oEsc(e.name)}<div class="mini">${tempStd(e)}</div></td>${days.map(dt=>TEMP_SLOTS.map((s,i)=>{const r=((tempLog(dt)[s[0]])||{})[e.id];const has=r&&r.t!=null;const ok=has?tempOK(e,+r.t):true;
+    return `<td style="text-align:center;${i===0?'border-left:2px solid var(--line);':''}${has&&!ok?'background:var(--badbg,#fbe0dd);color:var(--red);font-weight:800;':''}" title="${has?oEsc((r.time||'')+' '+(r.by||'')+(r.note?' · '+r.note:'')):''}">${has?r.t:''}</td>`;}).join('')).join('')}</tr>`).join('');
+  return nav+`<div class="card tbl" style="overflow-x:auto;"><table class="gtbl" style="min-width:640px;"><thead><tr><th></th>${th1}</tr><tr><th></th>${th2}</tr></thead><tbody>${body}</tbody></table></div>
+  <div class="mini" style="margin-top:8px;">${zh?'红色＝超出范围。长按/指着格子可以看谁、几点填的、处理方法。':''}</div>`;
+}
+function tempExport(month){
+  const rows=[['日期','时段','设备','温度(°C)','时间','填写人','处理方法']];
+  Object.keys(d().tempLogs||{}).filter(k=>k.startsWith(month)).sort().forEach(dt=>{TEMP_SLOTS.forEach(s=>{const L=(d().tempLogs[dt]||{})[s[0]]||{};tempEquip().forEach(e=>{const r=L[e.id];if(r&&r.t!=null)rows.push([dt,s[1],e.name,r.t,r.time||'',r.by||'',r.note||'']);});});});
+  if(typeof downloadCSV==='function')downloadCSV(`温度记录_${nm(outletObj())}_${month}.csv`,rows);
+}
+function openTempSetup(){
+  if(!tempCanSetup())return;const zh=LANG==="zh";const eq=tempEquip();const b1=(curOutlet==='b1');
+  const cnt=(k,def)=>`<div class="fr"><label>${TEMP_KINDS[k].zh}</label><input id="ts-${k}" type="number" min="0" max="40" value="${def}" style="width:90px;"></div>`;
+  openForm(`<h3>${zh?'设置温度检查设备':'Equipment'} <span class="x" onclick="closeM()">×</span></h3>
+    ${eq.length?`<div class="sec" style="font-weight:700;margin:4px 0;">${zh?'现有设备':'Current'}</div>${eq.map(e=>`<div style="display:flex;gap:6px;align-items:center;margin-bottom:6px;"><input value="${oEsc(e.name)}" style="flex:1;" onchange="tempEquipRename(${e.id},this.value)"><span class="mini" style="white-space:nowrap;">${tempKind(e).zh} ${tempStd(e)}</span><button class="ib" onclick="tempEquipDel(${e.id})">🗑️</button></div>`).join('')}`:''}
+    <div class="sec" style="font-weight:700;margin:12px 0 4px;">${zh?'新增（填几台，名字会自动编号）':'Add'}</div>
+    <div class="fg2">${cnt('chiller',eq.length?0:(b1?12:0))}${cnt('bev',eq.length?0:(b1?1:0))}${cnt('freezer',eq.length?0:(b1?1:0))}${cnt('hot',0)}</div>
+    <div class="mini" style="margin:4px 0 8px;">${zh?'冷藏柜、饮料冷藏柜标准 0–5°C；冷冻柜 −18°C 或更低；保温柜 60°C 或更高。':''}</div>
+    <button class="btn brand block" onclick="tempEquipAdd()">${zh?'新增':'Add'}</button>`);
+}
+async function tempEquipAdd(){
+  const zh=LANG==="zh";if(!d().tempEquip)d().tempEquip=[];let add=0;
+  ['chiller','bev','freezer','hot'].forEach(k=>{const n=Math.max(0,Math.min(40,Math.round(+document.getElementById('ts-'+k).value||0)));
+    const have=d().tempEquip.filter(e=>e.kind===k).length;
+    for(let i=1;i<=n;i++){const num=have+i;d().tempEquip.push({id:Date.now()+add*7+i,name:(n===1&&have===0&&k!=='chiller'?TEMP_KINDS[k].zh:TEMP_KINDS[k].zh+' '+num),kind:k});add++;}});
+  if(!add)return alert(zh?'请填要新增几台':'Enter a count');
+  try{auditLog('温度检查设备','新增 '+add+' 台');}catch(e){}await save();closeM();render();
+}
+async function tempEquipRename(id,v){const e=tempEquip().find(x=>x.id===id);v=(v||'').trim();if(!e||!v)return;e.name=v;await save();render();}
+async function tempEquipDel(id){const zh=LANG==="zh";const e=tempEquip().find(x=>x.id===id);if(!e)return;if(!confirm(zh?`删除「${e.name}」？它以前的温度记录会保留在数据里，但不再显示。`:'Delete?'))return;
+  d().tempEquip=d().tempEquip.filter(x=>x.id!==id);try{auditLog('温度检查设备','删除 '+e.name);}catch(x){}await save();closeM();render();openTempSetup();}
 
 function render(){
   // 流畅度：同一页重画时保持滚动位置（页面、表格内部）；换页才播进场动画
