@@ -1476,7 +1476,7 @@ function statusOf(d){if(d<=14)return{t:"健康",e:"Fresh",c:"p-g"};if(d<=30)retu
 function stTxt(s){return LANG==="zh"?s.t:s.e;}
 
 /* ================= 数据种子 ================= */
-const BUILD="1111mk149";  // 版本标记：页面右上/网格提示可见，用来确认已载入最新版
+const BUILD="1111mk150";  // 版本标记：页面右上/网格提示可见，用来确认已载入最新版
 const SEED_VERSION="bh-master-2026-09-1";  // 版本变更→下次载入自动重置为最新主数据（仅本店云端）
 function seed(outletId){
   const isCK = outletId==="ck";
@@ -5020,6 +5020,12 @@ function auditMonitorHTML(){
   return settingsPanel(`🔍 ${LANG==="zh"?"员工操作监察（跨分店审计）":"Staff Activity Monitor"} <span class="mini" style="font-weight:400;">· ${rows.length}</span>`, body);
 }
 /* ---- 白名单 / 用户管理（仅 执行董事/运营经理，需云端）---- */
+// 白名单排序：执行董事 → 人事经理 → 创办人(显示成运营经理的 owner 账号) → 运营经理 → 店面经理 → 店长 → 厨师长 → 员工 → 中央经理 → 中央员工；同岗位按名字
+function sortedUsers(){
+  const order=['owner','hrmgr','@founder','area','outletmgr','manager','headchef','staff','ckmgr','ckstaff'];
+  const rk=u=>{const k=(titleOf(u.email,u.role)&&u.role==='owner')?'@founder':u.role;const i=order.indexOf(k);return i<0?99:i;};
+  return USERS.slice().sort((a,b)=>rk(a)-rk(b)||String(a.name||a.email).localeCompare(String(b.name||b.email)));
+}
 function roleShort(rk){return LANG==="zh"?(ROLES[rk]?ROLES[rk].name.split(' ')[0].split('/')[0]:rk):(ROLES[rk]?ROLES[rk].en:rk);}
 function whitelistHTML(){
   if(!canEditPerms())return '';
@@ -5029,7 +5035,7 @@ function whitelistHTML(){
   const body=`<button class="btn gold sm" style="margin-bottom:8px;" onclick="formUser()">+ ${LANG==="zh"?"添加用户":"Add User"}</button>
   <div class="hint">${LANG==="zh"?"只有在此名单且『启用』的邮箱才能登录。岗位与所属分店由你分配；员工首次用该邮箱注册密码即可登录。":"Only listed & active emails can sign in. You assign role & branch."}</div>
   <div class="card tbl"><table><thead><tr><th>${LANG==="zh"?"邮箱":"Email"}</th><th>${LANG==="zh"?"姓名":"Name"}</th><th>${LANG==="zh"?"岗位":"Role"}</th><th>${LANG==="zh"?"分店":"Branch"}</th><th>${LANG==="zh"?"状态":"Status"}</th><th></th></tr></thead><tbody>
-  ${USERS.map(u=>`<tr>
+  ${sortedUsers().map(u=>`<tr>
     <td><b>${oEsc(u.email)}</b>${curUser&&u.email===curUser.email?` <span class="pill p-b">${LANG==="zh"?"你":"you"}</span>`:''}</td>
     <td>${oEsc(u.name)||'—'}</td>
     <td><span class="pill p-p">${titleOf(u.email,u.role)?roleShort(titleOf(u.email,u.role)):roleShort(u.role)}</span></td>
