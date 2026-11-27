@@ -1390,6 +1390,8 @@ async function inviteLookup(code){
 const NO_CODE_EMAIL="yxchong3@gmail.com";
 // 显示用岗位名：创办人账号在数据库里是 owner（执行董事权限，要维护系统），但对外显示成「运营经理」。只改显示，权限不变。
 const TITLE_OVERRIDE={"yxchong3@gmail.com":"area"};
+// 别人看某个人的岗位名（下单人等）：创办人账号一律显示 TITLE_OVERRIDE 里的名字，其他人照真实岗位
+function personRoleName(role,email){const k=titleOf(email,role)||role;return ROLES[k]?ROLES[k].name:(role||'');}
 function titleOf(email,role){const t=TITLE_OVERRIDE[(email||'').toLowerCase()];return (t&&role==='owner')?t:null;}
 
 /* ---------- i18n ---------- */
@@ -1480,7 +1482,7 @@ function statusOf(d){if(d<=14)return{t:"健康",e:"Fresh",c:"p-g"};if(d<=30)retu
 function stTxt(s){return LANG==="zh"?s.t:s.e;}
 
 /* ================= 数据种子 ================= */
-const BUILD="1111mk155";  // 版本标记：页面右上/网格提示可见，用来确认已载入最新版
+const BUILD="1111mk156";  // 版本标记：页面右上/网格提示可见，用来确认已载入最新版
 const SEED_VERSION="bh-master-2026-09-1";  // 版本变更→下次载入自动重置为最新主数据（仅本店云端）
 function seed(outletId){
   const isCK = outletId==="ck";
@@ -4506,7 +4508,7 @@ function openOrdersPanel(){
     const cnt=(o.lines||[]).length+(o.uniform||[]).length;
     const badge=ordPill(o)+(ordConfirmedLike(o)&&o.invoiceNo?` <span class="mini">${o.invoiceNo}</span>`:'');
     return `<div class="card ordc ${ordConfirmedLike(o)?'ok':''}" style="${o.status==='rejected'||o.status==='cancelled'?'border-left-color:var(--grey);opacity:.75;':o.status==='shipped'?'border-left-color:var(--blue,#2a5fa0);':''}" onclick="openOrderDetail('${o.id}')">
-      <div class="r1"><div class="nm">${oEsc(o.by&&o.by.name||'-')} <span class="mini" style="font-weight:400;">${oEsc(ROLES[o.by&&o.by.role]?ROLES[o.by.role].name:(o.by&&o.by.role||''))}</span></div>${badge}</div>
+      <div class="r1"><div class="nm">${oEsc(o.by&&o.by.name||'-')} <span class="mini" style="font-weight:400;">${oEsc(personRoleName(o.by&&o.by.role,o.by&&o.by.email))}</span></div>${badge}</div>
       <div class="meta"><span>${oEsc(o.outletName||'')}</span>${o.supplier?`<span>· ${oEsc(o.supplier)}</span>`:''}<span>· <span class="cnt">${cnt}</span> ${LANG==="zh"?"项":"items"}</span></div>
       <div class="mini" style="margin-top:4px;">${when} ›</div>
     </div>`;}).join(''):`<div class="empty">${LANG==="zh"?"暂无订单":"No orders yet"}</div>`;
@@ -4596,7 +4598,7 @@ function invoiceHTML(o){
     <div class="inv-info">
       <div><b>${zh?'供应商 Supplier':'Supplier'}:</b> ${oEsc(o.supplier||(zh?'中央厨房订货表':'Central Kitchen'))}</div>
       <div><b>${zh?'分店 Outlet':'Outlet'}:</b> ${oEsc(o.outletName||'')}</div>
-      <div><b>${zh?'下单人 Ordered by':'Ordered by'}:</b> ${oEsc(o.by&&o.by.name||'')} (${oEsc(ROLES[o.by&&o.by.role]?ROLES[o.by.role].name:(o.by&&o.by.role||''))})</div>
+      <div><b>${zh?'下单人 Ordered by':'Ordered by'}:</b> ${oEsc(o.by&&o.by.name||'')} (${oEsc(personRoleName(o.by&&o.by.role,o.by&&o.by.email))})</div>
       <div><b>${zh?'确认人 Confirmed by':'Confirmed by'}:</b> ${oEsc(o.confirmedBy||'')}</div>
     </div>
     <table class="inv-tbl"><thead><tr><th class="c" style="width:40px;">No.</th><th>${zh?'品名 Description':'Description'}</th><th class="c" style="width:74px;">${zh?'数量/重量':'Qty'}</th><th class="c" style="width:80px;">${zh?'单价 Price':'Price'}</th><th class="c" style="width:92px;">${zh?'金额 Amount':'Amount'}</th></tr></thead><tbody>${body}</tbody>
