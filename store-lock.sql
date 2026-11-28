@@ -132,6 +132,7 @@ begin
     news := coalesce(new.value->>'status','');
     if olds = 'pending' and news in ('approved','rejected') then
       if eo is distinct from cnt then raise exception '只有被申请的店面才能批准或拒绝'; end if;
+      if r not in ('outletmgr','manager','headchef','ckmgr') then raise exception '你的岗位不能批准或拒绝调拨申请'; end if;   -- 员工/中央员工只能看，不能批
     elsif olds = 'pending' and news = 'pending' then
       if eo is distinct from req then raise exception '只有发起申请的店面才能修改申请'; end if;
     else
@@ -250,11 +251,181 @@ create trigger erp_orders_guard
 drop policy if exists "erp_store whitelisted only" on public.erp_store;
 drop policy if exists "erp_store whitelisted payroll-locked" on public.erp_store;
 drop policy if exists "erp_store key-locked" on public.erp_store;
-create policy "erp_store key-locked"
-  on public.erp_store for all
-  to authenticated
+-- ⚠️ 为什么不能写 for all：Postgres 的 DELETE 只看 using、不看 with check。
+--    以前 for all + using(erp_key_ok(key,false))＝「能读就能删」，任何账号都能把全公司岗位权限、订货单、自己店整包、（店面经理）本店薪资整条删掉。
+--    所以拆成四条：增/改要「能写」，删除另用 erp_del_ok（只有执行董事/人事经理；运营经理只能删岗位权限/订货单；调拨申请交给 erp_req_guard 判断）。
+create or replace function public.erp_del_ok(k text)
+returns boolean
+language plpgsql
+security definer set search_path = public
+stable
+as $$
+declare r text;
+begin
+  if k is null then return false; end if;
+  select u.role into r from public.erp_users u where u.email = public.my_email() and u.active = true;
+  if r is null then return false; end if;
+  if r in ('owner','hrmgr') then return true; end if;
+  if k like 'erpv2:req:%' then return public.erp_key_ok(k, true); end if;   -- 发起店撤回/移除：还要过 erp_req_guard
+  if r = 'area' then return k in ('erpv2:roleperms','erpv2:orders','erpv2:ckorder'); end if;
+  return false;
+end;
+$$;
+drop policy if exists "erp_store anon full access" on public.erp_store;
+drop policy if exists "erp_store authed full access" on public.erp_store;
+drop policy if exists "erp_store authed access" on public.erp_store;
+drop policy if exists "erp_store whitelisted only" on public.erp_store;
+drop policy if exists "erp_store key-locked" on public.erp_store;
+drop policy if exists "erp_store key-locked select" on public.erp_store;
+drop policy if exists "erp_store key-locked insert" on public.erp_store;
+drop policy if exists "erp_store key-locked update" on public.erp_store;
+drop policy if exists "erp_store key-locked delete" on public.erp_store;
+create policy "erp_store key-locked select"
+  on public.erp_store for select to authenticated
+  using (public.is_whitelisted() and public.erp_key_ok(key, false));
+create policy "erp_store key-locked insert"
+  on public.erp_store for insert to authenticated
+  with check (public.is_whitelisted() and public.erp_key_ok(key, true));
+create policy "erp_store key-locked update"
+  on public.erp_store for update to authenticated
   using (public.is_whitelisted() and public.erp_key_ok(key, false))
   with check (public.is_whitelisted() and public.erp_key_ok(key, true));
+create policy "erp_store key-locked delete"
+  on public.erp_store for delete to authenticated
+  using (public.is_whitelisted() and public.erp_del_ok(key));
+
+
+-- ===== 账号表 erp_users 的把关（触发器）+ 推送订阅 + 付款收据（mk179）=====
+-- ① erp_users：以前 is_admin() 包含运营经理，所以运营经理能把自己/别人改成执行董事，甚至删掉执行董事账号。现在：
+--    · 只有执行董事/人事经理能新增、修改、删除「执行董事/人事经理」的账号（也只有他们能把别人设成这两个岗位）；
+--    · 运营经理只能管运营经理以下的账号；
+--    · 任何人（SQL 编辑器除外）都不能把最后一位在用的执行董事改走/停用/删掉；
+--    · 没有登录身份的写入（SQL 编辑器/服务端）放行（维护用）；还不在名单里的人自己注册（邀请码/第一位）交给原来的 insert 规则。
+create or replace function public.erp_users_guard()
+returns trigger
+language plpgsql
+security definer set search_path = public
+as $$
+declare cr text; me text;
+begin
+  me := public.my_email();
+  if me is null or me = '' then
+    if tg_op = 'DELETE' then return old; else return new; end if;
+  end if;
+  select u.role into cr from public.erp_users u where u.email = me and u.active = true;
+  if cr is null then
+    if tg_op = 'DELETE' then return old; else return new; end if;   -- 还没在名单里的人：只可能走 insert 的邀请码规则，其余有 RLS 挡着
+  end if;
+  if cr not in ('owner','hrmgr') then
+    if tg_op = 'INSERT' and new.role in ('owner','hrmgr') then raise exception '只有执行董事/人事经理能新增执行董事或人事经理账号'; end if;
+    if tg_op = 'UPDATE' and (old.role in ('owner','hrmgr') or new.role in ('owner','hrmgr')) then raise exception '只有执行董事/人事经理能修改执行董事或人事经理账号'; end if;
+    if tg_op = 'DELETE' and old.role in ('owner','hrmgr') then raise exception '只有执行董事/人事经理能删除执行董事或人事经理账号'; end if;
+  end if;
+  if tg_op in ('UPDATE','DELETE') and old.role = 'owner' and old.active = true
+     and (tg_op = 'DELETE' or new.role <> 'owner' or new.active is distinct from true)
+     and not exists(select 1 from public.erp_users x where x.role = 'owner' and x.active = true and x.email <> old.email) then
+    raise exception '至少要保留一位在用的执行董事';
+  end if;
+  if tg_op = 'DELETE' then return old; else return new; end if;
+end;
+$$;
+drop trigger if exists erp_users_guard on public.erp_users;
+create trigger erp_users_guard
+  before insert or update or delete on public.erp_users
+  for each row execute function public.erp_users_guard();
+
+-- ② 手机推送订阅 erp_push_subs：每个人只能读写自己邮箱的订阅（以前白名单里谁都能删别人的、也能自己写一条「执行董事」的订阅来收新订单通知）。
+--    发推送的云函数用服务端身份，不受这条限制；它会以 erp_users 里的真实岗位为准，不信这张表里的 role 栏。
+do $$
+begin
+  if to_regclass('public.erp_push_subs') is not null then
+    execute 'drop policy if exists "erp_push_subs authed" on public.erp_push_subs';
+    execute 'drop policy if exists "erp_push_subs whitelisted only" on public.erp_push_subs';
+    execute 'drop policy if exists "erp_push_subs own select" on public.erp_push_subs';
+    execute 'drop policy if exists "erp_push_subs own insert" on public.erp_push_subs';
+    execute 'drop policy if exists "erp_push_subs own update" on public.erp_push_subs';
+    execute 'drop policy if exists "erp_push_subs own delete" on public.erp_push_subs';
+    execute $p$create policy "erp_push_subs own select" on public.erp_push_subs for select to authenticated
+      using (public.is_whitelisted() and lower(coalesce(email,'')) = public.my_email())$p$;
+    execute $p$create policy "erp_push_subs own insert" on public.erp_push_subs for insert to authenticated
+      with check (public.is_whitelisted() and lower(coalesce(email,'')) = public.my_email())$p$;
+    execute $p$create policy "erp_push_subs own update" on public.erp_push_subs for update to authenticated
+      using (public.is_whitelisted() and lower(coalesce(email,'')) = public.my_email())
+      with check (public.is_whitelisted() and lower(coalesce(email,'')) = public.my_email())$p$;
+    execute $p$create policy "erp_push_subs own delete" on public.erp_push_subs for delete to authenticated
+      using (public.is_whitelisted() and lower(coalesce(email,'')) = public.my_email())$p$;
+  end if;
+end $$;
+
+-- ②b 手机共用时（B 在 A 的手机上登录再点「开启通知」），浏览器的订阅编号(endpoint)不变，直接 upsert 会撞到 A 那一行、被上面的「只能改自己的」挡住。
+--    所以登记/取消登记走这两个函数：以数据库里的真实账号和岗位为准，写成当前登录的人（role 不信网页传来的）。
+create or replace function public.erp_push_register(p_endpoint text, p_sub jsonb)
+returns void
+language plpgsql
+security definer set search_path = public
+as $$
+declare me text; r text;
+begin
+  me := public.my_email();
+  select u.role into r from public.erp_users u where u.email = me and u.active = true;
+  if r is null then raise exception '不在白名单'; end if;
+  if p_endpoint is null or length(p_endpoint) < 10 or p_sub is null then raise exception '订阅无效'; end if;
+  insert into public.erp_push_subs(endpoint, sub, email, role, updated_at) values (p_endpoint, p_sub, me, r, now())
+  on conflict (endpoint) do update set sub = excluded.sub, email = excluded.email, role = excluded.role, updated_at = now();
+end;
+$$;
+create or replace function public.erp_push_unregister(p_endpoint text)
+returns void
+language plpgsql
+security definer set search_path = public
+as $$
+declare me text;
+begin
+  me := public.my_email();
+  if not public.is_whitelisted() then raise exception '不在白名单'; end if;
+  delete from public.erp_push_subs where endpoint = p_endpoint and (lower(coalesce(email,'')) = me or coalesce(email,'') = '');
+end;
+$$;
+revoke all on function public.erp_push_register(text, jsonb) from public, anon;
+revoke all on function public.erp_push_unregister(text) from public, anon;
+grant execute on function public.erp_push_register(text, jsonb) to authenticated;
+grant execute on function public.erp_push_unregister(text) to authenticated;
+
+-- ③ 付款收据储存桶 receipts：只有有「应付账款」权限的岗位（执行董事/人事经理/运营经理/店面经理/店长/厨师长/中央经理）；注意：这是写死在数据库里的，之后在「岗位权限编辑」给别的岗位加了「应付账款」，数据库不会跟着放行，要改 erp_receipt_ok能看、传；删除只给执行董事/人事经理/运营经理。
+create or replace function public.erp_receipt_ok(del boolean)
+returns boolean
+language plpgsql
+security definer set search_path = public
+stable
+as $$
+declare r text;
+begin
+  select u.role into r from public.erp_users u where u.email = public.my_email() and u.active = true;
+  if r is null then return false; end if;
+  if del then return r in ('owner','hrmgr','area'); end if;
+  return r in ('owner','hrmgr','area','outletmgr','manager','headchef','ckmgr');   -- 跟网页「应付账款(ap)」权限一致：中央经理也有
+end;
+$$;
+do $$
+begin
+  if exists(select 1 from storage.buckets where id = 'receipts') then
+    execute 'drop policy if exists "receipts authed all" on storage.objects';
+    execute 'drop policy if exists "receipts whitelisted only" on storage.objects';
+    execute 'drop policy if exists "receipts role select" on storage.objects';
+    execute 'drop policy if exists "receipts role insert" on storage.objects';
+    execute 'drop policy if exists "receipts role update" on storage.objects';
+    execute 'drop policy if exists "receipts role delete" on storage.objects';
+    execute $p$create policy "receipts role select" on storage.objects for select to authenticated
+      using (bucket_id = 'receipts' and public.erp_receipt_ok(false))$p$;
+    execute $p$create policy "receipts role insert" on storage.objects for insert to authenticated
+      with check (bucket_id = 'receipts' and public.erp_receipt_ok(false))$p$;
+    execute $p$create policy "receipts role update" on storage.objects for update to authenticated
+      using (bucket_id = 'receipts' and public.erp_receipt_ok(false))
+      with check (bucket_id = 'receipts' and public.erp_receipt_ok(false))$p$;
+    execute $p$create policy "receipts role delete" on storage.objects for delete to authenticated
+      using (bucket_id = 'receipts' and public.erp_receipt_ok(true))$p$;
+  end if;
+end $$;
 
 -- ===== 跑之前先检查：这条应该是 0 行（有结果就是有账号的分店栏位是空的/不对，先去「设置→账号权限」改好）=====
 -- select email, role, outlet from public.erp_users
@@ -263,6 +434,7 @@ create policy "erp_store key-locked"
 --    and (outlet is null or outlet not in ('b1','b2','b3','b4','b5','b6','b7','b8','b9','b10','b11'));
 
 -- ===== 如果出问题要还原成「白名单内都能读写」(救急用)，跑下面这几行 =====
--- drop policy if exists "erp_store key-locked" on public.erp_store;
+-- drop policy if exists "erp_store key-locked select" on public.erp_store; drop policy if exists "erp_store key-locked insert" on public.erp_store;
+-- drop policy if exists "erp_store key-locked update" on public.erp_store; drop policy if exists "erp_store key-locked delete" on public.erp_store;
 -- create policy "erp_store whitelisted only" on public.erp_store for all to authenticated
 --   using (public.is_whitelisted()) with check (public.is_whitelisted());

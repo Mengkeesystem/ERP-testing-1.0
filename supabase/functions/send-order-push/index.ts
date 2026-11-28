@@ -26,7 +26,7 @@ import { createECDH } from "node:crypto";
 import { Buffer } from "node:buffer";
 
 // 部署版本标记：打开 ?health=1 能看到。网页端改了函数就把这个号码 +1，业主就能看出云端贴的是不是最新版
-const FN_VER = "1111mk178";
+const FN_VER = "1111mk179";
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL") ?? "";
 const SUPABASE_ANON_KEY = Deno.env.get("SUPABASE_ANON_KEY") ?? "";
 const SERVICE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
@@ -362,7 +362,9 @@ Deno.serve(async (req) => {
       subs = subs.filter((s) => emails.has(String(s.email || "").toLowerCase()));
     } else {
       // —— 新订单：只发给老板/人事经理/运营经理 ——
-      subs = subs.filter((s) => ADMIN_ROLES.includes(String(s.role || "")));
+      // 以 erp_users 里的真实岗位为准，不信订阅表里自己填的 role（那一栏可以被随便写）
+      const admins = await adminEmails();
+      subs = subs.filter((s) => admins.has(String(s.email || "").toLowerCase()));
     }
 
     const payload = JSON.stringify({
