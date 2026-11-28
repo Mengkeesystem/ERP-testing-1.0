@@ -12,8 +12,9 @@ with c as (
          (select count(*) from pg_policies where schemaname='public' and tablename='erp_push_subs' and policyname like 'erp\_push\_subs own %')::text, '4'
   union all select 5, 'erp_push_subs 全部规则条数',
          (select count(*) from pg_policies where schemaname='public' and tablename='erp_push_subs')::text, '4'
-  union all select 6, '付款收据(receipts)的规则条数（读/传/改/删）',
-         (select count(*) from pg_policies where schemaname='storage' and tablename='objects' and policyname ilike '%receipt%')::text, '4'
+  union all select 6, '付款收据(receipts)的规则条数（读/传/改/删；没建 receipts 桶＝0 条，算正常）',
+         (select count(*) from pg_policies where schemaname='storage' and tablename='objects' and policyname ilike '%receipt%')::text,
+         case when exists(select 1 from storage.buckets where id='receipts') then '4' else '0' end
   union all select 7, '分店上锁/把关/推送登记用的函数个数',
          (select count(distinct proname) from pg_proc where proname in ('erp_key_ok','is_whitelisted','is_admin','erp_req_guard','erp_orders_guard','erp_strip_rcv','erp_del_ok','erp_users_guard','erp_receipt_ok','erp_push_register','erp_push_unregister'))::text, '11'
   union all select 8, '触发器个数（erp_req_guard、erp_orders_guard、erp_users_guard）',
