@@ -1483,7 +1483,7 @@ function statusOf(d){if(d<=14)return{t:"健康",e:"Fresh",c:"p-g"};if(d<=30)retu
 function stTxt(s){return LANG==="zh"?s.t:s.e;}
 
 /* ================= 数据种子 ================= */
-const BUILD="1111mk167";  // 版本标记：页面右上/网格提示可见，用来确认已载入最新版
+const BUILD="1111mk168";  // 版本标记：页面右上/网格提示可见，用来确认已载入最新版
 const SEED_VERSION="bh-master-2026-09-1";  // 版本变更→下次载入自动重置为最新主数据（仅本店云端）
 function seed(outletId){
   const isCK = outletId==="ck";
@@ -1630,17 +1630,27 @@ function _mergeVal(base,ours,remote,path){
   if(Array.isArray(ours)&&Array.isArray(remote))return _mergeArr(Array.isArray(base)?base:[],ours,remote,path);
   return ours;                                 // 两边都改了同一个数值/文字：以我的为准
 }
+function _sameEntity(a,b){   // 同一个编号的两条新记录，是不是同一样东西（有识别栏位且不一样＝不是）
+  for(const k of ['name','cn','code','item']){if(a[k]!==undefined&&b[k]!==undefined&&a[k]!==b[k])return false;}
+  return true;
+}
 function _mergeArr(base,ours,remote,path){
   path=path||'';
   const hasId=a=>a.every(x=>_isObj(x)&&x.id!==undefined&&x.id!==null);
   const uniq=a=>new Set(a.map(x=>String(x.id))).size===a.length;
   if(hasId(base)&&hasId(ours)&&hasId(remote)&&uniq(base)&&uniq(ours)&&uniq(remote)){
     const mb=new Map(base.map(x=>[String(x.id),x])),mo=new Map(ours.map(x=>[String(x.id),x])),mr=new Map(remote.map(x=>[String(x.id),x]));
-    const out=[];
+    const out=[],clash=[];
     remote.forEach(r=>{const id=String(r.id);const b=mb.get(id),o=mo.get(id);
       if(o===undefined){ if(b!==undefined&&_deq(b,r))return; out.push(r); return; }   // 我删了：别人没改就删掉，别人改过就保留
+      // 两部手机同时「新增」，拿到了同一个编号（各自 最大编号+1）：名字等识别栏位不同＝是两样不同的东西，不能当成同一个合并
+      if(b===undefined&&!_deq(o,r)&&!_sameEntity(o,r)){out.push(r);clash.push(o);return;}
       out.push(_mergeVal(b,o,r,path+'[]'));});
     ours.forEach(o=>{const id=String(o.id);if(!mr.has(id))out.push(o);});             // 我新增的
+    if(clash.length){   // 撞号的那几样（我这边新增的）换一个没人用的新编号，两样都保留
+      const all=[...base,...ours,...remote].map(x=>x.id);const nums=all.every(x=>typeof x==='number'&&isFinite(x));let mx=nums?Math.max(0,...all):0;
+      clash.forEach(o=>{out.push(Object.assign({},o,{id:nums?++mx:String(o.id)+'-'+Math.random().toString(36).slice(2,7)}));});
+    }
     return out;
   }
   // 没有 id 的列表：按内容当「集合」合并（别人的 + 我新增的 − 我删掉的）
