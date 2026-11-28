@@ -546,7 +546,11 @@ html.ui2 #tabbar button.on .badge{top:-14px;left:56%;background:#fff;color:var(-
      这样往上/往下拉到头的「橡皮筋回弹」只会弹 #shell 里面的内容，固定在下面的导航条 #tabbar 在 #shell 外面，永远贴在屏幕最底下，不会被一起拉走。 */
   html.ui2,html.ui2 body{height:100%;overflow:hidden;overscroll-behavior:none;}
   html.ui2 body{padding-bottom:0;}
-  html.ui2 .dv-foot{bottom:0;}   /* 滚动框自己的下边距已经让出导航条的位置，合计条贴着它就好 */
+  html.ui2 .dv-foot{bottom:0;}
+  /* 进货单/月末盘点「表格」视图：原来钉住 Code/品名/单位/规格(/单价) 5 栏共 430–506px，比 iPhone 屏幕(约 365px)还宽，日期格被盖住、看不到也滑不到。手机上只钉「品名」一栏（96px），其余栏跟着一起滑走 */
+  html.ui2 .gtbl td.gcode,html.ui2 .gtbl th.gcode,html.ui2 .gtbl td.gunit,html.ui2 .gtbl th.gunit,html.ui2 .gtbl td.gpack,html.ui2 .gtbl th.gpack,html.ui2 .gtbl td.gprice,html.ui2 .gtbl th.gprice{position:static;box-shadow:none;}
+  html.ui2 .gtbl thead th.gcode,html.ui2 .gtbl thead th.gunit,html.ui2 .gtbl thead th.gpack,html.ui2 .gtbl thead th.gprice{position:sticky;top:0;}
+  html.ui2 .gtbl td.gname,html.ui2 .gtbl th.gname{left:0;min-width:96px;max-width:96px;font-size:12px;padding:6px 6px;}   /* 滚动框自己的下边距已经让出导航条的位置，合计条贴着它就好 */
   html.ui2 #shell{display:block;position:fixed;top:0;left:0;right:0;bottom:0;overflow-x:hidden;overflow-y:auto;-webkit-overflow-scrolling:touch;overscroll-behavior-y:contain;padding-bottom:calc(86px + env(safe-area-inset-bottom));}
   html.ui2 #tabbar{display:grid;grid-auto-flow:column;grid-auto-columns:1fr;position:fixed;left:0;right:0;bottom:0;z-index:70;border-top:1px solid var(--line);background:var(--tab-bg);-webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px);padding:6px 2px calc(8px + env(safe-area-inset-bottom));align-items:end;}
   html.ui2 .al[style*="position:fixed"]{bottom:calc(88px + env(safe-area-inset-bottom))!important;}
@@ -1519,7 +1523,7 @@ function statusOf(d){if(d<=14)return{t:"健康",e:"Fresh",c:"p-g"};if(d<=30)retu
 function stTxt(s){return LANG==="zh"?s.t:s.e;}
 
 /* ================= 数据种子 ================= */
-const BUILD="1111mk175";  // 版本标记：页面右上/网格提示可见，用来确认已载入最新版
+const BUILD="1111mk176";  // 版本标记：页面右上/网格提示可见，用来确认已载入最新版
 const SEED_VERSION="bh-master-2026-09-1";  // 版本变更→下次载入自动重置为最新主数据（仅本店云端）
 function seed(outletId){
   const isCK = outletId==="ck";
