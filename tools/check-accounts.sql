@@ -3,7 +3,7 @@
 select 1 as 序, '账号' as 类型, email as 内容, role || ' / ' || coalesce(outlet,'-') || ' / ' || (case when active then '在用' else '已停用' end) as 说明
 from public.erp_users where role in ('owner','hrmgr','area') or lower(email) like 'yxchong3%'
 union all
-select 2, '收据桶', id, '存在（public=' || public::text || '）' from storage.buckets where id ilike '%receipt%'
+select 2, '收据桶', id, '存在（public=' || "public"::text || '）' from storage.buckets where id ilike '%receipt%'
 union all
 select 3, '收据桶', '（没有找到名字含 receipt 的桶）', '' where not exists(select 1 from storage.buckets where id ilike '%receipt%')
 union all
