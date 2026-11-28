@@ -65,6 +65,7 @@
 ### 业主新增的工作规矩（2026-11-27）
 - **以后做完的工作要自动记录进 skill `chong-automation-coder`**（项目记录 + 规矩）。
 - **要最优解的版本，不要为省事凑合。**
+- **顾问（2026-11-28）**：Sonnet 做事，涉及资料安全的大改动（保存/同步、权限、删除、数据结构、SQL、Edge Function）动手前和推上线前自动请 Opus 检查；外观/文字/翻译等小改动不请；业主要求「每次都请」才改。
 - **旧代码要更改或删除，必须先通知业主，业主批准后才动**（刚好业主已批准的除外，例如 mk151 的薪资死代码清理）。
 
 - 公司：明记有 11 间分店 + 中央厨房（`OUTLETS`：`ck`、`b1`~`b11`，b1 OKR、b2 PAPA、b3 PJ、b4 Cheras、b5 Kajang、b6 Puchong、b7 Subang、b8 Klang、b9 Bukit Rimau、b10 Setia Alam、b11 Seremban 2）。⚠️ **ERP 的 b2「PAPA店」和官网的「OKR (Scott Garden 对面)」、b3「PJ店」和官网的「Kelana Jaya (PJ)」应该是同一间店，但名字/顺序不一样**（官网分店序号是官网自己 `config.js` 的顺序，跟 ERP 的 `b1…b11` 没有对应关系）；以后要把官网订单接进 ERP 时要先问业主确认对照表。`OUTLETS` 里的经纬度是示意值，打卡 GPS 围栏用，不是精确位置。
