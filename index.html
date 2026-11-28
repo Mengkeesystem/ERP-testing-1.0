@@ -1483,7 +1483,7 @@ function statusOf(d){if(d<=14)return{t:"健康",e:"Fresh",c:"p-g"};if(d<=30)retu
 function stTxt(s){return LANG==="zh"?s.t:s.e;}
 
 /* ================= 数据种子 ================= */
-const BUILD="1111mk168";  // 版本标记：页面右上/网格提示可见，用来确认已载入最新版
+const BUILD="1111mk170";  // 版本标记：页面右上/网格提示可见，用来确认已载入最新版
 const SEED_VERSION="bh-master-2026-09-1";  // 版本变更→下次载入自动重置为最新主数据（仅本店云端）
 function seed(outletId){
   const isCK = outletId==="ck";
@@ -1597,7 +1597,7 @@ function initCloud(){
       页面最上面显示「有 N 项还没存到云端」；还没存上就关掉 App，下次登录会先把本机留着的改动补存上去（一样用合并，不会盖掉别人）。 */
 const _cloudWrites={};
 let _base={};                       // key -> 最后一次确定和云端一致的内容（对象）
-const MERGE_KEY=/^erpv2:(b\d+|ck|orders|ckorder|roleperms)$/;
+const MERGE_KEY=/^erpv2:(b\d+|ck|orders|ckorder|roleperms|pii:(b\d+|ck))$/;
 function _deq(a,b){
   if(a===b)return true;
   if(a==null||b==null||typeof a!=='object'||typeof b!=='object')return false;
@@ -1646,7 +1646,9 @@ function _mergeArr(base,ours,remote,path){
       // 两部手机同时「新增」，拿到了同一个编号（各自 最大编号+1）：名字等识别栏位不同＝是两样不同的东西，不能当成同一个合并
       if(b===undefined&&!_deq(o,r)&&!_sameEntity(o,r)){out.push(r);clash.push(o);return;}
       out.push(_mergeVal(b,o,r,path+'[]'));});
-    ours.forEach(o=>{const id=String(o.id);if(!mr.has(id))out.push(o);});             // 我新增的
+    ours.forEach(o=>{const id=String(o.id);if(mr.has(id))return;
+      if(mb.has(id)&&_deq(mb.get(id),o))return;      // 基准里有、我没动过、云端已经没有＝别人删掉了：不要把它又加回来（我改过的才保留：改动比删除重要）
+      out.push(o);});             // 我新增的
     if(clash.length){   // 撞号的那几样（我这边新增的）换一个没人用的新编号，两样都保留
       const all=[...base,...ours,...remote].map(x=>x.id);const nums=all.every(x=>typeof x==='number'&&isFinite(x));let mx=nums?Math.max(0,...all):0;
       clash.forEach(o=>{out.push(Object.assign({},o,{id:nums?++mx:String(o.id)+'-'+Math.random().toString(36).slice(2,7)}));});
@@ -1668,12 +1670,15 @@ function _applyMerged(key,obj){ // 把合并后的内容放回内存（原地改
   try{
     if(key==='erpv2:orders'&&Array.isArray(obj)){ORDERS.length=0;obj.forEach(x=>ORDERS.push(x));return;}
     if(key==='erpv2:ckorder'){if(!CKO_FAILED)CKO={orderList:obj&&obj.orderList};return;}
+    {const pm=key.match(/^erpv2:pii:(b\d+|ck)$/);if(pm){ // 个人资料记录被合并：把字段写回内存里的员工（原地），记下新的基准签名
+      const db=DB[pm[1]];if(db&&obj&&obj.staff){_piiCache[pm[1]]=obj.staff;_piiSig[pm[1]]=JSON.stringify(obj.staff);(db.staff||[]).forEach(e=>{const p=obj.staff[e.id];if(p)Object.assign(e,p);});}
+      return;}}
     if(key==='erpv2:roleperms'){applyRolePermsObj(obj);if(!(typeof isBusyEditing==='function'&&isBusyEditing())&&!(document.getElementById('mbg')&&document.getElementById('mbg').classList.contains('show')))render();return;}
     const m=key.match(/^erpv2:(b\d+|ck)$/);if(!m||!DB[m[1]])return;
     const db=DB[m[1]];const oldStaff=new Map((db.staff||[]).map(e=>[e.id,e]));
     const keep={};PAY_TOP.forEach(k=>{if(k in db)keep[k]=db[k];});if('labourSum' in db&&!('labourSum' in obj))keep.labourSum=db.labourSum;
     Object.keys(db).forEach(k=>delete db[k]);Object.assign(db,JSON.parse(JSON.stringify(obj)),keep);
-    if(Array.isArray(db.staff))db.staff.forEach(e=>{const o=oldStaff.get(e.id);if(o)PAY_FIELDS.forEach(f=>{if(f in o&&!(f in e))e[f]=o[f];});});  // 薪资栏位另存，不能因合并丢掉
+    if(Array.isArray(db.staff))db.staff.forEach(e=>{const o=oldStaff.get(e.id);if(o)[...PAY_FIELDS,...PII_FIELDS].forEach(f=>{if(f in o&&!(f in e))e[f]=o[f];});});  // 薪资栏位另存，不能因合并丢掉
     _rawSig[m[1]]=_sigOf(JSON.stringify(obj));_aggCache=null;
     if(!(typeof isBusyEditing==='function'&&isBusyEditing())&&!(document.getElementById('mbg')&&document.getElementById('mbg').classList.contains('show')))render();
   }catch(e){}
@@ -1735,6 +1740,20 @@ function queueCloudWrite(key,val){
   if(MERGE_KEY.test(key))pendPut(key,val,_base[key],_pu());
   flushCloudWrite(key);
 }
+function _permErr(e){const c=e&&(e.code||e.status);return c==='P0001'||c==='42501'||c==='23514'||c==='403';}   // 数据库明确拒绝（触发器/权限）：重试没有用
+function syncNote(msg){   // 顶部短暂提示（不会一直挂着）
+  try{let n=document.getElementById('syncNote');if(!n){n=document.createElement('div');n.id='syncNote';n.style.cssText='position:fixed;left:0;right:0;top:0;z-index:100001;background:#8a5a00;color:#fff;padding:calc(10px + env(safe-area-inset-top,0px)) 14px 10px;font-size:14px;display:flex;gap:10px;align-items:center;justify-content:space-between';document.body.appendChild(n);}
+    n.innerHTML='<span></span><button style="background:#fff;color:#8a5a00;border:0;border-radius:8px;padding:6px 12px;font-weight:700" onclick="this.parentNode.remove()">'+(LANG==="zh"?'知道了':'OK')+'</button>';n.firstChild.textContent=msg;
+    clearTimeout(n._t);n._t=setTimeout(()=>{try{n.remove();}catch(e){}},12000);}catch(e){}
+}
+function _permReject(key){   // 这次保存被数据库拒绝：放弃这次的改动，重读云端上的样子，并告诉用户
+  const zh=LANG==="zh";
+  syncNote(zh?'这次操作没有生效：数据已经被别人更新过，或这个账号没有这项权限。已为你重新载入最新的资料，请再看一下。':'That change did not go through: the data was updated by someone else or you lack permission. Latest data reloaded.');
+  try{
+    if(key==='erpv2:orders')loadOrders().then(()=>{try{render();}catch(e){}});
+    else{const m=key.match(/^erpv2:(b\d+|ck)$/);if(m)reloadOutlet(m[1],true).then(()=>{try{render();}catch(e){}});}
+  }catch(e){}
+}
 function flushCloudWrite(key){
   const q=_cloudWrites[key];
   if(!q||q.running||q.pending==null||!CLOUD||!_sb)return;
@@ -1745,7 +1764,8 @@ function flushCloudWrite(key){
       if(q.pending==null)pendDel(key,u);                                  // 全部存上了：删掉暂存
       else if(MERGE_KEY.test(key))pendPut(key,q.pending,_base[key],u);    // 还有更新的改动：暂存跟着换成新基准
     })
-    .catch(()=>{
+    .catch(err=>{
+      if(_permErr(err)){q.failed=0;if(q.timer){clearTimeout(q.timer);q.timer=null;}q.pending=null;pendDel(key,u);_permReject(key);return;}   // 被数据库拒绝：不再重试，也不再留着暂存
       if(q.pending==null)q.pending=val;        // 留着，等重试
       q.failed=(q.failed||0)+1;
       if(_cloudWrites[key]!==q)return;
@@ -1798,7 +1818,7 @@ async function resumePending(){ // 登录时：上次没存上云端就关掉 Ap
       await Promise.race([cloudCommit(key,rec.val,q),new Promise((_,rej)=>setTimeout(()=>rej(new Error('timeout')),12000))]);
       await pendDel(key,email);
       if(rec._old){try{localStorage.removeItem(rec._old);}catch(e){}}
-    }catch(e){}   // 补存失败就留着，下次再试
+    }catch(e){if(_permErr(e)){await pendDel(key,email);if(rec._old){try{localStorage.removeItem(rec._old);}catch(_){}}syncNote(LANG==="zh"?'上次没存上的一笔改动已被数据库拒绝（数据已被别人更新过），没有写入。':'A previously unsaved change was rejected and dropped.');}}   // 暂时失败就留着，下次再试；被拒绝的就丢掉
   }
 }
 window.addEventListener('online',()=>{try{syncRetryAll();}catch(e){}});
@@ -1904,6 +1924,57 @@ function calcLabourSum(db){
     gross:st.reduce((s,e)=>s+n(e.basic)+n(e.allowance)+n(e.ot),0),
     epfEr:st.reduce((s,e)=>s+(e.local?Math.round(n(e.basic)*0.13):0),0),
     levy:st.reduce((s,e)=>s+n(e.levy),0)};
+}
+/* ===== 员工个人资料单独存放（BUILD 1111mk170 起）=====
+   身份证/电话/住址/紧急联络人（PII_FIELDS）不再放在分店整包 erpv2:<店>（同店所有岗位都读得到），改存 erpv2:pii:<店>。
+   数据库规则（store-lock.sql）：读＝执行董事/人事经理/运营经理（不含 ck）/本店店面经理；写＝执行董事/人事经理/运营经理（不含 ck）；其他岗位读不到也写不进。
+   做法跟薪资一样：载入时合并回内存的 staff[]，存档时拆出去；只有执行董事/人事经理负责把旧资料搬出整包（先备份、确认写成功才剥离）。
+   ⚠️ 读不到 ≠ 没有：数据库挡住读取时只会回 0 行。所以只有「执行董事/人事经理」能新建这条记录；其他人读到空的一律当「没载入」，既不写、也不在表单里让人改，绝不会拿一份不完整的资料去覆盖。 */
+const PII_FIELDS=['ic','phone','address','emergency'];
+const PII_LOADED=new Set();   // 这间店的个人资料已成功载入内存
+const PII_STRIP=new Set();    // 这间店存档时要把个人资料拆出去（确认个人资料记录已安全存放后才加入）
+const _piiSig={},_piiCache={};
+function piiKey(oid){return 'erpv2:pii:'+oid;}
+function piiMigrator(){const r=realRole();return r==='owner'||r==='hrmgr';}
+function piiWriter(oid){const r=realRole();if(r==='owner'||r==='hrmgr')return true;return r==='area'&&oid!=='ck';}
+function piiReader(oid){if(piiWriter(oid))return true;const r=realRole();return r==='outletmgr'&&!!curUser&&curUser.outlet===oid;}
+function hasLegacyPii(db){return (db.staff||[]).some(e=>PII_FIELDS.some(f=>e[f]!==undefined));}
+function buildPii(oid,db){   // 已载入的记录 + 内存里的现况；只有「这个员工已经不在了」才删，不会因为内存里缺一笔就少一笔
+  const staff={};const old=_piiCache[oid]||{};const ids=new Set((db.staff||[]).map(e=>String(e.id)));
+  Object.keys(old).forEach(id=>{if(ids.has(id))staff[id]=old[id];});
+  (db.staff||[]).forEach(e=>{const o={};PII_FIELDS.forEach(k=>{if(e[k]!==undefined)o[k]=e[k];});if(Object.keys(o).length)staff[e.id]=Object.assign({},staff[e.id]||{},o);});
+  return {v:1,staff};
+}
+async function attachPii(oid){
+  const db=DB[oid];PII_LOADED.delete(oid);PII_STRIP.delete(oid);
+  if(!db||!piiReader(oid))return false;
+  const f=await payFetch(piiKey(oid));
+  if(!f.ok)return false;
+  let pii=f.val;const legacy=hasLegacyPii(db);let changed=false;
+  if(!pii&&!piiMigrator())return false;                       // 读到空的：可能是还没建、也可能是被数据库挡住了——不是执行董事/人事经理就当「没载入」
+  if(legacy&&piiMigrator()){                                   // 把整包里的旧资料搬出来：先备份，再写新记录，确认成功才剥离
+    const bak=buildPii(oid,db);bak.backupOf='legacy';
+    if(!(await payWriteNow('erpv2:pii:bak:'+oid,bak)))return false;
+    pii=pii||{v:1,staff:{}};pii.staff=pii.staff||{};
+    (db.staff||[]).forEach(e=>{const cur=pii.staff[e.id]||(pii.staff[e.id]={});PII_FIELDS.forEach(k=>{if(e[k]!==undefined&&cur[k]===undefined)cur[k]=e[k];});if(!Object.keys(cur).length)delete pii.staff[e.id];});
+    if(!(await payWriteNow(piiKey(oid),pii)))return false;     // 写不成功：不剥离、资料留在原处
+    changed=true;
+  }else if(!pii){                                              // 执行董事/人事经理第一次：先建一条（哪怕是空的），之后其他人读到空的才知道是「没载入」
+    pii={v:1,staff:{}};
+    if(!(await payWriteNow(piiKey(oid),pii)))return false;
+  }
+  _piiCache[oid]=pii.staff||{};_piiSig[oid]=JSON.stringify(_piiCache[oid]);
+  (db.staff||[]).forEach(e=>{const p=pii.staff&&pii.staff[e.id];if(p)Object.assign(e,p);});
+  PII_LOADED.add(oid);
+  if(piiMigrator()||!legacy)PII_STRIP.add(oid);               // 运营经理遇到还没搬的旧资料：不剥离，等执行董事/人事经理搬
+  return changed;
+}
+function piiBlocked(){return !!CLOUD&&hrEditable()&&!PII_LOADED.has(curOutlet);}   // 有权限改档案，但个人资料没载入：表单里这几格不能改
+function piiFormGuard(){
+  if(!piiBlocked())return;
+  const zh=LANG==="zh";
+  ['em_ic','em_phone','em_addr','em_emerg'].forEach(id=>{const el=document.getElementById(id);if(el){el.disabled=true;el.placeholder=zh?'个人资料没有载入':'Not loaded';}});
+  const a=document.getElementById('em_ic');if(a&&a.closest('.fg2')){const n=document.createElement('div');n.className='hint';n.textContent=zh?'个人资料（身份证/电话/住址/紧急联络人）这次没载入，先不能改。请刷新页面，或请执行董事/人事经理先登录一次。':'Personal details not loaded — cannot edit now.';a.closest('.fg2').parentNode.insertBefore(n,a.closest('.fg2'));}
 }
 /* 把薪资记录合并回内存里的这间店；执行董事/人事经理第一次载入时，把旧的「薪资混在整包里」搬出去（先备份、确认写成功才剥离）。回传 true = 需要重新存一次整包。 */
 // 早期版本给每间店灌过一份「示范」运营开销（租金 4000、薪资 18500、EPF 2405…合计 35,115）。
@@ -2192,8 +2263,8 @@ async function withdrawXreq(id){
 }
 function clearSession(){ // 换人登录/退出时：内存里和本机缓存里不留上一位的数据（尤其薪资）
   try{dropWriteQueues();}catch(e){}
-  try{_base={};DB={};PAY_LOADED.clear();PAY_STRIP.clear();CKO={};CKO_FAILED=false;_aggCache=null;XREQ=[];_xreqSig='';_xferInboxOpen=false;if(_xreqPollT){clearInterval(_xreqPollT);_xreqPollT=null;}}catch(e){}
-  try{if(CLOUD){Object.keys(localStorage).filter(k=>k.indexOf('erpv2:payroll:')===0||k.indexOf('erpv2:req:')===0).forEach(k=>localStorage.removeItem(k));}}catch(e){}
+  try{_base={};DB={};PAY_LOADED.clear();PAY_STRIP.clear();PII_LOADED.clear();PII_STRIP.clear();CKO={};CKO_FAILED=false;_aggCache=null;XREQ=[];_xreqSig='';_xferInboxOpen=false;if(_xreqPollT){clearInterval(_xreqPollT);_xreqPollT=null;}}catch(e){}
+  try{if(CLOUD){Object.keys(localStorage).filter(k=>k.indexOf('erpv2:payroll:')===0||k.indexOf('erpv2:pii:')===0||k.indexOf('erpv2:req:')===0).forEach(k=>localStorage.removeItem(k));}}catch(e){}
 }
 async function loadDB(){
   clearSession();
@@ -2210,9 +2281,9 @@ async function loadDB(){
     _reloadAt[o.id]=Date.now();
   }
   // 薪资记录 / 中央订货表 / 调拨申请：互不依赖，同时去读（以前一样一样排队）
-  const [res,ckCh,xrOk]=await Promise.all([Promise.all(mine.map(o=>attachPayroll(o.id).catch(()=>false))),loadCkOrder().catch(()=>false),loadXreqs().catch(()=>false)]);
+  const [res,ckCh,xrOk,piiRes]=await Promise.all([Promise.all(mine.map(o=>attachPayroll(o.id).catch(()=>false))),loadCkOrder().catch(()=>false),loadXreqs().catch(()=>false),Promise.all(mine.map(o=>attachPii(o.id).catch(()=>false)))]);
   await pOrders;
-  mine.forEach((o,i)=>{if(res[i])dirty.add(o.id);});
+  mine.forEach((o,i)=>{if(res[i]||piiRes[i])dirty.add(o.id);});
   if(ckCh)dirty.add('ck');
   if(xrOk){mine.forEach(o=>{if(applyApprovedFor(o.id))dirty.add(o.id);});}
   for(const id of dirty){try{await save(id);}catch(e){}}
@@ -2231,6 +2302,14 @@ async function save(oid){
         await Store.set(payKey(oid),JSON.stringify(buildPay(db)));
       }
     }
+    if(PII_STRIP.has(oid)){ // 个人资料拆出去：整包里不留身份证/电话/住址/紧急联络人，另存 erpv2:pii:<店>
+      if(piiWriter(oid)&&PII_LOADED.has(oid)){
+        const rec=buildPii(oid,db);const sg=JSON.stringify(rec.staff);
+        if(sg!==_piiSig[oid]){_piiSig[oid]=sg;_piiCache[oid]=rec.staff;await Store.set(piiKey(oid),JSON.stringify(rec));}   // 没变就不写（记录里不放时间戳）
+      }
+      main=main===db?{...db}:main;
+      main.staff=(main.staff||[]).map(e=>{const c={...e};PII_FIELDS.forEach(k=>delete c[k]);return c;});
+    }
     const body=JSON.stringify(main);_rawSig[oid]=_sigOf(body);
     await Store.set('erpv2:'+oid,body);
   }catch(e){}
@@ -2243,7 +2322,7 @@ async function reloadOutlet(oid,force){
   const q=_cloudWrites['erpv2:'+oid];if(q&&(q.running||q.pending!=null))return false;   // 有没存完的改动：别拿旧的盖掉它
   if(!force&&_reloadAt[oid]&&Date.now()-_reloadAt[oid]<20000)return false;
   try{const r=await Store.get('erpv2:'+oid);if(r){const sg=_sigOf(r.value);const same=_rawSig[oid]===sg;
-    if(!same||!DB[oid]){DB[oid]=JSON.parse(r.value);let ch=await attachPayroll(oid);if(applyApprovedFor(oid))ch=true;if(purgeDemoOpex(DB[oid]))ch=true;if(ch)await save(oid);_aggCache=null;}
+    if(!same||!DB[oid]){DB[oid]=JSON.parse(r.value);let ch=await attachPayroll(oid);if(await attachPii(oid))ch=true;if(applyApprovedFor(oid))ch=true;if(purgeDemoOpex(DB[oid]))ch=true;if(ch)await save(oid);_aggCache=null;}
     _rawSig[oid]=sg;_reloadAt[oid]=Date.now();return !same;}}catch(e){}
   return false;
 }
@@ -4670,8 +4749,19 @@ function sendOrderStatusPush(o){
     })().catch(()=>{});
   }catch(e){}
 }
+async function ordStale(id){   // 非管理员动手前，先看云端这张单现在的状态跟我屏幕上的一样不一样（不动基准，只看一眼）
+  if(ordIsApprover()||!CLOUD||!_sb)return false;
+  try{const {data}=await _sb.from(CLOUD_TABLE).select('value').eq('key','erpv2:orders').maybeSingle();
+    const fresh=data&&Array.isArray(data.value)?data.value.find(x=>x&&x.id===id):null;const o=orderById(id);
+    if(!fresh&&o&&Array.isArray(data&&data.value)){alert(LANG==="zh"?'这张订货单已经被删除了，这次操作没有执行。':'This order was deleted; your action was not applied.');await loadOrders();try{openOrdersPanel();}catch(e){}return true;}
+    if(fresh&&o&&(fresh.status||'pending')!==(o.status||'pending')){
+      alert(LANG==="zh"?`这张订货单刚刚被别人更新过了（现在是「${(ORD_ST[fresh.status]||ORD_ST.pending)[1]}」），这次操作没有执行。请重新看一下。`:'This order was just updated by someone else; your action was not applied.');
+      await loadOrders();try{openOrdersPanel();}catch(e){}return true;}
+  }catch(e){}
+  return false;
+}
 async function ordSetStatus(id,st,note,msg){
-  await orderEditFlush();const o=orderById(id);if(!o)return;o.status=st;ordHist(o,st,note);await saveOrders();setTimeout(()=>sendOrderStatusPush(o),1500);   // 等云端写好再通知
+  await orderEditFlush();if(await ordStale(id))return;const o=orderById(id);if(!o)return;o.status=st;ordHist(o,st,note);await saveOrders();setTimeout(()=>sendOrderStatusPush(o),1500);   // 等云端写好再通知
   try{auditLog('订单状态',(o.supplier||o.outletName||'')+' → '+ORD_ST[st][1]+(note?'（'+note+'）':''),'','');}catch(e){}
   if(msg)try{alert(msg);}catch(e){}
   openOrderDetail(id);
@@ -5769,6 +5859,7 @@ function openM(type,editId){
   if(type==='suggest')sugList();
   if(type==='po')poHint();
   if(_editId)prefill(type,_editId);
+  if(type==='emp')piiFormGuard();   // 个人资料没载入：身份证/电话/住址/紧急联络人这几格不能改
 }
 function prefill(type,id){
   if(type==='item'){const it=d().items.find(i=>i.id===id);if(!it)return;
@@ -5904,7 +5995,7 @@ async function saveEmp(){
   const empNo=gV('em_no').trim()||nextEmpNo();
   const email=gV('em_email').trim().toLowerCase();
   if(email&&(d().staff||[]).some(x=>x.id!==_editId&&(x.email||'').toLowerCase()===email))return alert(LANG==="zh"?"这个登入邮箱已经绑定给另一位员工，一个邮箱只能绑一位员工。":"This login email is already linked to another employee.");
-  const obj={empNo,name:n,email,role:gV('em_role')||"—",nationality,local,ic:gV('em_ic').trim(),phone:gV('em_phone').trim(),address:gV('em_addr').trim(),emergency:gV('em_emerg').trim(),joined:gV('em_joined')||'',marital,married:marital==='married',children:+gV('em_children')||0};
+  const obj={empNo,name:n,email,role:gV('em_role')||"—",nationality,local,...(piiBlocked()?{}:{ic:gV('em_ic').trim(),phone:gV('em_phone').trim(),address:gV('em_addr').trim(),emergency:gV('em_emerg').trim()}),joined:gV('em_joined')||'',marital,married:marital==='married',children:+gV('em_children')||0};
   if(canPay)Object.assign(obj,{bankName:gV('em_bankname').trim(),bankAcc:gV('em_bankacc').trim(),basic,allowance:+gV('em_allow')||0,
     epf:local?Math.round(basic*0.11):0,socso:+(basic*0.005).toFixed(2),eis:local?+(basic*0.002).toFixed(2):0,levy:0});
   if(!d().staff)d().staff=[];

@@ -13,8 +13,8 @@ from pg_policies
 where schemaname='public' and tablename in ('erp_store','erp_users','erp_push_subs')
 order by tablename, policyname;
 
--- ③ 分店上锁、调拨申请把关用的函数/触发器在不在：应该看到 4 个函数 + 1 个触发器
+-- ③ 分店上锁、调拨申请把关用的函数/触发器在不在：应该看到 6 个函数 + 2 个触发器（erp_req_guard、erp_orders_guard）
 select 'function' as 类型, proname as 名字 from pg_proc
-where proname in ('erp_key_ok','is_whitelisted','is_admin','erp_req_guard')
+where proname in ('erp_key_ok','is_whitelisted','is_admin','erp_req_guard','erp_orders_guard','erp_strip_rcv')
 union all
-select 'trigger', tgname from pg_trigger where tgname like '%erp_req_guard%';
+select 'trigger', tgname from pg_trigger where tgname like '%erp_req_guard%' or tgname like '%erp_orders_guard%';
