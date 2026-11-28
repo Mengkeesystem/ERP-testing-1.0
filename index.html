@@ -1483,7 +1483,7 @@ function statusOf(d){if(d<=14)return{t:"健康",e:"Fresh",c:"p-g"};if(d<=30)retu
 function stTxt(s){return LANG==="zh"?s.t:s.e;}
 
 /* ================= 数据种子 ================= */
-const BUILD="1111mk163";  // 版本标记：页面右上/网格提示可见，用来确认已载入最新版
+const BUILD="1111mk164";  // 版本标记：页面右上/网格提示可见，用来确认已载入最新版
 const SEED_VERSION="bh-master-2026-09-1";  // 版本变更→下次载入自动重置为最新主数据（仅本店云端）
 function seed(outletId){
   const isCK = outletId==="ck";
@@ -2378,12 +2378,12 @@ function renderTop(){
 // 侧边栏菜单分组（ERP 结构，方便日后扩充）
 const MENU=[
   ["营运 Operations",[["dash","💰","dash"],["health","⚠","health"],["sales","🧾","sales"],["proc","🔄","proc"],["ck","🏭","ck"],["temp","🌡","temp"]]],
-  ["库存 Inventory",[["inv","📦","inv"],["expiry","⏳","expiry"],["bom","🍲","bom"],["monthend","📋","monthend"]]],
+  ["库存 Inventory",[["inv","📦","inv"],["expiry","🏷","expiry"],["bom","🍲","bom"],["monthend","📋","monthend"]]],
   ["财务 Finance",[["ap","💳","ap"],["opex","💵","opex"],["monthly","📅","monthly"]]],
   ["人事 HR",[["hr","👤","hr"],["attend","🕐","attend"],["schedule","📅","schedule"],["leave","🌴","leave"]]],
   ["系统 System",[["settings","⚙️","settings"]]],
 ];
-const MENU_LABELS={temp:{zh:"温度检查",en:"Temperature"},expiry:{zh:"效期管理",en:"Expiry"},menueng:{zh:"菜单分析",en:"Menu Analysis"},health:{zh:"运营健康",en:"Ops Health"},variance:{zh:"成本差异",en:"Cost Variance"},rank:{zh:"各分店排行",en:"Branch Ranking"},budget:{zh:"预算对比",en:"Budget vs Actual"},stockled:{zh:"库存流水",en:"Stock Ledger"},notif:{zh:"通知中心",en:"Notifications"},pricechg:{zh:"价格变动",en:"Price Changes"},sales:{zh:"销售 (POS)",en:"Sales (POS)"},orderinv:{zh:"订单发票",en:"Order Invoices"},ck:{zh:"中央厨房",en:"Central Kitchen"},stock:{zh:"盘点",en:"Stock Take"},hr:{zh:"员工档案",en:"Staff Profiles"},attend:{zh:"打卡考勤",en:"Attendance"},schedule:{zh:"排班",en:"Schedule"},leave:{zh:"请假",en:"Leave"},monthly:{zh:"月度核算",en:"Monthly Cost"},bom:{zh:"配方成本",en:"Recipe Cost"},opexm:{zh:"运营开销录入",en:"OpEx Entry"},monthend:{zh:"月末盘点",en:"Month-End Count"},payrun:{zh:"薪资发放 Payroll",en:"Payroll Run"}};
+const MENU_LABELS={temp:{zh:"温度检查",en:"Temperature"},expiry:{zh:"有效期管理",en:"Expiry"},menueng:{zh:"菜单分析",en:"Menu Analysis"},health:{zh:"运营健康",en:"Ops Health"},variance:{zh:"成本差异",en:"Cost Variance"},rank:{zh:"各分店排行",en:"Branch Ranking"},budget:{zh:"预算对比",en:"Budget vs Actual"},stockled:{zh:"库存流水",en:"Stock Ledger"},notif:{zh:"通知中心",en:"Notifications"},pricechg:{zh:"价格变动",en:"Price Changes"},sales:{zh:"销售 (POS)",en:"Sales (POS)"},orderinv:{zh:"订单发票",en:"Order Invoices"},ck:{zh:"中央厨房",en:"Central Kitchen"},stock:{zh:"盘点",en:"Stock Take"},hr:{zh:"员工档案",en:"Staff Profiles"},attend:{zh:"打卡考勤",en:"Attendance"},schedule:{zh:"排班",en:"Schedule"},leave:{zh:"请假",en:"Leave"},monthly:{zh:"月度核算",en:"Monthly Cost"},bom:{zh:"配方成本",en:"Recipe Cost"},opexm:{zh:"运营开销录入",en:"OpEx Entry"},monthend:{zh:"月末盘点",en:"Month-End Count"},payrun:{zh:"薪资发放 Payroll",en:"Payroll Run"}};
 function mlabel(p){if(MENU_LABELS[p])return MENU_LABELS[p][LANG];return t(p);}
 // 财务菜单整合（业主批准）：三个入口，每个入口里面用标签切换
 const FIN_GROUPS={
@@ -2749,7 +2749,7 @@ function helpBody(key){
   return h;
 }
 PAGE_HELP.temp={t:"温度检查",s:"冷藏柜、冷冻柜每天检查 4 次：10am、2pm、5pm、9pm，把温度登记在这里。\n点上面的时间，逐台填温度，按保存。不用一次填完，没填的回来再填。\n标准：冷藏柜 0–5°C，冷冻柜 −18°C 或更低。超出范围一定要写处理方法才能保存。\n页面最上面会显示今天已完成几次。「记录表」就是纸本那种表格，每次看 5 天。\n超标，或者该做的检查过了时间还没做，会出现在「运营健康 → 通知中心」。\n店长、厨师长可以按「设置设备」增减这间店的冷柜。"};
-PAGE_HELP.expiry={t:"效期管理",s:"每一批有保质期的货登记到期日，快到期会提醒，先到期的先用。\n收到肉、海鲜、酱料、半成品这类货，按「登记批次」：填品项、数量、到期日（或填保质天数，系统自动算到期日）。\n列表按到期日从早到晚排，最上面的要先用。\n用完了按「用完」；坏了、过期了按「丢弃」，会打开报废表单并填好，按保存才扣库存。\n快到期（3 天内）和已过期的，会出现在「运营健康 → 通知中心」。"};
+PAGE_HELP.expiry={t:"有效期管理",s:"每一批有保质期的货登记到期日，快到期会提醒，先到期的先用。\n收到肉、海鲜、酱料、半成品这类货，按「登记批次」：填品项、数量、到期日（或填保质天数，系统自动算到期日）。\n列表按到期日从早到晚排，最上面的要先用。\n用完了按「用完」；坏了、过期了按「丢弃」，会打开报废表单并填好，按保存才扣库存。\n快到期（3 天内）和已过期的，会出现在「运营健康 → 通知中心」。"};
 PAGE_HELP.menueng={t:"菜单分析",s:"把每道菜分成四类，看哪些该推、哪些该改、哪些该下架。\n明星菜＝卖得多又赚钱；跑量菜＝卖得多但每份赚得少；潜力菜＝每份赚得多但卖得少；拖累菜＝卖得少也赚得少。\n用当月 POS 销量 × 菜品配方成本，只算食材成本，不含人工租金。\n要先导入当月销量，并且菜品要设好成本，才分析得出来。"};
 function helpInject(){
   const key=helpKey();if(!key)return;
@@ -7110,7 +7110,7 @@ function expiryCounts(){const L=(d().expiryLots||[]).filter(l=>l.st==='open'||!l
 function setLotFilter(k){lotFilter=k;render();}
 function pgExpiry(){
   const zh=LANG==="zh";
-  if(isAgg())return `<div class="fb"><h2 class="h" style="margin:0;">${zh?'效期管理':'Expiry'}</h2></div><div class="empty">${zh?'请先在右上角选一间分店再看效期。':'Pick an outlet first.'}</div>`;
+  if(isAgg())return `<div class="fb"><h2 class="h" style="margin:0;">${zh?'有效期管理':'Expiry'}</h2></div><div class="empty">${zh?'请先在右上角选一间分店再看效期。':'Pick an outlet first.'}</div>`;
   const w=canW('inv');const all=(d().expiryLots||[]).map(l=>Object.assign({},l,{st:l.st||'open'}));const c=expiryCounts();
   const q=lotQuery.trim().toLowerCase();
   let list=all.filter(l=>{const s=lotStatus(l).k;
@@ -7128,7 +7128,7 @@ function pgExpiry(){
       <div style="min-width:0;"><div class="dv-name">${oEsc(l.item)} <span class="pill ${s.c}">${zh?s.t:s.k}</span></div>
         <div class="mini">${zh?'到期':'Exp'} ${l.exp}${left?' · <b>'+left+'</b>':''} · ${zh?'进货':'In'} ${l.recv||'—'}</div>${l.note?`<div class="mini">${oEsc(l.note)}</div>`:''}</div>
       <div class="inv-qty"><div class="inv-q">${l.qty} <small>${oEsc(l.unit||'')}</small></div>${w?`<div class="inv-act">${open?`<button class="btn ghost sm" onclick="lotDone(${l.id},'used')">${zh?'用完':'Used'}</button><button class="btn ghost sm" onclick="lotDone(${l.id},'discard')">${zh?'丢弃':'Discard'}</button>`:''}<button class="ib" onclick="formLot(${l.id})">✏️</button><button class="ib" onclick="delLot(${l.id})">🗑️</button></div>`:''}</div></div>`;}).join('');
-  return `<div class="fb"><h2 class="h" style="margin:0;">${zh?'效期管理':'Expiry'} <span class="tag">${nm(outletObj())}</span></h2>${w?`<button class="btn brand sm" onclick="formLot()">+ ${zh?'登记批次':'Add lot'}</button>`:''}</div>
+  return `<div class="fb"><h2 class="h" style="margin:0;">${zh?'有效期管理':'Expiry'} <span class="tag">${nm(outletObj())}</span></h2>${w?`<button class="btn brand sm" onclick="formLot()">+ ${zh?'登记批次':'Add lot'}</button>`:''}</div>
   <div class="grid g3 sup-sum"><div class="kpi"><div class="k">${zh?'已过期':'Expired'}</div><div class="v sm ${c.exp?'neg':'pos'}">${c.exp}</div></div><div class="kpi"><div class="k">${zh?'3 天内到期':'Within 3d'}</div><div class="v sm ${c.d3?'neg':'pos'}">${c.d3}</div></div><div class="kpi"><div class="k">${zh?'在库批次':'Open lots'}</div><div class="v sm">${c.open}</div></div></div>
   <details class="hintd"><summary>${zh?'说明':'Notes'}</summary><div>${zh?'每次收到有保质期的货（肉、海鲜、酱料、半成品…），就登记一批：品项、数量、到期日。系统按到期日从早到晚排，最早到期的排最上面，请先用它。\n用完了按「用完」；坏了、过期了按「丢弃」（会打开报废表单并填好，按保存才扣库存）。\n快到期（3 天内）或已过期的会出现在「运营健康 → 通知中心」。\n这里只管「哪一批什么时候到期」，库存数量照旧由进货单、报废等地方管。':'Register each lot with an expiry date. Earliest first. Mark used / discard.'}</div></details>
   <div class="dv-tools"><input class="dv-search" type="search" value="${oEsc(lotQuery)}" placeholder="${zh?'搜索品项/备注…':'Search…'}" oninput="lotQuery=this.value;render()" autocomplete="off"></div>
@@ -7595,6 +7595,7 @@ function ui2Theme(){const t=document.documentElement.getAttribute('data-theme');
 function ui2ThemeColor(){try{const m=document.querySelector('meta[name=theme-color]');if(m)m.setAttribute('content',UI2_THEMES[ui2Theme()].color);}catch(e){}}
 function setTheme(n){if(n==='kampung')n='cn';if(!UI2_THEMES[n])n='classic';try{localStorage.setItem('erpTheme',n);}catch(e){}document.documentElement.setAttribute('data-theme',n);ui2ThemeColor();try{ui2Lanterns();}catch(e){}render();if(n!=='classic')try{sfx('open');}catch(e){}}
 const UI2_ICON={
+  exp:'M4 5h16a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2zM8.3 8.7H5.3v6.6h3M5.3 12h2.4M9.8 8.7l3.8 6.6M13.6 8.7L9.8 15.3M15.4 15.3V8.7h1.9a1.7 1.7 0 0 1 0 3.4h-1.9',
   chart:'M4 20V10M10 20V4M16 20v-7M22 20H2',receipt:'M6 3h12v18l-3-2-3 2-3-2-3 2zM9 8h6M9 12h6',cart:'M3 4h2l2.2 10.2a1 1 0 0 0 1 .8h8.6a1 1 0 0 0 1-.8L20 8H6M9 20h.01M17 20h.01',
   factory:'M3 21V9l6 4V9l6 4V5h6v16zM8 17h2M14 17h2',box:'M3 7l9-4 9 4v10l-9 4-9-4zM3 7l9 4 9-4M12 11v10',pot:'M4 11h16v3a6 6 0 0 1-6 6h-4a6 6 0 0 1-6-6zM3 11h18M9 4c0 1.5 1 1.5 1 3M14 4c0 1.5 1 1.5 1 3',
   check:'M9 11l3 3 8-8M20 12v7a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h8',wallet:'M3 7a2 2 0 0 1 2-2h12v4M3 7v11a2 2 0 0 0 2 2h14a1 1 0 0 0 1-1v-9a1 1 0 0 0-1-1H5a2 2 0 0 1-2-2zM16 14h.01',
@@ -7612,7 +7613,7 @@ const UI2_ICON={
   eye:'M2 12s4-7 10-7 10 7 10 7-4 7-10 7S2 12 2 12zM12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6z',alert:'M12 3l10 18H2zM12 10v5M12 18h.01',
   tick:'M5 12l5 5L20 7',x:'M6 6l12 12M18 6L6 18',edit:'M4 20h4L19 9l-4-4L4 16zM14 6l4 4',refresh:'M20 11a8 8 0 0 0-14.9-3M4 5v4h4M4 13a8 8 0 0 0 14.9 3M20 19v-4h-4'
 };
-const UI2_EMOJI={'📒':'clipboard','🎯':'wallet','📣':'alert','🏆':'chart','💰':'chart','📊':'chart','📈':'chart','🧾':'receipt','🔄':'swap','🔁':'swap','🏭':'factory','📦':'box','🍲':'pot','🔎':'search','🔍':'search','📋':'clipboard','💵':'wallet','💳':'wallet','💴':'wallet','📅':'calendar','👤':'user','🕐':'clock','🌴':'sun','🧮':'calc','⚙':'gear','🛒':'cart','📥':'inbox','🗑':'trash','🎁':'gift','✏':'edit','🔔':'bell','📲':'phone','🔓':'logout','🔒':'lock','👁':'eye','⚠':'alert','✅':'tick','❌':'x','☰':'menu'};
+const UI2_EMOJI={'📒':'clipboard','🏷':'exp','🎯':'wallet','📣':'alert','🏆':'chart','💰':'chart','📊':'chart','📈':'chart','🧾':'receipt','🔄':'swap','🔁':'swap','🏭':'factory','📦':'box','🍲':'pot','🔎':'search','🔍':'search','📋':'clipboard','💵':'wallet','💳':'wallet','💴':'wallet','📅':'calendar','👤':'user','🕐':'clock','🌴':'sun','🧮':'calc','⚙':'gear','🛒':'cart','📥':'inbox','🗑':'trash','🎁':'gift','✏':'edit','🔔':'bell','📲':'phone','🔓':'logout','🔒':'lock','👁':'eye','⚠':'alert','✅':'tick','❌':'x','☰':'menu'};
 const UI2_DOT={'🔴':'#C0392B','🟠':'#D9822B','🟡':'#D8A31A','🟢':'#3E7B57','🔵':'#3D6A8F','🟣':'#6F5A8A','⚪':'#BDB7A8','⚫':'#4D4642'};
 // 1 = 已收录的线条图标；2 = 红黄绿等色点 → 小圆点；3 = 其余装饰性表情 → 直接去掉（✔ ▶ © 这类文字符号不受影响）
 const UI2_RE=new RegExp('('+Object.keys(UI2_EMOJI).join('|')+')\\uFE0F?|('+Object.keys(UI2_DOT).join('|')+')\\uFE0F?|((?:\\p{Emoji_Presentation}|\\p{Emoji}\\uFE0F)(?:\\u200D(?:\\p{Emoji_Presentation}|\\p{Emoji}\\uFE0F?))*)\\s?','gu');
