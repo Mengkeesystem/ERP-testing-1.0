@@ -17,6 +17,8 @@
 --   erpv2:payroll:*  薪资记录：owner/hrmgr 读写；店面经理只读本店的 erpv2:payroll:<店>；其他人读不到也写不进
 --   erpv2:pii:<店>  员工个人资料（身份证/电话/住址/紧急联络人，mk170 起从分店整包里拆出来）：
 --       读＝执行董事/人事经理/运营经理（不含 ck）/本店店面经理；写＝执行董事/人事经理/运营经理（不含 ck）；其他岗位（店长/厨师长/员工等）读不到也写不进
+--   erpv2:fin:<店>  营业额与开销（月度销量/月结/各月开销/开销模板/成本设定/销售记录/人工总数，mk171 起从分店整包里拆出来）：
+--       读＝执行董事/人事经理/运营经理（不含 ck）/本店店面经理·店长·厨师长/中央经理(ck)；写＝同上但厨师长只读；员工/中央员工读不到也写不进
 --   erpv2:orders  订货单：所有白名单账号可读写，但由下面的触发器 erp_orders_guard 把关（只有执行董事/人事经理/运营经理能确认/拒绝/删除/退回；
 --       分店只能新增「待确认」的单、取消自己店待确认的单、收自己店的货；中央厨房角色能标发货；确认之后的数量/单价锁定，只有「已收」和进度记录能变）
 --   erpv2:ckorder  中央厨房订货表：所有白名单账号可读写
@@ -55,6 +57,14 @@ begin
     if r = 'area' then return k <> 'erpv2:pii:ck'; end if;
     if writing then return false; end if;
     return r = 'outletmgr' and k = 'erpv2:pii:' || o;
+  end if;
+
+  -- 营业额与开销：读写规则见文件头。备份 key(erpv2:fin:bak:…)不匹配这条，落到最后的 false（只有执行董事/人事经理）
+  if k ~ '^erpv2:fin:(b([1-9]|1[01])|ck)$' then
+    if r = 'area' then return k <> 'erpv2:fin:ck'; end if;
+    if r in ('outletmgr','manager','ckmgr') then return eo is not null and k = 'erpv2:fin:' || eo; end if;
+    if r = 'headchef' then return (not writing) and eo is not null and k = 'erpv2:fin:' || eo; end if;
+    return false;
   end if;
 
   if k in ('erpv2:orders','erpv2:ckorder') then return true; end if;

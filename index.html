@@ -1483,7 +1483,7 @@ function statusOf(d){if(d<=14)return{t:"健康",e:"Fresh",c:"p-g"};if(d<=30)retu
 function stTxt(s){return LANG==="zh"?s.t:s.e;}
 
 /* ================= 数据种子 ================= */
-const BUILD="1111mk170";  // 版本标记：页面右上/网格提示可见，用来确认已载入最新版
+const BUILD="1111mk171";  // 版本标记：页面右上/网格提示可见，用来确认已载入最新版
 const SEED_VERSION="bh-master-2026-09-1";  // 版本变更→下次载入自动重置为最新主数据（仅本店云端）
 function seed(outletId){
   const isCK = outletId==="ck";
@@ -1597,7 +1597,7 @@ function initCloud(){
       页面最上面显示「有 N 项还没存到云端」；还没存上就关掉 App，下次登录会先把本机留着的改动补存上去（一样用合并，不会盖掉别人）。 */
 const _cloudWrites={};
 let _base={};                       // key -> 最后一次确定和云端一致的内容（对象）
-const MERGE_KEY=/^erpv2:(b\d+|ck|orders|ckorder|roleperms|pii:(b\d+|ck))$/;
+const MERGE_KEY=/^erpv2:(b\d+|ck|orders|ckorder|roleperms|pii:(b\d+|ck)|fin:(b\d+|ck))$/;
 function _deq(a,b){
   if(a===b)return true;
   if(a==null||b==null||typeof a!=='object'||typeof b!=='object')return false;
@@ -1668,15 +1668,19 @@ function _mergeArr(base,ours,remote,path){
 }
 function _applyMerged(key,obj){ // 把合并后的内容放回内存（原地改，别的地方拿着的引用不会失效）
   try{
+    if(obj&&typeof obj==='object')obj=JSON.parse(JSON.stringify(obj));   // 一定要拷贝：内存里的东西和基准(_base)不能是同一个对象，否则下一次修改会连基准一起改，合并就以为「我没改过」而什么都不写
     if(key==='erpv2:orders'&&Array.isArray(obj)){ORDERS.length=0;obj.forEach(x=>ORDERS.push(x));return;}
     if(key==='erpv2:ckorder'){if(!CKO_FAILED)CKO={orderList:obj&&obj.orderList};return;}
     {const pm=key.match(/^erpv2:pii:(b\d+|ck)$/);if(pm){ // 个人资料记录被合并：把字段写回内存里的员工（原地），记下新的基准签名
       const db=DB[pm[1]];if(db&&obj&&obj.staff){_piiCache[pm[1]]=obj.staff;_piiSig[pm[1]]=JSON.stringify(obj.staff);(db.staff||[]).forEach(e=>{const p=obj.staff[e.id];if(p)Object.assign(e,p);});}
       return;}}
+    {const fm=key.match(/^erpv2:fin:(b\d+|ck)$/);if(fm){ // 财务记录被合并：把字段写回内存里的这间店（原地）
+      const db=DB[fm[1]];if(db&&obj){FIN_KEYS.forEach(k=>{if(obj[k]!==undefined)db[k]=obj[k];});_finSig[fm[1]]=finSigOf(Object.assign({v:1},pickFin(db)));_aggCache=null;}
+      return;}}
     if(key==='erpv2:roleperms'){applyRolePermsObj(obj);if(!(typeof isBusyEditing==='function'&&isBusyEditing())&&!(document.getElementById('mbg')&&document.getElementById('mbg').classList.contains('show')))render();return;}
     const m=key.match(/^erpv2:(b\d+|ck)$/);if(!m||!DB[m[1]])return;
     const db=DB[m[1]];const oldStaff=new Map((db.staff||[]).map(e=>[e.id,e]));
-    const keep={};PAY_TOP.forEach(k=>{if(k in db)keep[k]=db[k];});if('labourSum' in db&&!('labourSum' in obj))keep.labourSum=db.labourSum;
+    const keep={};PAY_TOP.forEach(k=>{if(k in db)keep[k]=db[k];});FIN_KEYS.forEach(k=>{if(k in db)keep[k]=db[k];});if('labourSum' in db&&!('labourSum' in obj))keep.labourSum=db.labourSum;
     Object.keys(db).forEach(k=>delete db[k]);Object.assign(db,JSON.parse(JSON.stringify(obj)),keep);
     if(Array.isArray(db.staff))db.staff.forEach(e=>{const o=oldStaff.get(e.id);if(o)[...PAY_FIELDS,...PII_FIELDS].forEach(f=>{if(f in o&&!(f in e))e[f]=o[f];});});  // 薪资栏位另存，不能因合并丢掉
     _rawSig[m[1]]=_sigOf(JSON.stringify(obj));_aggCache=null;
@@ -1902,7 +1906,7 @@ async function payFetch(key){ // {ok,val}：ok:false = 网络/权限出错，绝
   if(CLOUD&&_sb){
     try{const {data,error}=await _sb.from(CLOUD_TABLE).select('value').eq('key',key).maybeSingle();
       if(error)return {ok:false};
-      if(data){try{localStorage.setItem(key,JSON.stringify(data.value));}catch(_){}if(MERGE_KEY.test(key)){const q=_cloudWrites[key];if(!(q&&(q.running||q.pending!=null)))_base[key]=data.value;}return {ok:true,val:data.value};}
+      if(data){try{localStorage.setItem(key,JSON.stringify(data.value));}catch(_){}if(MERGE_KEY.test(key)){const q=_cloudWrites[key];if(!(q&&(q.running||q.pending!=null)))_base[key]=data.value;}return {ok:true,val:JSON.parse(JSON.stringify(data.value))};}   // 回传一份拷贝：基准(_base)里留的那份不能和内存里正在改的是同一个对象，否则合并会以为「我没改过」
       return {ok:true,val:null};
     }catch(e){return {ok:false};}
   }
@@ -1975,6 +1979,49 @@ function piiFormGuard(){
   const zh=LANG==="zh";
   ['em_ic','em_phone','em_addr','em_emerg'].forEach(id=>{const el=document.getElementById(id);if(el){el.disabled=true;el.placeholder=zh?'个人资料没有载入':'Not loaded';}});
   const a=document.getElementById('em_ic');if(a&&a.closest('.fg2')){const n=document.createElement('div');n.className='hint';n.textContent=zh?'个人资料（身份证/电话/住址/紧急联络人）这次没载入，先不能改。请刷新页面，或请执行董事/人事经理先登录一次。':'Personal details not loaded — cannot edit now.';a.closest('.fg2').parentNode.insertBefore(n,a.closest('.fg2'));}
+}
+/* ===== 营业额与开销单独存放（BUILD 1111mk171 起）=====
+   月度销量/月结/各月运营开销/开销模板/成本设定/销售记录/POS 毛额/人工总数（FIN_KEYS）不再放在分店整包 erpv2:<店>（同店所有岗位都读得到），改存 erpv2:fin:<店>。
+   数据库规则（store-lock.sql）：读＝执行董事/人事经理/运营经理（不含 ck）/本店店面经理·店长·厨师长/中央经理(ck)；写＝同上但厨师长只读；员工/中央员工读不到也写不进。
+   做法同个人资料：载入时合并回内存，存档时拆出去；只有执行董事/人事经理负责把旧资料搬出整包（先备份、确认写成功才剥离）并新建这条记录。
+   整包里留一个标记 _fin:1＝「财务资料已搬走」。有标记的整包，存档时一律不把财务资料写回去；有写权限却没载入成功（断网等）时，财务相关的改动不会保存并提示，绝不会拿不完整的资料去覆盖。 */
+const FIN_KEYS=['monthlySales','monthClose','opexByMonth','opex','costConfig','sales','fin','labourSum'];
+const FIN_LOADED=new Set(),FIN_STRIP=new Set();const _finSig={};let _finNoted=false;
+function finKey(oid){return 'erpv2:fin:'+oid;}
+function finMigrator(){const r=realRole();return r==='owner'||r==='hrmgr';}
+function finWriter(oid){const r=realRole();if(r==='owner'||r==='hrmgr')return true;if(r==='area')return oid!=='ck';if(!curUser)return false;if(r==='ckmgr')return oid==='ck';return (r==='outletmgr'||r==='manager')&&curUser.outlet===oid;}
+function finReader(oid){if(finWriter(oid))return true;return realRole()==='headchef'&&!!curUser&&curUser.outlet===oid;}
+function hasLegacyFin(db){return FIN_KEYS.some(k=>db[k]!==undefined);}
+function pickFin(db){const o={};FIN_KEYS.forEach(k=>{if(db[k]!==undefined)o[k]=db[k];});return o;}
+function finSigOf(rec){return JSON.stringify(rec,(k,v)=>k==='at'?undefined:v);}   // 人工总数里的时间戳每次存档都变，不算「改动」
+function finDefaults(db){   // 没载入财务资料（没权限/断网）：内存里放空的，页面显示 0 而不是出错；存档时因为有 _fin 标记，这些空的不会写进整包
+  if(!db||db._fin!==1)return;
+  const d0={opex:{},opexByMonth:{},monthlySales:{},monthClose:{},sales:[],fin:{posGross:0},costConfig:{mode:'period',rate:35,openStock:0,closeStock:0,purOverride:null}};
+  Object.keys(d0).forEach(k=>{if(db[k]===undefined)db[k]=d0[k];});
+}
+async function attachFin(oid){
+  const db=DB[oid];FIN_LOADED.delete(oid);FIN_STRIP.delete(oid);
+  if(!db)return false;
+  const marked=db._fin===1;
+  if(marked)FIN_STRIP.add(oid);                                  // 已搬走：存档时一律不把财务资料写回整包（没载入也不写）
+  if(!finReader(oid)){finDefaults(db);return false;}
+  const f=await payFetch(finKey(oid));
+  if(!f.ok){finDefaults(db);return false;}
+  let fin=f.val;const legacy=hasLegacyFin(db);let changed=false;
+  if(!fin&&!finMigrator()){finDefaults(db);return false;}                           // 读到空的：可能是还没建，也可能被数据库挡住了——不是执行董事/人事经理就当「没载入」
+  if(legacy&&finMigrator()){                                      // 把整包里的旧资料搬出来：先备份，再写新记录，确认成功才剥离
+    const bak=pickFin(db);bak.backupOf='legacy';
+    if(!(await payWriteNow('erpv2:fin:bak:'+oid,bak)))return false;
+    fin=fin||{v:1};
+    FIN_KEYS.forEach(k=>{if(db[k]!==undefined&&fin[k]===undefined)fin[k]=db[k];});
+    if(!(await payWriteNow(finKey(oid),fin)))return false;        // 写不成功：不剥离、资料留在原处
+    changed=true;
+  }else if(!fin){fin={v:1};if(!(await payWriteNow(finKey(oid),fin)))return false;}
+  FIN_KEYS.forEach(k=>{if(fin[k]!==undefined)db[k]=fin[k];});
+  if(db._fin!==1){db._fin=1;changed=true;}
+  _finSig[oid]=finSigOf(Object.assign({v:1},pickFin(db)));
+  FIN_LOADED.add(oid);FIN_STRIP.add(oid);
+  return changed;
 }
 /* 把薪资记录合并回内存里的这间店；执行董事/人事经理第一次载入时，把旧的「薪资混在整包里」搬出去（先备份、确认写成功才剥离）。回传 true = 需要重新存一次整包。 */
 // 早期版本给每间店灌过一份「示范」运营开销（租金 4000、薪资 18500、EPF 2405…合计 35,115）。
@@ -2263,8 +2310,8 @@ async function withdrawXreq(id){
 }
 function clearSession(){ // 换人登录/退出时：内存里和本机缓存里不留上一位的数据（尤其薪资）
   try{dropWriteQueues();}catch(e){}
-  try{_base={};DB={};PAY_LOADED.clear();PAY_STRIP.clear();PII_LOADED.clear();PII_STRIP.clear();CKO={};CKO_FAILED=false;_aggCache=null;XREQ=[];_xreqSig='';_xferInboxOpen=false;if(_xreqPollT){clearInterval(_xreqPollT);_xreqPollT=null;}}catch(e){}
-  try{if(CLOUD){Object.keys(localStorage).filter(k=>k.indexOf('erpv2:payroll:')===0||k.indexOf('erpv2:pii:')===0||k.indexOf('erpv2:req:')===0).forEach(k=>localStorage.removeItem(k));}}catch(e){}
+  try{_base={};DB={};PAY_LOADED.clear();PAY_STRIP.clear();PII_LOADED.clear();PII_STRIP.clear();FIN_LOADED.clear();FIN_STRIP.clear();_finNoted=false;CKO={};CKO_FAILED=false;_aggCache=null;XREQ=[];_xreqSig='';_xferInboxOpen=false;if(_xreqPollT){clearInterval(_xreqPollT);_xreqPollT=null;}}catch(e){}
+  try{if(CLOUD){Object.keys(localStorage).filter(k=>k.indexOf('erpv2:payroll:')===0||k.indexOf('erpv2:pii:')===0||k.indexOf('erpv2:fin:')===0||k.indexOf('erpv2:req:')===0).forEach(k=>localStorage.removeItem(k));}}catch(e){}
 }
 async function loadDB(){
   clearSession();
@@ -2281,7 +2328,7 @@ async function loadDB(){
     _reloadAt[o.id]=Date.now();
   }
   // 薪资记录 / 中央订货表 / 调拨申请：互不依赖，同时去读（以前一样一样排队）
-  const [res,ckCh,xrOk,piiRes]=await Promise.all([Promise.all(mine.map(o=>attachPayroll(o.id).catch(()=>false))),loadCkOrder().catch(()=>false),loadXreqs().catch(()=>false),Promise.all(mine.map(o=>attachPii(o.id).catch(()=>false)))]);
+  const [res,ckCh,xrOk,piiRes]=await Promise.all([Promise.all(mine.map(o=>attachPayroll(o.id).catch(()=>false))),loadCkOrder().catch(()=>false),loadXreqs().catch(()=>false),Promise.all(mine.map(o=>attachPii(o.id).catch(()=>false).then(async r=>{const r2=await attachFin(o.id).catch(()=>false);return r||r2;})))]);
   await pOrders;
   mine.forEach((o,i)=>{if(res[i]||piiRes[i])dirty.add(o.id);});
   if(ckCh)dirty.add('ck');
@@ -2310,6 +2357,15 @@ async function save(oid){
       main=main===db?{...db}:main;
       main.staff=(main.staff||[]).map(e=>{const c={...e};PII_FIELDS.forEach(k=>delete c[k]);return c;});
     }
+    if(FIN_STRIP.has(oid)||db._fin===1){ // 营业额与开销拆出去：整包里不留，另存 erpv2:fin:<店>
+      if(finWriter(oid)&&FIN_LOADED.has(oid)){
+        const rec=Object.assign({v:1},pickFin(db));const sg=finSigOf(rec);
+        if(sg!==_finSig[oid]){_finSig[oid]=sg;await Store.set(finKey(oid),JSON.stringify(rec));}   // 没变就不写
+      }else if(!finWriter(oid)&&FIN_LOADED.has(oid)){   // 能看不能改（厨师长）：如果改了财务资料，不会保存，要说一声
+        if(finSigOf(Object.assign({v:1},pickFin(db)))!==_finSig[oid]&&!_finNoted){_finNoted=true;syncNote(LANG==="zh"?'你没有修改营业额/开销资料的权限，这次的改动不会保存。':'You cannot change sales/expense data; the change was not saved.');}
+      }else if(finWriter(oid)&&!_finNoted){_finNoted=true;syncNote(LANG==="zh"?'营业额/开销资料这次没载入成功，相关的改动不会保存。请刷新页面再试。':'Sales/expense data was not loaded; related changes will not be saved. Please refresh.');}
+      main=main===db?{...db}:main;FIN_KEYS.forEach(k=>delete main[k]);main._fin=1;
+    }
     const body=JSON.stringify(main);_rawSig[oid]=_sigOf(body);
     await Store.set('erpv2:'+oid,body);
   }catch(e){}
@@ -2322,7 +2378,7 @@ async function reloadOutlet(oid,force){
   const q=_cloudWrites['erpv2:'+oid];if(q&&(q.running||q.pending!=null))return false;   // 有没存完的改动：别拿旧的盖掉它
   if(!force&&_reloadAt[oid]&&Date.now()-_reloadAt[oid]<20000)return false;
   try{const r=await Store.get('erpv2:'+oid);if(r){const sg=_sigOf(r.value);const same=_rawSig[oid]===sg;
-    if(!same||!DB[oid]){DB[oid]=JSON.parse(r.value);let ch=await attachPayroll(oid);if(await attachPii(oid))ch=true;if(applyApprovedFor(oid))ch=true;if(purgeDemoOpex(DB[oid]))ch=true;if(ch)await save(oid);_aggCache=null;}
+    if(!same||!DB[oid]){DB[oid]=JSON.parse(r.value);let ch=await attachPayroll(oid);if(await attachPii(oid))ch=true;if(await attachFin(oid))ch=true;if(applyApprovedFor(oid))ch=true;if(purgeDemoOpex(DB[oid]))ch=true;if(ch)await save(oid);_aggCache=null;}
     _rawSig[oid]=sg;_reloadAt[oid]=Date.now();return !same;}}catch(e){}
   return false;
 }

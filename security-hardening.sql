@@ -193,6 +193,14 @@ begin
     return r = 'outletmgr' and k = 'erpv2:pii:' || o;
   end if;
 
+  -- 营业额与开销：读写规则见文件头。备份 key(erpv2:fin:bak:…)不匹配这条，落到最后的 false（只有执行董事/人事经理）
+  if k ~ '^erpv2:fin:(b([1-9]|1[01])|ck)$' then
+    if r = 'area' then return k <> 'erpv2:fin:ck'; end if;
+    if r in ('outletmgr','manager','ckmgr') then return eo is not null and k = 'erpv2:fin:' || eo; end if;
+    if r = 'headchef' then return (not writing) and eo is not null and k = 'erpv2:fin:' || eo; end if;
+    return false;
+  end if;
+
   if k in ('erpv2:orders','erpv2:ckorder') then return true; end if;
 
   if k = 'erpv2:roleperms' then return (not writing) or r = 'area'; end if;
