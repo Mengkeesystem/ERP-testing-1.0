@@ -1523,7 +1523,7 @@ function statusOf(d){if(d<=14)return{t:"健康",e:"Fresh",c:"p-g"};if(d<=30)retu
 function stTxt(s){return LANG==="zh"?s.t:s.e;}
 
 /* ================= 数据种子 ================= */
-const BUILD="1111mk176";  // 版本标记：页面右上/网格提示可见，用来确认已载入最新版
+const BUILD="1111mk177";  // 版本标记：页面右上/网格提示可见，用来确认已载入最新版
 const SEED_VERSION="bh-master-2026-09-1";  // 版本变更→下次载入自动重置为最新主数据（仅本店云端）
 function seed(outletId){
   const isCK = outletId==="ck";
@@ -6588,8 +6588,10 @@ document.addEventListener('click',e=>{if(!e.target.closest||!e.target.closest('.
 let ledgerView=(()=>{try{return localStorage.getItem('erpLedgerView')||'';}catch(e){return '';}})();
 let dvDay=null,dvSort='used';
 function curLedgerView(){return ledgerView||'day';}
-function setLedgerView(v){ledgerView=v;try{localStorage.setItem('erpLedgerView',v);}catch(e){}render();}
-function dvPick(dt){dvDay=dt;render();}
+/* 正在输入的格子先存档再换画面：iPhone 点按钮不一定会让输入框失焦，change 没触发，切换按日/表格时刚输入的数字会丢 */
+async function flushActiveInput(){const a=document.activeElement;if(a&&a.tagName==='INPUT'&&a.dataset&&a.dataset.f&&typeof a.onchange==='function'){try{a.blur();}catch(e){}await new Promise(r=>setTimeout(r,30));}}
+async function setLedgerView(v){await flushActiveInput();ledgerView=v;try{localStorage.setItem('erpLedgerView',v);}catch(e){}render();}
+async function dvPick(dt){await flushActiveInput();dvDay=dt;render();}
 function dvSortSet(v){dvSort=v;render();}
 function dvLastPrice(sup,cid){const arr=(d().purchases||[]).filter(r=>r.supplier===sup&&r.cid===cid&&(+r.unitPrice||0)>0).sort((a,b)=>(b.date||'').localeCompare(a.date||''));if(arr.length)return +arr[0].unitPrice;const c=gridCatRow(sup,cid);return c?(+c.price||0):0;}
 function dvDayTotal(sup,dt){return (d().purchases||[]).filter(r=>r.supplier===sup&&r.date===dt).reduce((s,r)=>s+(+r.price||0),0);}
