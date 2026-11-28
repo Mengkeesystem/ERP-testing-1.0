@@ -5,12 +5,12 @@
 // 部署（Supabase 控制台 → Edge Functions → 新建 invoice-ocr，粘贴本文件）：
 //   1. Settings → Edge Functions → Secrets 新增 ANTHROPIC_API_KEY（你在 console.anthropic.com 建的 key；绝不要写进代码/仓库）。
 //   2. 「Verify JWT」保持关闭（本函数自己验证登录令牌，和 send-order-push 一样）。
-// 安全：只有已登录且在 erp_users 里 active 的账号能用；图片限 6MB；每账号每分钟 6 次；CORS 只允许 ERP 网址；
+// 安全：只有已登录、active、且岗位有进货权限的账号能用（员工/中央员工不行）；图片限 6MB；每账号每分钟 6 次；每人每天 35 次、全公司每天 250 次（存 erp_store 的 erpv2:ocrusage:<马来西亚日期>）；CORS 只允许 ERP 网址；
 //       GET ?health=1 只检查设定，不会调用 Claude。
 import { createClient } from "npm:@supabase/supabase-js@2";
 
 // 部署版本标记：打开 ?health=1 能看到。网页端改了函数就把这个号码 +1，业主就能看出云端贴的是不是最新版
-const FN_VER = "1111mk151";
+const FN_VER = "1111mk178";
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL") ?? "";
 const SUPABASE_ANON_KEY = Deno.env.get("SUPABASE_ANON_KEY") ?? "";
 const SERVICE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
@@ -47,7 +47,18 @@ async function authenticate(req: Request) {
   if (!email) return null;
   const { data } = await supabase.from("erp_users").select("email, role, active").eq("email", email).maybeSingle();
   if (!data || data.active !== true) return null;
-  return { email, role: String(data.role || "") };
+  const role = String(data.role || "");
+  if (!OCR_ROLES.includes(role)) return "forbidden";   // 没有进货权限的岗位不能用
+  return { email, role };
+}
+const OCR_ROLES = ["owner", "hrmgr", "area", "outletmgr", "manager", "headchef", "ckmgr"];
+const DAILY_USER = 35, DAILY_TOTAL = 250;
+const usageKey = () => "erpv2:ocrusage:" + new Date(Date.now() + 8 * 3600_000).toISOString().slice(0, 10);   // 马来西亚日期
+async function readUsage(email: string) {
+  const { data } = await supabase.from("erp_store").select("value").eq("key", usageKey()).maybeSingle();
+  let v: any = data?.value || {}; if (typeof v === "string") { try { v = JSON.parse(v); } catch (_e) { v = {}; } }
+  const users: Record<string, number> = v.users || {};
+  return { users, total: Number(v.total) || 0, mine: Number(users[email]) || 0 };
 }
 
 const hits = new Map<string, number[]>();
@@ -86,11 +97,15 @@ Deno.serve(async (req) => {
   if (req.method !== "POST") return reply(req, { error: "method_not_allowed" }, 405);
   const who = await authenticate(req);
   if (!who) return reply(req, { error: "unauthorized" }, 401);
+  if (who === "forbidden") return reply(req, { error: "forbidden", message: "你的岗位不能使用拍照识别" }, 403);
   if (!API_KEY) return reply(req, { error: "not_configured", message: "ANTHROPIC_API_KEY 还没设置" }, 503);
   if (tooMany(who.email)) return reply(req, { error: "rate_limited", message: "识别太频繁，请一分钟后再试" }, 429);
 
   let body: any;
   try { body = await req.json(); } catch (_e) { return reply(req, { error: "bad_json" }, 400); }
+  const usage = await readUsage(who.email);
+  if (usage.mine >= DAILY_USER) return reply(req, { error: "user_quota", message: `你今天的识别次数用完了（每人每天 ${DAILY_USER} 次），明天再用` }, 429);
+  if (usage.total >= DAILY_TOTAL) return reply(req, { error: "total_quota", message: `全公司今天的识别次数用完了（每天 ${DAILY_TOTAL} 次），明天再用` }, 429);
   const image = String(body?.image || "");
   const mediaType = ["image/jpeg", "image/png", "image/webp"].includes(body?.mediaType) ? body.mediaType : "image/jpeg";
   if (!image || image.length > MAX_IMG_CHARS || !/^[A-Za-z0-9+/=]+$/.test(image)) return reply(req, { error: "bad_image", message: "图片无效或太大" }, 400);
@@ -122,6 +137,9 @@ Deno.serve(async (req) => {
 7. supplierMatch：先看发票抬头/印章/Logo 判断卖方，再对照下面的供应商清单（名字前面的括号是中文简称，例如 (菜)、(松)、(马友啦啦苏东)）；手写单没有抬头时，看货品属于哪一家（例如手写「马友」就是卖鱼的那家）。拿不准就填 null，不要乱猜。每行的 match 必须从你选中的那家供应商的品项里复制。
 ${supplier && !sups.length ? "这张单预计来自供应商：" + supplier + "\n" : ""}${sups.length ? "供应商清单和各自的库存品名（一行一个）：\n" + catalogText : "库存品名清单（一行一个）：\n" + (items.join("\n") || "（无）")}`;
 
+  // 要调用 Claude 了（会产生费用）：先记一次数，图片无效等前面就挡掉的不算
+  usage.users[who.email] = usage.mine + 1; usage.total += 1;
+  await supabase.from("erp_store").upsert({ key: usageKey(), value: { total: usage.total, users: usage.users }, updated_at: new Date().toISOString() });
   let r: Response;
   try {
     r = await fetch("https://api.anthropic.com/v1/messages", {

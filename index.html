@@ -1523,7 +1523,7 @@ function statusOf(d){if(d<=14)return{t:"健康",e:"Fresh",c:"p-g"};if(d<=30)retu
 function stTxt(s){return LANG==="zh"?s.t:s.e;}
 
 /* ================= 数据种子 ================= */
-const BUILD="1111mk177";  // 版本标记：页面右上/网格提示可见，用来确认已载入最新版
+const BUILD="1111mk178";  // 版本标记：页面右上/网格提示可见，用来确认已载入最新版
 const SEED_VERSION="bh-master-2026-09-1";  // 版本变更→下次载入自动重置为最新主数据（仅本店云端）
 function seed(outletId){
   const isCK = outletId==="ck";
@@ -4857,7 +4857,9 @@ async function sendOrderPush(order){
     try{const {data}=await _sb.auth.getSession();if(data&&data.session&&data.session.access_token)token=data.session.access_token;}catch(e){} // 用登录令牌，Verify JWT 开着也能通过
     const title=(LANG==="zh"?'🔔 新订单 New Order':'🔔 New Order');
     const body=(order.by&&order.by.name||'')+' · '+(order.supplier?order.supplier+' · ':'')+order.outletName+' · '+((order.lines||[]).length+(order.uniform||[]).length)+(LANG==="zh"?' 项':' items');
-    await fetch(PUSH_FN_URL,{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+token,'apikey':SUPABASE_ANON_KEY},body:JSON.stringify({title,body,icon:BH_ICON})});
+    // 只传订单编号，标题/内容由云函数核对订单后自己生成；订单刚存、云端可能还没写好，所以等一下，找不到(404)再试一次
+    {const ok='erpv2:orders';for(let w=0;w<90;w++){const q=_cloudWrites[ok];if(!q||(!q.running&&q.pending==null))break;await new Promise(r=>setTimeout(r,1000));}}   // 等订单真的写进云端（最多约 90 秒），再通知
+    for(let k=0;k<2;k++){await new Promise(r=>setTimeout(r,k?3500:600));const rs=await fetch(PUSH_FN_URL,{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+token,'apikey':SUPABASE_ANON_KEY},body:JSON.stringify({orderId:order.id})});if(rs.status!==404)break;}
   }catch(e){}
 }
 function startOrderPoll(){if(_ordPollT)clearInterval(_ordPollT);if(!CLOUD)return;_ordPollT=setInterval(async()=>{if(!['owner','area','hrmgr'].includes(curRole))return;if(_orderEditing||ordersWritePending())return;await loadOrders();notifyNewOrders();},10000);}

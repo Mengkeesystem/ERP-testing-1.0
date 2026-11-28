@@ -26,7 +26,7 @@ import { createECDH } from "node:crypto";
 import { Buffer } from "node:buffer";
 
 // 部署版本标记：打开 ?health=1 能看到。网页端改了函数就把这个号码 +1，业主就能看出云端贴的是不是最新版
-const FN_VER = "1111mk153";
+const FN_VER = "1111mk178";
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL") ?? "";
 const SUPABASE_ANON_KEY = Deno.env.get("SUPABASE_ANON_KEY") ?? "";
 const SERVICE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
@@ -320,9 +320,23 @@ Deno.serve(async (req) => {
 
     const input = await req.json().catch(() => ({}));
     if (input?.kind === "order_status") return await orderStatusPush(req, who, input);
-    const title = clean(input?.title, 60) || "🔔 新订单 New Order";
-    const text = clean(input?.body, 160);
+    let title = clean(input?.title, 60) || "🔔 新订单 New Order";
+    let text = clean(input?.body, 160);
     const outlet = input?.outlet ? String(input.outlet).toLowerCase() : "";
+    if (!outlet) {
+      // —— 新订单：不再信网页传来的标题/内容。只收订单编号，函数自己核对订单真的存在、是这个人/这间店下的，再自己拼标题内容 ——
+      const oid = clean(input?.orderId, 60);
+      if (!oid) return reply(req, { error: "orderId required" }, 400);
+      const o = (await loadOrders()).find((x: any) => x && x.id === oid);
+      if (!o) return reply(req, { error: "order not found" }, 404);
+      const isCk = who.role === "ckmgr" || who.role === "ckstaff";
+      const mineOrder = (o.outlet && who.outlet === o.outlet) || String(o.by?.email || "").toLowerCase() === who.email;
+      if (!ADMIN_ROLES.includes(who.role) && !isCk && !mineOrder) return reply(req, { error: "forbidden" }, 403);
+      if (o.status && o.status !== "pending") return reply(req, { error: "not a new order" }, 409);
+      if (!(Date.now() - Number(o.ts || 0) < 15 * 60_000)) return reply(req, { error: "order too old" }, 409);   // 只推刚下的单，避免被拿来重复骚扰
+      title = "🔔 新订单 New Order";
+      text = clean([o.by?.name, o.supplier, o.outletName, ((o.lines || []).length + (o.uniform || []).length) + " 项"].filter(Boolean).join(" · "), 160);
+    }
 
     const { data: all } = await supabase.from("erp_push_subs").select("endpoint, sub, email, role");
     let subs = (all ?? []) as any[];
