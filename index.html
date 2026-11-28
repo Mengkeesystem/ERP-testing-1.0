@@ -416,6 +416,8 @@ html.ui2[data-theme="cn"]{
   --font-head:"Songti SC","STSong","Noto Serif SC","Source Han Serif SC","SimSun",serif;--font-num:"Songti SC","STSong","Noto Serif SC",Georgia,serif;
 }
 html.ui2 body{font-family:var(--font-body);font-size:14px;-webkit-font-smoothing:antialiased;}
+#shell{display:contents;}   /* 电脑版：不影响排版，页面照旧整页滚动 */
+@media print{html.ui2,html.ui2 body{height:auto!important;overflow:visible!important;}html.ui2 #shell{position:static!important;overflow:visible!important;padding-bottom:0!important;}}
 html.ui2 .ic{display:inline-flex;align-items:center;vertical-align:-.2em;}
 html.ui2 .dotc{display:inline-block;width:.62em;height:.62em;border-radius:50%;vertical-align:.04em;margin-right:.2em;}
 html.ui2 .ic svg{width:1.15em;height:1.15em;stroke:currentColor;fill:none;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round;}
@@ -540,7 +542,12 @@ html.ui2 #tabbar button.on .badge{top:-14px;left:56%;background:#fff;color:var(-
   html.ui2 #topMore .lang span[id$="Count"]{position:static!important;margin-left:auto;order:3;}
   html.ui2 #topMore select{width:100%;margin-top:4px;background:var(--card);color:var(--ink);border-color:var(--line2);}
   html.ui2 .main{padding:14px 14px 20px;}
-  html.ui2 body{padding-bottom:calc(86px + env(safe-area-inset-bottom));}
+  /* 手机：整个画面（顶栏+内容）放进 #shell 这个自己会滚动的框里，页面本身（document）不再滚动。
+     这样往上/往下拉到头的「橡皮筋回弹」只会弹 #shell 里面的内容，固定在下面的导航条 #tabbar 在 #shell 外面，永远贴在屏幕最底下，不会被一起拉走。 */
+  html.ui2,html.ui2 body{height:100%;overflow:hidden;overscroll-behavior:none;}
+  html.ui2 body{padding-bottom:0;}
+  html.ui2 .dv-foot{bottom:0;}   /* 滚动框自己的下边距已经让出导航条的位置，合计条贴着它就好 */
+  html.ui2 #shell{display:block;position:fixed;top:0;left:0;right:0;bottom:0;overflow-x:hidden;overflow-y:auto;-webkit-overflow-scrolling:touch;overscroll-behavior-y:contain;padding-bottom:calc(86px + env(safe-area-inset-bottom));}
   html.ui2 #tabbar{display:grid;grid-auto-flow:column;grid-auto-columns:1fr;position:fixed;left:0;right:0;bottom:0;z-index:70;border-top:1px solid var(--line);background:var(--tab-bg);-webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px);padding:6px 2px calc(8px + env(safe-area-inset-bottom));align-items:end;}
   html.ui2 .al[style*="position:fixed"]{bottom:calc(88px + env(safe-area-inset-bottom))!important;}
 }
@@ -1035,6 +1042,7 @@ html.ui2[data-theme="cn"] .m>button.btn.block.brand{box-shadow:0 -14px 12px 4px 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body>
+<div id="shell">
 <div class="top">
   <div class="l"><button class="menu-btn" onclick="toggleSide()">☰</button><span class="brand-logo" role="button" tabindex="0" title="回主页 Home" onclick="goHome()" onkeydown="if(event.key==='Enter')goHome()" style="cursor:pointer;-webkit-tap-highlight-color:transparent;"><svg width="34" height="34" viewBox="0 0 100 100" aria-label="明记" style="border-radius:7px;"><rect x="4" y="4" width="92" height="92" rx="16" fill="#7C1619"/><rect x="4" y="4" width="92" height="92" rx="16" fill="none" stroke="#F2B417" stroke-width="7"/><text x="50" y="33" text-anchor="middle" dominant-baseline="central" font-family="'Microsoft YaHei','PingFang SC',sans-serif" font-weight="800" font-size="40" fill="#F2B417">明</text><text x="50" y="70" text-anchor="middle" dominant-baseline="central" font-family="'Microsoft YaHei','PingFang SC',sans-serif" font-weight="800" font-size="40" fill="#F2B417">记</text></svg></span><h1 id="appTitle">明记家乡小食店</h1><span id="topBranchTag" style="margin-left:8px;font-size:10px;padding:2px 6px;border-radius:6px;background:#F2B417;color:#12203A;font-weight:800;">-</span></div>
   <div class="r">
@@ -1057,6 +1065,7 @@ html.ui2[data-theme="cn"] .m>button.btn.block.brand{box-shadow:0 -14px 12px 4px 
   <main class="main"><div id="pageHost"></div></main>
 </div>
 
+</div><!-- /#shell -->
 <div class="mbg" id="mbg"><div class="m" id="mbox"></div></div>
 
 <script>/* 中央厨房订货图片数据（约 500KB）不再卡住整个 App 启动：后台下载，用到的时候（中央厨房账号登录 / 打开订货表）才等它 */window.__orderSeedP=new Promise(function(r){var sc=document.createElement("script");sc.src="order-data.js?v=0912h";sc.onload=sc.onerror=function(){r();};document.head.appendChild(sc);});</script>
@@ -1510,7 +1519,7 @@ function statusOf(d){if(d<=14)return{t:"健康",e:"Fresh",c:"p-g"};if(d<=30)retu
 function stTxt(s){return LANG==="zh"?s.t:s.e;}
 
 /* ================= 数据种子 ================= */
-const BUILD="1111mk173";  // 版本标记：页面右上/网格提示可见，用来确认已载入最新版
+const BUILD="1111mk174";  // 版本标记：页面右上/网格提示可见，用来确认已载入最新版
 const SEED_VERSION="bh-master-2026-09-1";  // 版本变更→下次载入自动重置为最新主数据（仅本店云端）
 function seed(outletId){
   const isCK = outletId==="ck";
@@ -5645,6 +5654,17 @@ function pgBudgetBody(){
 /* ============ 下拉刷新：在页面最顶部往下拉，顶部中间出现转圈，真的重新读云端资料 ============ */
 
 /* 手机双指放大/缩小页面时，iOS 的「固定」元素会跑到屏幕中间。这里让底部导航条永远贴在「看得到的画面」最底下，大小也不变 */
+/* 手机的滚动框 #shell：让原来用 window.scrollTo / scrollY 的地方继续有效（手机上指向 #shell，电脑上照旧指向整页） */
+(function(){
+  const sh=document.getElementById('shell');if(!sh)return;
+  const mq=window.matchMedia('(max-width:760px)');const on=()=>mq.matches;
+  const oTo=window.scrollTo.bind(window);
+  window.scrollTo=function(a,b){if(on()){if(a&&typeof a==='object')sh.scrollTo(a);else sh.scrollTo(+a||0,+b||0);}else oTo.apply(window,arguments);};
+  try{Object.defineProperty(window,'scrollY',{configurable:true,get(){return on()?sh.scrollTop:(document.documentElement.scrollTop||0);}});}catch(e){}
+  try{Object.defineProperty(window,'pageYOffset',{configurable:true,get(){return on()?sh.scrollTop:(document.documentElement.scrollTop||0);}});}catch(e){}
+  try{Object.defineProperty(window,'scrollX',{configurable:true,get(){return on()?sh.scrollLeft:(document.documentElement.scrollLeft||0);}});}catch(e){}
+  let t=0;sh.addEventListener('scroll',()=>{if(t)return;t=requestAnimationFrame(()=>{t=0;try{window.dispatchEvent(new Event('scroll'));document.dispatchEvent(new Event('scroll'));}catch(e){}});},{passive:true});
+})();
 (function(){
   const vv=window.visualViewport;if(!vv)return;let raf=0;
   function apply(){
