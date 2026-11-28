@@ -51,6 +51,16 @@ jobs:
           if [ "$bad" = 1 ]; then exit 1; fi
           echo "OK：没登录读不到任何表"
 
+      - name: 安全检查：注册要先验证邮箱（Confirm email 没开就变红、发邮件）
+        run: |
+          s=$(curl -sS --max-time 30 "https://kmcdokwiyetlmsrdlgqw.supabase.co/auth/v1/settings" -H "apikey: sb_publishable_HVJ_hcFmSDU-N2kFUg5CRw_LH-X_phO" || true)
+          echo "$s" | head -c 400; echo
+          case "$s" in
+            *'"mailer_autoconfirm":true'*) echo "⚠️ Confirm email 没开！别人可以用任何邮箱直接注册。"; exit 1;;
+            *'"mailer_autoconfirm":false'*) echo "OK：注册要先验证邮箱";;
+            *) echo "读不到设定（不算失败）";;
+          esac
+
       - name: 看一眼拍照识别函数（只看，不算失败）
         continue-on-error: true
         run: |
