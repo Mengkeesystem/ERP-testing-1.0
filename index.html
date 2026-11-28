@@ -1519,7 +1519,7 @@ function statusOf(d){if(d<=14)return{t:"健康",e:"Fresh",c:"p-g"};if(d<=30)retu
 function stTxt(s){return LANG==="zh"?s.t:s.e;}
 
 /* ================= 数据种子 ================= */
-const BUILD="1111mk174";  // 版本标记：页面右上/网格提示可见，用来确认已载入最新版
+const BUILD="1111mk175";  // 版本标记：页面右上/网格提示可见，用来确认已载入最新版
 const SEED_VERSION="bh-master-2026-09-1";  // 版本变更→下次载入自动重置为最新主数据（仅本店云端）
 function seed(outletId){
   const isCK = outletId==="ck";
@@ -4331,6 +4331,26 @@ function renderCharts(f){
 /* ================= M4/M9 报表 ================= */
 let reportTab='ov';
 function reportTabSet(v){reportTab=v;render();window.scrollTo(0,0);}
+/* 鱼类条数报表：这个月每种鱼 进货几条、报废几条，现在库存几条，月末盘点几条（只是记录，不影响金额） */
+function fishPcsRows(month){
+  const x=d();const rows=[];
+  FISH_SUPPLIERS.forEach(sup=>{(ensureGridCat(sup)||[]).forEach(c=>{
+    const pIn=(x.purchases||[]).filter(r=>r.supplier===sup&&r.cid===c.cid&&(r.date||'').slice(0,7)===month).reduce((s,r)=>s+(+r.qty||0),0);
+    const pW=(x.wasteLog||[]).filter(r=>r.item===c.name&&(r.date||'').slice(0,7)===month).reduce((s,r)=>s+(+r.pcs||0),0);
+    const it=(x.items||[]).find(i=>i.name===c.name);const stock=it?(+it.pcs||0):0;
+    const me=(x.monthEnd||[]).filter(r=>r.supplier===sup&&r.cid===c.cid&&(r.date||'').slice(0,7)===month&&+r.pcs>0).sort((a,b)=>String(b.date).localeCompare(String(a.date)))[0];
+    if(pIn||pW||stock||me)rows.push({sup,name:c.name,pIn,pW,stock,me:me?+me.pcs:0,meDate:me?me.date:''});
+  });});
+  return rows;
+}
+function fishPcsReportHTML(month){
+  const zh=LANG==="zh";const rows=fishPcsRows(month);
+  if(!rows.length)return `<div class="empty">${zh?`${month} 没有鱼类条数记录。进货、报废、库存、月末盘点里填了「条数」就会出现在这里。`:'No fish pcs records.'}</div>`;
+  const T=k=>rows.reduce((s,r)=>s+r[k],0);
+  return `<div class="grid g4 sup-sum"><div class="kpi"><div class="k">${zh?'进货条数':'Bought'}</div><div class="v sm pos">${num(T('pIn'),2)}</div></div><div class="kpi"><div class="k">${zh?'报废条数':'Wasted'}</div><div class="v sm neg">${num(T('pW'),2)}</div></div><div class="kpi"><div class="k">${zh?'库存条数':'In stock'}</div><div class="v sm">${num(T('stock'),2)}</div></div><div class="kpi"><div class="k">${zh?'月末盘点条数':'Counted'}</div><div class="v sm">${num(T('me'),2)}</div></div></div>
+  <div class="mini" style="margin:6px 2px;">${monthLabel(month)} · ${zh?'进货/报废是这个月的合计；库存条数是现在的数；盘点条数取这个月最后一次盘点。只是记录，不影响金额。':'Bought/wasted = this month; stock = now; counted = last count this month. Record only.'}</div>
+  <div class="inv-grid">${rows.map(r=>`<div class="dv-row inv-card"><div style="min-width:0;"><div class="dv-name">${oEsc(r.name)}</div><div class="mini">${oEsc(r.sup)}</div></div><div class="inv-qty"><div class="mini">${zh?'进货':'Bought'} <b>${num(r.pIn,2)}</b> · ${zh?'报废':'Wasted'} <b>${num(r.pW,2)}</b></div><div class="mini">${zh?'库存':'Stock'} <b>${num(r.stock,2)}</b>${r.me?` · ${zh?'盘点':'Count'} <b>${num(r.me,2)}</b>`:''}</div></div></div>`).join('')}</div>`;
+}
 function pgReport(){return finTabs('report')+pgReportBody();}
 function pgReportBody(){
   const x=d();const f=calcFin();const zh=LANG==="zh";
@@ -4349,7 +4369,7 @@ function pgReportBody(){
     <div class="kpi"><div class="k">${LANG==="zh"?"本月进货":"Purchases"}</div><div class="v sm pos">${money(inT)}</div></div>
   </div>
 `;
-  const tabs=[['ov',zh?'概览':'Overview'],['cost',zh?'成本占比':'Cost mix'],['var',zh?'盘点差异':'Variance'],['waste',zh?'损耗':'Waste'],['dead',zh?'呆滞货':'Dead stock']];
+  const tabs=[['ov',zh?'概览':'Overview'],['cost',zh?'成本占比':'Cost mix'],['var',zh?'盘点差异':'Variance'],['waste',zh?'损耗':'Waste'],['dead',zh?'呆滞货':'Dead stock'],['fish',zh?'鱼类条数':'Fish pcs']];
   const seg=`<div class="seg mtabs">${tabs.map(([k,l])=>`<button class="${reportTab===k?'active':''}" onclick="reportTabSet('${k}')">${l}${k==='dead'&&dead.length?` <span class="pill p-r" style="padding:0 6px;">${dead.length}</span>`:''}</button>`).join('')}</div>`;
   const card=(title,sub,right,rsub,cls)=>`<div class="dv-row inv-card ${cls||''}"><div style="min-width:0;"><div class="dv-name">${title}</div><div class="mini">${sub}</div></div><div class="inv-qty"><div class="inv-q ${cls==='low'?'neg':''}">${right}</div><div class="mini">${rsub||''}</div></div></div>`;
   let body='';
@@ -4359,6 +4379,7 @@ function pgReportBody(){
   ${renderCharts(f)}`;
   else if(reportTab==='cost')body='${acctCostPanel()}'.replace('${acctCostPanel()}',acctCostPanel());
   else if(reportTab==='var')body=varRows.length?`<div class="inv-grid">${varRows.map(r=>card(oEsc(r.name),(zh?'理论 ':'Theory ')+num(r.theory)+' → '+(zh?'实盘 ':'Actual ')+num(r.count)+' '+oEsc(r.unit),(r.v>0?'+':'')+num(r.v)+' <small>'+oEsc(r.unit)+'</small>',money(r.val),Math.abs(r.v)>0.4?'low':'')).join('')}</div>`:`<div class="empty">${zh?'还没有盘点记录':'No stock counts'}</div>`;
+  else if(reportTab==='fish')body=fishPcsReportHTML(costMonth);
   else if(reportTab==='waste'){const ent=Object.entries(reasons).sort((p1,p2)=>p2[1].amt-p1[1].amt);body=ent.length?`<div class="inv-grid">${ent.map(([k,v])=>card(oEsc(k),v.n+(zh?' 次':' times'),money(v.amt),zh?'损失':'loss','low')).join('')}</div>`:`<div class="empty">${zh?'没有报废记录':'No wastage'}</div>`;}
   else body=dead.length?`<div class="inv-grid">${dead.map(i=>card(oEsc(i.name),(zh?'在库 ':'Age ')+days(TODAY,i.batches[0].in)+(zh?' 天':' d'),money(i.qty*i.cost),zh?'占用金额':'value','low')).join('')}</div>`:`<div class="empty">${zh?'没有呆滞货':'None'}</div>`;
   return `<div class="fb"><h2 class="h" style="margin:0;">${zh?"报表中心":"Reports"}</h2><button class="btn ghost sm" onclick="exportCSV()">${zh?'导出 CSV':'CSV'}</button></div>
@@ -7083,13 +7104,13 @@ function pgWaste2(){
   const months=logMonths(all);const cur=(wasteMonth&&months.includes(wasteMonth))?wasteMonth:months[0];
   const mrs=all.filter(r=>(r.date||'').slice(0,7)===cur);
   const line=r=>(+r.cost||0)*(+r.qty||0);
-  const tot=mrs.reduce((q,r)=>q+line(r),0);
+  const tot=mrs.reduce((q,r)=>q+line(r),0);const fishN=mrs.reduce((q,r)=>q+(+r.pcs||0),0);
   const reasons={};mrs.forEach(r=>{const k=r.reason||(zh?'未填原因':'No reason');reasons[k]=(reasons[k]||0)+line(r);});
   const top=Object.entries(reasons).sort((p1,p2)=>p2[1]-p1[1])[0];
   let rs=mrs.filter(r=>wasteReason==='all'||(r.reason||(zh?'未填原因':'No reason'))===wasteReason);
   const wd=zh?['日','一','二','三','四','五','六']:['Su','Mo','Tu','We','Th','Fr','Sa'];
   const card=(r,showDate)=>{const gi=x.wasteLog.indexOf(r);return `<div class="dv-row inv-card low" data-name="${oEsc(((r.item||'')+' '+(r.code||'')+' '+(r.reason||'')+' '+(r.note||'')).toLowerCase())}">
-      <div style="min-width:0;"><div class="dv-name">${oEsc(r.item)}</div><div class="mini">${num(r.qty,2)} × ${money(r.cost)}${r.code?' · '+oEsc(r.code):''}${showDate?' · '+oEsc(r.date||''):''}</div>
+      <div style="min-width:0;"><div class="dv-name">${oEsc(r.item)}</div><div class="mini">${num(r.qty,2)} × ${money(r.cost)}${r.pcs?' · '+num(r.pcs,2)+(zh?' 条':' pcs'):''}${r.code?' · '+oEsc(r.code):''}${showDate?' · '+oEsc(r.date||''):''}</div>
         <div style="margin-top:4px;"><span class="pill p-r">${oEsc(r.reason)||(zh?'未填原因':'No reason')}</span></div>${r.note?`<div class="mini">${oEsc(r.note)}</div>`:''}</div>
       <div class="inv-qty"><div class="inv-q neg">${money(line(r))}</div>${writable?`<div class="inv-act"><button class="ib" onclick="formWaste2(${gi})">✏️</button><button class="ib" onclick="delWaste2(${gi})">🗑️</button></div>`:''}</div></div>`;};
   let body='';
@@ -7099,7 +7120,7 @@ function pgWaste2(){
       return `<div class="grn-day"><span>${zh?`${dd.getMonth()+1}月${dd.getDate()}日 · 周${wd[dd.getDay()]}`:dt}${dt===TODAY?` <span class="pill p-g">${zh?'今天':'Today'}</span>`:''}</span><b>${money(t)}</b></div><div class="inv-grid">${byDate[dt].map(r=>card(r,false)).join('')}</div>`;}).join('');}
   return `<div class="fb"><h2 class="h" style="margin:0;">${zh?"报废损耗":"Wastage"}</h2><div style="display:flex;gap:8px;align-items:center;">${writable?`<button class="btn brand sm" onclick="formWaste2()">+ ${zh?"新增报废":"Add"}</button>`:''}<button class="btn ghost sm" onclick="nav('proc')">← ${zh?"返回":"Back"}</button></div></div>
   ${logMonthTabs(months,cur,'setWasteMonth').replace('class="seg"','class="seg mtabs nox"')}
-  <div class="grid g3 sup-sum"><div class="kpi"><div class="k">${zh?"本月笔数":"Records"}</div><div class="v sm">${mrs.length}</div></div><div class="kpi"><div class="k">${zh?"本月损耗总额":"Total loss"}</div><div class="v sm neg">${money(tot)}</div></div><div class="kpi"><div class="k">${zh?"最大原因":"Top reason"}</div><div class="v sm" style="font-size:14px;">${top?oEsc(top[0]):'—'}</div><div class="mini">${top?money(top[1]):''}</div></div></div>
+  <div class="grid ${fishN>0?'g4':'g3'} sup-sum">${fishN>0?`<div class="kpi"><div class="k">${zh?"鱼类报废条数":"Fish pcs lost"}</div><div class="v sm neg">${num(fishN,2)}</div></div>`:''}<div class="kpi"><div class="k">${zh?"本月笔数":"Records"}</div><div class="v sm">${mrs.length}</div></div><div class="kpi"><div class="k">${zh?"本月损耗总额":"Total loss"}</div><div class="v sm neg">${money(tot)}</div></div><div class="kpi"><div class="k">${zh?"最大原因":"Top reason"}</div><div class="v sm" style="font-size:14px;">${top?oEsc(top[0]):'—'}</div><div class="mini">${top?money(top[1]):''}</div></div></div>
   <details class="hintd"><summary>${zh?'说明':'Notes'}</summary><div>${zh?"按月分开。记录 日期·物品·成本价·数量·原因·备注，总额＝成本价×数量。":"By month. Total = cost × qty."}</div></details>
   ${mrs.length?`<div class="dv-tools"><input class="dv-search" type="search" placeholder="${zh?'搜索物品/原因…':'Search…'}" oninput="dvFilter(this.value)" autocomplete="off"><div class="seg"><button class="${wasteSort==='date'?'active':''}" onclick="wasteSortSet('date')">${zh?'按日期':'By date'}</button><button class="${wasteSort==='amt'?'active':''}" onclick="wasteSortSet('amt')">${zh?'按金额':'By amount'}</button></div></div>
   ${Object.keys(reasons).length>1?`<div class="seg mtabs nox" style="margin-bottom:10px;"><button class="${wasteReason==='all'?'active':''}" onclick="wasteReasonSet('all')">${zh?'全部':'All'}</button>${Object.keys(reasons).map(k=>`<button class="${wasteReason===k?'active':''}" onclick="wasteReasonSet(this.dataset.k)" data-k="${oEsc(k)}">${oEsc(k)}</button>`).join('')}</div>`:''}`:''}
@@ -7116,18 +7137,20 @@ function formWaste2(editIdx){
     <div class="fg3"><div class="fr"><label>Code</label><input id="w_code" value="${r?(r.code||''):''}"></div>
       <div class="fr"><label>${LANG==="zh"?"成本价RM":"Cost"}</label><input id="w_cost" type="number" step="0.01" value="${r?r.cost:''}"></div>
       <div class="fr"><label>${LANG==="zh"?"数量":"Qty"}</label><input id="w_qty" type="number" step="0.01" value="${r?r.qty:''}"></div></div>
+    <div class="fr" id="w_pcs_row" style="${(r&&isFishItem(invItem(r.item)))?'':'display:none;'}"><label>${LANG==="zh"?"条数（鱼类，会自动扣库存条数）":"Pcs (fish, deducts stock pcs)"}</label><input id="w_pcs" type="number" inputmode="decimal" step="0.01" value="${r&&r.pcs?r.pcs:''}"></div>
     <div class="fr"><label>${LANG==="zh"?"原因":"Reason"}</label><select id="w_reason">${reasonOpts}</select></div>
     <div class="fr"><label>${LANG==="zh"?"备注":"Note"}</label><input id="w_note" value="${r?(r.note||''):''}"></div>
     <button class="btn block brand" onclick="saveWaste2(${isEdit?editIdx:'null'})">${LANG==="zh"?"保存":"Save"}</button>`);
 }
-function wItemAuto(){const it=(d().items||[]).find(i=>i.name===document.getElementById('w_item').value);if(it){document.getElementById('w_cost').value=it.cost;}}
+function wItemAuto(){const it=(d().items||[]).find(i=>i.name===document.getElementById('w_item').value);if(it){document.getElementById('w_cost').value=it.cost;}const pr=document.getElementById('w_pcs_row');if(pr)pr.style.display=(it&&isFishItem(it))?'':'none';}
 async function saveWaste2(editIdx){const g=id=>document.getElementById(id);
   const rec={date:g('w_date').value||TODAY,item:g('w_item').value,code:g('w_code').value.trim(),cost:+g('w_cost').value||0,qty:+g('w_qty').value||0,reason:g('w_reason').value,note:g('w_note').value.trim()};
+  {const pr=g('w_pcs_row'),pv=+(g('w_pcs')&&g('w_pcs').value)||0;if(pr&&pr.style.display!=='none'&&pv>0)rec.pcs=pv;}   // 鱼类：报废了几条
   if(!d().wasteLog)d().wasteLog=[];
-  if(editIdx!=null&&d().wasteLog[editIdx]){const old=d().wasteLog[editIdx];invReceive(old.item,old.qty,null);invReduce(rec.item,rec.qty);auditLog("编辑报废",rec.item+" ×"+rec.qty,money(old.cost*old.qty),money(rec.cost*rec.qty));d().wasteLog[editIdx]=rec;}
-  else{d().wasteLog.unshift(rec);invReduce(rec.item,rec.qty);auditLog("报废损耗",rec.item+" ×"+rec.qty,"",money(rec.cost*rec.qty));}
+  if(editIdx!=null&&d().wasteLog[editIdx]){const old=d().wasteLog[editIdx];invReceive(old.item,old.qty,null);if(+old.pcs>0)fishPcsAdj(old.item,+old.pcs);invReduce(rec.item,rec.qty);if(rec.pcs)fishPcsAdj(rec.item,-rec.pcs);auditLog("编辑报废",rec.item+" ×"+rec.qty,money(old.cost*old.qty),money(rec.cost*rec.qty));d().wasteLog[editIdx]=rec;}
+  else{d().wasteLog.unshift(rec);invReduce(rec.item,rec.qty);if(rec.pcs)fishPcsAdj(rec.item,-rec.pcs);auditLog("报废损耗",rec.item+" ×"+rec.qty+(rec.pcs?"（"+rec.pcs+"条）":""),"",money(rec.cost*rec.qty));}
   await save();closeM();render();}
-async function delWaste2(gi){if(!confirm(LANG==="zh"?"删除此报废？":"Delete?"))return;const old=d().wasteLog[gi]||{};invReceive(old.item,old.qty,null);d().wasteLog.splice(gi,1);auditLog("删除报废",(old.item||'')+" ×"+(old.qty||''),money((old.cost||0)*(old.qty||0)),"");await save();render();}
+async function delWaste2(gi){if(!confirm(LANG==="zh"?"删除此报废？":"Delete?"))return;const old=d().wasteLog[gi]||{};invReceive(old.item,old.qty,null);if(+old.pcs>0)fishPcsAdj(old.item,+old.pcs);d().wasteLog.splice(gi,1);auditLog("删除报废",(old.item||'')+" ×"+(old.qty||''),money((old.cost||0)*(old.qty||0)),"");await save();render();}
 
 /* ================= 运营开销记录（按月·按类别 key in 的零散开销，独立于「运营开销」预算表）================= */
 const OPEXLOG_CATS=[
